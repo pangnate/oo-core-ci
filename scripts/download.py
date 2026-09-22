@@ -95,7 +95,7 @@ def pack_linux_runtime(source: Path, dest: Path) -> str:
     with tarfile.open(dest, "w:gz", dereference=False) as tf:
         for p in files:
             if ".so" in p.name:
-                tf.add(p, arcname=str(p.relative_to(source)), recursive=False)
+                tf.add(p, arcname=p.relative_to(source).as_posix(), recursive=False)
     digest = sha256(dest)
     print(f"[runtime] {dest.name}: {len(so_files)} entries  sha256={digest}")
     return digest
@@ -110,7 +110,7 @@ def pack_windows_runtime(source: Path, dest: Path) -> str:
     dest.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(dest, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         for p in sorted(dlls):
-            zf.write(p, arcname=str(p.relative_to(source)))
+            zf.write(p, arcname=p.relative_to(source).as_posix())
     digest = sha256(dest)
     print(f"[runtime] {dest.name}: {len(dlls)} DLLs  sha256={digest}")
     return digest
@@ -276,7 +276,7 @@ def main() -> int:
         item = deps[key]
         path = ARCHIVES / filename
         digest = download(item["url"], path, item.get("sha256"))
-        lock[key] = {"sha256": digest, "url": item["url"], "file": str(path.relative_to(ROOT))}
+        lock[key] = {"sha256": digest, "url": item["url"], "file": path.relative_to(ROOT).as_posix()}
 
     if args.linux_amd64_libs:
         d = pack_linux_runtime(args.linux_amd64_libs.resolve(), RUNTIME / "linux-amd64-runtime.tar.gz")

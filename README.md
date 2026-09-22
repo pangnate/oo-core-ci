@@ -78,7 +78,7 @@ git init
 git add .
 git commit -m "x2t core-only build poc"
 git branch -M main
-git remote add origin <your-repository-url>
+git remote add origin https://github.com/pangnate/onlyoffice-x2t-ci.git
 git push -u origin main
 ```
 

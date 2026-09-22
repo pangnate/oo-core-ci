@@ -9,6 +9,6 @@ h=hashlib.sha256()
 with path.open('rb') as f:
     for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
 data=json.loads(lock.read_text(encoding='utf-8')) if lock.exists() else {}
-data[key]={'sha256':h.hexdigest(),'file':str(path.relative_to(ROOT)) if ROOT in path.parents else str(path)}
+data[key]={'sha256':h.hexdigest(),'file':path.relative_to(ROOT).as_posix() if ROOT in path.parents else path.as_posix()}
 lock.write_text(json.dumps(data,indent=2,ensure_ascii=False),encoding='utf-8')
 print(h.hexdigest(), path)

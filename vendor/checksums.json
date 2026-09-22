@@ -12,50 +12,50 @@
   "boost": {
     "sha256": "fdfc204fc33ec79c99b9a74944c3e54bd78be4f7f15e260c0e2700a36dc7d3e5",
     "url": "https://archives.boost.io/release/1.58.0/source/boost_1_58_0.tar.bz2",
-    "file": "vendor\\archives\\boost_1_58_0.tar.bz2"
+    "file": "vendor/archives/boost_1_58_0.tar.bz2"
   },
   "icu": {
     "sha256": "68db082212a96d6f53e35d60f47d38b962e9f9d207a74cfac78029ae8ff5e08c",
     "url": "https://github.com/unicode-org/icu/releases/download/release-74-2/icu4c-74_2-src.tgz",
-    "file": "vendor\\archives\\icu4c-74_2-src.tgz"
+    "file": "vendor/archives/icu4c-74_2-src.tgz"
   },
   "brotli": {
     "sha256": "49b657a4321cb00e388863dec8d0558b94ec47100d619b837d570a58bba71379",
     "url": "https://github.com/google/brotli/archive/a47d7475063eb223c87632eed806c0070e70da29.tar.gz",
-    "file": "vendor\\archives\\brotli-a47d7475063eb223c87632eed806c0070e70da29.tar.gz"
+    "file": "vendor/archives/brotli-a47d7475063eb223c87632eed806c0070e70da29.tar.gz"
   },
   "qt_linux_amd64": {
     "sha256": "84181f983a5e76c2f8a63f8bf06d5ce27675f543c45febe014514633a1289f0e",
     "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/qt/qt_binary_5.9.9_gcc_64.7z",
-    "file": "vendor\\archives\\qt_binary_5.9.9_gcc_64.7z"
+    "file": "vendor/archives/qt_binary_5.9.9_gcc_64.7z"
   },
   "qt_linux_arm64": {
     "sha256": "83b1d02b86f2137c230a4e8ecc43d23517dbf67dae5fcf7ecf18ca71e6c2c12d",
     "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/qt/qt_binary_5.9.9_gcc_arm64.7z",
-    "file": "vendor\\archives\\qt_binary_5.9.9_gcc_arm64.7z"
+    "file": "vendor/archives/qt_binary_5.9.9_gcc_arm64.7z"
   },
   "sysroot_linux_amd64": {
     "sha256": "d74cfd1b7afb4e25066b04a9a2a6d42e9d95cf76e61bcd1a51cfd30c18b0c872",
     "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/sysroot/ubuntu16-amd64-sysroot.tar.gz",
-    "file": "vendor\\archives\\ubuntu16-amd64-sysroot.tar.gz"
+    "file": "vendor/archives/ubuntu16-amd64-sysroot.tar.gz"
   },
   "sysroot_linux_arm64": {
     "sha256": "9fea5d2a1796f3cbe5abd9659e6d54d67a0f205bafa620b38c92d8abe98992a0",
     "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/sysroot/ubuntu16-arm64-sysroot.tar.gz",
-    "file": "vendor\\archives\\ubuntu16-arm64-sysroot.tar.gz"
+    "file": "vendor/archives/ubuntu16-arm64-sysroot.tar.gz"
   },
   "python3_linux": {
     "sha256": "c251fd88959ad83a64711d37d7897d0bf7a3ed272f23b6ef6216e0eed0bf9360",
     "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/python/python3.tar.gz",
-    "file": "vendor\\archives\\python3.tar.gz"
+    "file": "vendor/archives/python3.tar.gz"
   },
   "runtime-linux-amd64": {
-    "sha256": "767b8608cc2d0002a1fdf42e00bd588b76691193f11b21dca1da53774351fb26",
+    "sha256": "cf408714779dbdc0198509c553626b9374b1d1f6247a0632af3846433fc345e9",
     "source": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\native-bin\\linux-amd64\\bin",
     "file": "vendor/runtime/linux-amd64-runtime.tar.gz"
   },
   "runtime-linux-arm64": {
-    "sha256": "8f12b1b0e0d78a960eecff15f68801b2edcaca2e3d4e75beb9a5e1eddd5b489b",
+    "sha256": "c9b14f03ae19739d100ac4d7e856742f4268cdfb63fb1fb4a3572dbbc977bc17",
     "source": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\native-bin\\linux-arm64\\bin",
     "file": "vendor/runtime/linux-arm64-runtime.tar.gz"
   },
