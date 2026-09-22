@@ -1,41 +1,53 @@
 name: Build X2T
+
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'core/**'
-      - 'build_tools/**'
-      - 'scripts/**'
-      - 'ci/**'
-      - 'vendor/**'
-      - '.github/workflows/build-x2t.yml'
+    inputs:
+      platform:
+        description: 'Select platform to build'
+        required: true
+        type: choice
+        default: linux
+        options:
+          - linux
+          - windows
+
 permissions:
   contents: read
+
 jobs:
   linux:
+    if: ${{ inputs.platform == 'linux' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
+
       - name: Host packages
         run: |
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
             build-essential ca-certificates python3 perl pkg-config file binutils \
             rsync p7zip-full zstd xz-utils patchelf
+
       - name: Verify vendor files
         run: python3 scripts/verify_vendor.py --platform linux
+
       - name: Prepare offline sources, Qt, sysroots and runtime SOs
         run: python3 scripts/prepare.py --platform linux
+
       - name: Configure build_tools without downloads
         run: python3 scripts/configure_build.py --platform linux
+
       - name: Build only Boost and ICU
         run: python3 scripts/make_minimal_deps.py
+
       - name: Build X2T linux amd64 + arm64
         run: python3 scripts/build_x2t.py
+
       - name: Verify ELF binaries
         run: |
           file core/build/bin/linux_64/x2t
@@ -44,50 +56,71 @@ jobs:
           readelf -h core/build/bin/linux_arm64/x2t | grep -E 'Machine:.*AArch64'
           LD_LIBRARY_PATH="$PWD/core/build/lib/linux_64:$PWD/core/build/lib/linux_64/system:$PWD/core/Common/3dParty/icu/linux_64/build" ldd core/build/bin/linux_64/x2t | tee /tmp/x2t-ldd.txt
           ! grep -q 'not found' /tmp/x2t-ldd.txt
+
       - name: Package Linux
         run: |
           mkdir -p dist
           cp core/build/bin/linux_64/x2t dist/x2t-linux-amd64
           cp core/build/bin/linux_arm64/x2t dist/x2t-linux-arm64
           sha256sum dist/x2t-* > dist/SHA256SUMS-linux
+
       - uses: actions/upload-artifact@v4
         with:
           name: x2t-linux-${{ github.sha }}
           path: dist/
+
   windows:
+    if: ${{ inputs.platform == 'windows' }}
     runs-on: windows-2022
     timeout-minutes: 180
+
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
+
       - name: Verify vendor files
         run: python scripts/verify_vendor.py --platform windows
+
       - name: Locate VS2022 and v142
         shell: powershell
         run: |
           $vswhere="${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vs=& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if(!$vs){ throw 'Visual Studio not found' }
+
           $vcvars=Join-Path $vs 'VC\Auxiliary\Build\vcvarsall.bat'
-          $v142=Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC') -Directory | Where-Object {$_.Name -like '14.29*'} | Select-Object -First 1
-          if(!$v142){ throw 'MSVC v142 (14.29) not installed on windows-2022 runner' }
-          "REAL_VCVARSALL=$vcvars" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          $v142=Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC') -Directory |
+            Where-Object {$_.Name -like '14.29*'} |
+            Select-Object -First 1
+
+          if(!$v142){
+            throw 'MSVC v142 (14.29) not installed on windows-2022 runner'
+          }
+
+          "REAL_VCVARSALL=$vcvars" |
+            Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Build Windows X2T
         shell: cmd
         run: scripts\windows_build.cmd
+
       - name: Verify PE and dependencies
         shell: cmd
         run: |
           call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
           dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
           dumpbin /dependents core\build\bin\win_64\x2t.exe
+
       - name: Package Windows
         shell: powershell
         run: |
           New-Item dist -ItemType Directory -Force | Out-Null
           Copy-Item core\build\bin\win_64\x2t.exe dist\x2t-windows-amd64.exe
-          (Get-FileHash dist\x2t-windows-amd64.exe -Algorithm SHA256).Hash.ToLower() | Set-Content dist\SHA256-windows.txt
+
+          (Get-FileHash dist\x2t-windows-amd64.exe -Algorithm SHA256).Hash.ToLower() |
+            Set-Content dist\SHA256-windows.txt
+
       - uses: actions/upload-artifact@v4
         with:
           name: x2t-windows-${{ github.sha }}
