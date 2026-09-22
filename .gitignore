@@ -1,6 +1,5 @@
 .download-tmp/
 vendor/work/
-core/build/
 core/Common/3dParty/boost/build/
 core/Common/3dParty/boost/boost_1_72_0/
 core/Common/3dParty/icu/icu/
