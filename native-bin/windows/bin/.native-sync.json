@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "runtimeId": "onlyoffice-documentserver-9.4.0.129-windows-x64",
+  "version": "9.4.0.129",
+  "platform": "windows-x64",
+  "sourceReference": "explicit-local-directory",
+  "importedAt": "2026-08-17T06:29:51.197Z",
+  "files": 24,
+  "licenseEvidence": [
+    {
+      "path": "DocumentServer/LICENSE.txt",
+      "sha256": "5afeb487664128ce99e5cce53f3dd0013585a6798ef87ac7a5f71aeda2fd5547"
+    },
+    {
+      "path": "DocumentServer/3rd-Party.txt",
+      "sha256": "1e8e7a5c75ddf0e7b50ca841d45255167dbb80f11c738e04fd2f508f23b1b500"
+    }
+  ]
+}

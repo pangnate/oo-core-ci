@@ -1,0 +1,319 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "BinProcessor.h"
+#include "../Binary/CFStream.h"
+#include "../Binary/CFStreamCacheReader.h"
+#include "../Binary/CFStreamCacheWriter.h"
+#include "../Logic/Biff_structures/BiffString.h"
+
+
+namespace XLS
+{;
+
+BinProcessor::BinProcessor(BaseObject* parent, GlobalWorkbookInfoPtr global_info)
+:	parent_(parent),
+	global_info_(global_info)
+{
+}
+BinProcessor::BinProcessor( GlobalWorkbookInfoPtr global_info)
+:	global_info_(global_info)
+{
+}
+
+
+BinProcessor::~BinProcessor()
+{
+}
+
+
+const int BinProcessor::repeated(BaseObject& object, const int fromN, const int toN)
+{
+	int count = 0;
+
+	bool at_least_one_read = false;
+
+	for(int i = 0; i < fromN; ++i)
+    {
+        mandatory(*object.clone());
+		count++;
+        at_least_one_read = true;
+	}
+	for(int j = fromN; j < toN || !toN/*infinity*/; ++j)
+    {
+        if(!optional(*object.clone()))
+		{
+			break;
+		}
+		count++;
+        at_least_one_read = true;
+	}
+	return count;
+}
+
+bool BinProcessor::isBOF(CFRecordType::TypeId type)
+{
+	switch(type)
+	{
+	case rt_BOF_BIFF8:
+	case rt_BOF_BIFF4:
+	case rt_BOF_BIFF3:
+	case rt_BOF_BIFF2:
+		return true;
+	default:
+		return false;
+	}
+	return false;
+}
+// =========================== Reader ======================================
+
+
+BinReaderProcessor::BinReaderProcessor(StreamCacheReaderPtr reader, BaseObject* parent, const bool is_mandatory)
+:	reader_(reader),
+	BinProcessor(parent, reader ? reader->getGlobalWorkbookInfo() : NULL),
+	is_mandatory_(is_mandatory)
+{
+}
+
+//BinReaderProcessor::BinReaderProcessor(StreamCacheReader& reader, const bool is_mandatory)
+//:	reader_(reader),
+//	BinProcessor(reader.getGlobalWorkbookInfo()),
+//	is_mandatory_(is_mandatory)
+//{
+//}
+
+ // Load the specified child object specified number of times
+ // fromN = 0 means the object is optional
+ // toN = 0 means no upper limit
+ template<class T>
+ const int repeated(const int fromN, const int toN)
+ {
+     T obj;
+     return repeated(obj, fromN, toN);
+ }
+const bool BinReaderProcessor::optional(BaseObject& object)
+{
+	return readChild(object, false);
+}
+
+
+const bool BinReaderProcessor::mandatory(BaseObject& object)
+{
+	if(is_mandatory_) // if the composite object is mandatory, do as usual - log warning if the record is not found
+	{
+		bool res = readChild(object, true);
+		return res;
+	}
+	else
+	{
+		is_mandatory_ = true; // The whole union becomes mandatory in case we have found at least one mandatory record in there
+		return readChild(object, false);
+	}
+}
+
+
+// object_copy is necessary in case we haven't found the desired record and have to put it to the queue
+const bool BinReaderProcessor::readChild(BaseObject& object, const bool is_mandatory)
+{
+	if (!reader_)
+		return false;
+
+	bool ret_val = false;
+	try
+	{
+		ret_val = object.read(reader_, parent_, is_mandatory /* log warning if mandatory tag absent*/);
+		if(!ret_val && is_mandatory)
+		{
+			if (global_info_->decryptor)
+			{
+				if (global_info_->decryptor->IsVerify() == false)
+					return false;
+			}
+			// We don't update ret_val here because we are reading to the copy of the object.
+			// And the real object will remain uninitialized
+			wanted_objects.push_back(object.clone()); // store the copy of the object that was not found (this line is here to take another chance to be read after some trash processed)			
+			for (BaseObjectPtrList::iterator it = wanted_objects.begin(); it != wanted_objects.end();)
+			{
+				const BaseObjectPtr w_object = *it;				
+				BaseObjectPtrList::iterator it_del = wanted_objects.end();
+				if (w_object->read(reader_, parent_, false))
+				{
+					it_del = it;
+				}
+					++it;
+				if (it_del != wanted_objects.end())
+					wanted_objects.erase(it_del);
+			}
+		}
+	}
+	catch(...)
+	{
+	}
+	return ret_val;
+}
+
+
+// Check if the next read record would be of desired type
+const bool BinReaderProcessor::checkNextRecord(const CFRecordType::TypeId desirable_type, const size_t num_records_to_check)
+{
+	if (!reader_)
+		return false;
+
+	return reader_->checkNextRecord(desirable_type, num_records_to_check);
+}
+
+
+// Assume that the next record is BOF (if not - return false) and get the type without extracting is from cache
+// In the case of stream end returns false
+const bool BinReaderProcessor::getNextSubstreamType(unsigned short& type)
+{
+	if (!reader_)
+		return false;
+
+	CFRecordPtr record = reader_->touchTheNextRecord();
+	if(!record)
+	{
+		return false; // EOF
+	}
+	if (false == record->isBOF())
+	{
+		//test-file.xls
+		while (rt_Blank == record->getTypeId())
+		{
+			SkipRecord();
+			record = reader_->touchTheNextRecord();
+			if (!record)
+			{
+				return false; // EOF
+			}
+			if (true == record->isBOF())
+			{
+				break;
+			}
+		}
+		if (false == record->isBOF())
+			return false;
+	}
+	unsigned short vers;
+	*record >> vers >> type;
+	record->resetPointerToBegin();
+	return true;
+}
+
+// Check the next record type
+const CFRecordType::TypeId BinReaderProcessor::getNextRecordType()
+{
+	if (!reader_)
+		return rt_NONE;
+
+	CFRecordPtr record = reader_->touchTheNextRecord();
+	if(!record)
+	{
+		return rt_NONE; // EOF
+	}
+	return record->getTypeId();
+}
+void BinReaderProcessor::SeekToEOF()
+{
+	if (reader_)
+		reader_->SeekToEOF();
+}
+void BinReaderProcessor::SkipRecord(bool log_debug)
+{
+	if (reader_)
+		reader_->SkipRecord(log_debug);
+}
+const int BinReaderProcessor::GetRecordPosition()
+{
+ if (reader_)
+     return reader_->GetRecordPosition();
+}
+void BinReaderProcessor::SetRecordPosition(const int position)
+{
+  if (reader_)
+      reader_->SetRecordPosition(position);
+}
+	
+// =========================== Writer ======================================
+
+
+BinWriterProcessor::BinWriterProcessor(StreamCacheWriterPtr writer, BaseObject* parent)
+	: writer_(writer),
+	BinProcessor(parent, writer ? writer->getGlobalWorkbookInfo() : NULL)
+{
+}
+
+const bool BinWriterProcessor::optional(BaseObject& object)
+{
+	return writeChild(object, false);
+}
+const bool BinWriterProcessor::mandatory(BaseObject& object)
+{
+	return writeChild(object, true);
+}
+
+// object_copy is necessary in case we haven't found the desired record and have to put it to the queue
+const bool BinWriterProcessor::writeChild(BaseObject& object, const bool is_mandatory)
+{
+	if (!writer_)
+		return false;
+
+	bool ret_val = false;
+	try
+	{
+		ret_val = object.write(writer_, parent_);
+		if (!ret_val && is_mandatory)
+		{
+			if (global_info_->decryptor)
+			{
+				if (global_info_->decryptor->IsVerify() == false)
+					return false;
+			}
+		}
+	}
+	catch (...)
+	{
+	}
+	return ret_val;
+}
+
+const int BinWriterProcessor::GetRecordPosition()
+{
+	if (!writer_)
+		return 0;
+	return writer_->GetRecordPosition();
+}
+
+} // namespace XLS

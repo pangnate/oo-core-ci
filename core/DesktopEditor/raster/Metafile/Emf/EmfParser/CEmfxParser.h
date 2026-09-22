@@ -1,0 +1,163 @@
+/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#ifndef CEMFXPARSER_H
+#define CEMFXPARSER_H
+
+#include "CEmfParserBase.h"
+#include "../../CXmlOutput.h"
+
+namespace MetaFile
+{
+	class CEmfxParser : public CEmfParserBase
+	{
+	public:
+		CEmfxParser();
+		virtual ~CEmfxParser();
+
+		virtual bool    ReadFromBuffer(BYTE* pBuffer, unsigned int unSize, const bool& bIsExternal = true) override;
+		virtual bool    OpenFromFile(const wchar_t* wsFilePath)     override;
+
+		void            PlayFile()                                  override;
+		void            Scan()                                      override;
+
+		EmfParserType   GetType()                             const override;
+
+	private:
+		bool ReadImage(unsigned int offBmi, unsigned int cbBmi, unsigned int offBits, unsigned int cbBits, unsigned int ulSkip, BYTE **ppBgraBuffer, unsigned int *pulWidth, unsigned int *pulHeight) override;
+
+		void Read_EMR_HEADER();
+		void Read_EMR_ALPHABLEND();
+		void Read_EMR_STRETCHDIBITS();
+		void Read_EMR_BITBLT();
+		void Read_EMR_SETDIBITSTODEVICE();
+		void Read_EMR_STRETCHBLT();
+		void Read_EMR_EOF();
+		void Read_EMR_UNKNOWN();
+		void Read_EMR_FILLRGN();
+		void Read_EMR_SAVEDC();
+		void Read_EMR_RESTOREDC();
+		void Read_EMR_MODIFYWORLDTRANSFORM();
+		void Read_EMR_SETWORLDTRANSFORM();
+		void Read_EMR_CREATEBRUSHINDIRECT();
+		void Read_EMR_SETTEXTCOLOR();
+		void Read_EMR_SELECTOBJECT();
+		void Read_EMR_EXTCREATEFONTINDIRECTW();
+		void Read_EMR_SETTEXTALIGN();
+		void Read_EMR_SETBKMODE();
+		void Read_EMR_DELETEOBJECT();
+		void Read_EMR_SETMITERLIMIT();
+		void Read_EMR_EXTCREATEPEN();
+		void Read_EMR_CREATEPEN();
+		void Read_EMR_SETPOLYFILLMODE();
+		void Read_EMR_BEGINPATH();
+		void Read_EMR_ENDPATH();
+		void Read_EMR_CLOSEFIGURE();
+		void Read_EMR_FLATTENPATH();
+		void Read_EMR_WIDENPATH();
+		void Read_EMR_ABORTPATH();
+		void Read_EMR_MOVETOEX();
+		void Read_EMR_SETARCDIRECTION();
+		void Read_EMR_FILLPATH();
+		void Read_EMR_SETMAPMODE();
+		void Read_EMR_SETWINDOWORGEX();
+		void Read_EMR_SETWINDOWEXTEX();
+		void Read_EMR_SETVIEWPORTORGEX();
+		void Read_EMR_SETVIEWPORTEXTEX();
+		void Read_EMR_SETSTRETCHBLTMODE();
+		void Read_EMR_SETICMMODE();
+		void Read_EMR_CREATEMONOBRUSH();
+		void Read_EMR_CREATEDIBPATTERNBRUSHPT();
+		void Read_EMR_SELECTCLIPPATH();
+		void Read_EMR_SETBKCOLOR();
+		void Read_EMR_EXCLUDECLIPRECT();
+		void Read_EMR_EXTSELECTCLIPRGN();
+		void Read_EMR_SETMETARGN();
+		void Read_EMR_SETROP2();
+		void Read_EMR_CREATEPALETTE();
+		void Read_EMR_SELECTPALETTE();
+		void Read_EMR_REALIZEPALETTE();
+		void Read_EMR_INTERSECTCLIPRECT();
+		void Read_EMR_SETLAYOUT();
+		void Read_EMR_SETBRUSHORGEX();
+		void Read_EMR_ANGLEARC();
+		void Read_EMR_ARC_BASE(TRectL& oBox, TPointL& oStart, TPointL& oEnd);
+		void Read_EMR_ARC();
+		void Read_EMR_ARCTO();
+		void Read_EMR_CHORD();
+		void Read_EMR_ELLIPSE();
+		void Read_EMR_EXTTEXTOUTA();
+		void Read_EMR_EXTTEXTOUTW();
+		void Read_EMR_LINETO();
+		void Read_EMR_PIE();
+		void Read_EMR_POLYBEZIER();
+		void Read_EMR_POLYBEZIER16();
+		template<typename T>void Read_EMR_POLYBEZIER_BASE();
+		void Read_EMR_POLYBEZIERTO();
+		void Read_EMR_POLYBEZIERTO16();
+		template<typename T>void Read_EMR_POLYBEZIERTO_BASE();
+		void Read_EMR_POLYDRAW();
+		void Read_EMR_POLYDRAW16();
+		template<typename T>void Read_EMR_POLYDRAW_BASE();
+		void Read_EMR_POLYGON();
+		void Read_EMR_POLYGON16();
+		template<typename T>void Read_EMR_POLYGON_BASE();
+		void Read_EMR_POLYLINE();
+		void Read_EMR_POLYLINE16();
+		template<typename T>void Read_EMR_POLYLINE_BASE();
+		void Read_EMR_POLYLINETO();
+		void Read_EMR_POLYLINETO16();
+		template<typename T>void Read_EMR_POLYLINETO_BASE();
+		void Read_EMR_POLYPOLYGON();
+		void Read_EMR_POLYPOLYGON16();
+		template<typename T>void Read_EMR_POLYPOLYGON_BASE();
+		void Read_EMR_POLYPOLYLINE();
+		void Read_EMR_POLYPOLYLINE16();
+		template<typename T>void Read_EMR_POLYPOLYLINE_BASE();
+		void Read_EMR_POLYTEXTOUTA();
+		void Read_EMR_POLYTEXTOUTW();
+		void Read_EMR_RECTANGLE();
+		void Read_EMR_ROUNDRECT();
+		void Read_EMR_SETPIXELV();
+		void Read_EMR_SMALLTEXTOUT();
+		void Read_EMR_STROKEANDFILLPATH();
+		void Read_EMR_STROKEPATH();
+
+		CXmlOutput  *m_pOutput;
+		bool        m_bError;
+	};
+}
+
+#endif // CEMFXPARSER_H

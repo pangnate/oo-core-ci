@@ -1,0 +1,284 @@
+/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "HWPRecordNumbering.h"
+
+#include "../Common/NodeNames.h"
+
+namespace HWP
+{
+CHWPRecordNumbering::CHWPRecordNumbering(CHWPDocInfo& oDocInfo, int nTagNum, int nLevel, int nSize, CHWPStream& oBuffer, int nOff, int nVersion)
+    : CHWPRecord(nTagNum, nLevel, nSize), m_pParent(&oDocInfo)
+{
+	oBuffer.SavePosition();
+
+	for (int nIndex = 0; nIndex < 7; ++nIndex)
+	{
+		int nTypeBits;
+		oBuffer.ReadInt(nTypeBits);
+
+		m_arNumbering[nIndex].m_chAlign = (HWP_BYTE)(nTypeBits & 0x03);
+		m_arNumbering[nIndex].m_bUseInstWidth = CHECK_FLAG(nTypeBits, 0x40);
+		m_arNumbering[nIndex].m_bAutoIndent = CHECK_FLAG(nTypeBits, 0x80);
+		m_arNumbering[nIndex].m_chTextOffsetType = (HWP_BYTE)((nTypeBits >> 4) & 0x01);
+
+		oBuffer.ReadShort(m_arNumbering[nIndex].m_shWidthAdjust);
+		oBuffer.ReadShort(m_arNumbering[nIndex].m_shTextOffset);
+		oBuffer.ReadInt(m_arNumbering[nIndex].m_nCharShape);
+		oBuffer.ReadString(m_arNumbering[nIndex].m_sNumFormat, EStringCharacter::UTF16);
+	}
+
+	oBuffer.ReadShort(m_shStart);
+
+	if (nVersion > 5025 && (nSize > oBuffer.GetDistanceToLastPos())) //TODO:: Add check offset-off < size
+	{
+		for (int nIndex = 0; nIndex < 7; ++nIndex)
+			oBuffer.ReadInt(m_arNumbering[nIndex].m_nStartNumber);
+	}
+
+	if (nVersion > 5100 && (nSize > oBuffer.GetDistanceToLastPos())) //TODO:: Add check offset-off < size
+	{
+		for (int nIndex = 0; nIndex < 3; ++nIndex)
+		{
+			//Content unknown, but it contains 8 bytes.
+			oBuffer.Skip(8);
+
+			//Content unknown, but it contains 4 bytes.
+			oBuffer.Skip(4);
+
+			short shLen;
+			oBuffer.ReadShort(shLen);
+
+			oBuffer.Skip(shLen);
+		}
+
+		for (int nIndex = 0; nIndex < 3; ++nIndex)
+			oBuffer.ReadInt(m_arExtLevelStart[nIndex]);
+	}
+
+	oBuffer.RemoveLastSavedPos();
+}
+
+CHWPRecordNumbering::CHWPRecordNumbering(CHWPDocInfo& oDocInfo, CXMLReader& oReader, EHanType eType)
+    : CHWPRecord(EHWPTag::HWPTAG_NUMBERING, 0, 0), m_pParent(&oDocInfo)
+{
+	m_shStart = oReader.GetAttributeInt(GetAttributeName(EAttribute::Start, eType), 1);
+
+	unsigned int unIndex = 0;
+	short shLevel = 0;
+	std::string sNumFormat;
+
+	WHILE_READ_NEXT_NODE_WITH_NAME(oReader)
+	{
+		TO_LOWER(sNodeName);
+
+		if (GetNodeName(ENode::ParaHead, eType) != sNodeName &&
+		    (EHanType::HWPX == eType && "parahead" != sNodeName))
+			continue;
+
+		START_READ_ATTRIBUTES(oReader)
+		{
+			if (GetAttributeName(EAttribute::Aligment, eType) == sAttributeName)
+			{
+				const std::string sType{oReader.GetTextA()};
+
+				if (GetValueName(EValue::Left, eType) == sType)
+					m_arNumbering[unIndex].m_chAlign = 0;
+				else if (GetValueName(EValue::Center, eType) == sType)
+					m_arNumbering[unIndex].m_chAlign = 1;
+				else if (GetValueName(EValue::Right, eType) == sType)
+					m_arNumbering[unIndex].m_chAlign = 2;
+			}
+			else if (GetAttributeName(EAttribute::UseInstWidth, eType) == sAttributeName)
+				m_arNumbering[unIndex].m_bUseInstWidth = oReader.GetBool();
+			else if (GetAttributeName(EAttribute::AutoIndent, eType) == sAttributeName)
+				m_arNumbering[unIndex].m_bAutoIndent = oReader.GetBool();
+			else if (GetAttributeName(EAttribute::WidthAdjust, eType) == sAttributeName)
+				m_arNumbering[unIndex].m_shWidthAdjust = oReader.GetInt();
+			else if (GetAttributeName(EAttribute::TextOffsetType, eType) == sAttributeName)
+			{
+				const std::string sType{oReader.GetTextA()};
+
+				if (GetValueName(EValue::Percent, eType) == sType)
+					m_arNumbering[unIndex].m_chTextOffsetType = 0;
+				else if (GetValueName(EValue::HwpUnit, eType) == sType)
+					m_arNumbering[unIndex].m_chTextOffsetType = 1;
+			}
+			else if (GetAttributeName(EAttribute::TextOffset, eType) == sAttributeName)
+				m_arNumbering[unIndex].m_shTextOffset = oReader.GetInt();
+			else if (GetAttributeName(EAttribute::CharShape, eType) == sAttributeName)
+				m_arNumbering[unIndex].m_nCharShape = std::abs(oReader.GetInt());
+			else if (GetAttributeName(EAttribute::Start, eType) == sAttributeName)
+				m_arNumbering[unIndex].m_nStartNumber = oReader.GetInt();
+			else if (GetAttributeName(EAttribute::NumFormat, eType) == sAttributeName)
+				sNumFormat = oReader.GetTextA();
+			else if (GetAttributeName(EAttribute::Level, eType) == sAttributeName)
+				shLevel = oReader.GetInt();
+		}
+		END_READ_ATTRIBUTES(oReader)
+
+		if (GetValueName(EValue::Digit, eType))
+		{
+			if (shLevel > 0 && shLevel < 11)
+				m_arNumbering[unIndex].m_sNumFormat = L'^' + std::to_wstring(shLevel) + L'.';
+		}
+		else if (GetValueName(EValue::HangulSyllable, eType) ||
+		         GetValueName(EValue::HangulJamo, eType))
+		{
+			switch (shLevel)
+			{
+				case 1:  m_arNumbering[unIndex].m_sNumFormat = L"^가."; break;
+				case 2:  m_arNumbering[unIndex].m_sNumFormat = L"^나."; break;
+				case 3:  m_arNumbering[unIndex].m_sNumFormat = L"^다."; break;
+				case 4:  m_arNumbering[unIndex].m_sNumFormat = L"^라."; break;
+				case 5:  m_arNumbering[unIndex].m_sNumFormat = L"^마."; break;
+				case 6:  m_arNumbering[unIndex].m_sNumFormat = L"^바."; break;
+				case 7:  m_arNumbering[unIndex].m_sNumFormat = L"^사."; break;
+				case 8:  m_arNumbering[unIndex].m_sNumFormat = L"^아."; break;
+				case 9:  m_arNumbering[unIndex].m_sNumFormat = L"^자."; break;
+				case 10: m_arNumbering[unIndex].m_sNumFormat = L"^차."; break;
+			}
+		}
+		else if (GetValueName(EValue::CircledDigit, eType))
+		{
+			switch (shLevel)
+			{
+				case 1:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2460."; break;
+				case 2:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2461."; break;
+				case 3:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2462."; break;
+				case 4:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2463."; break;
+				case 5:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2464."; break;
+				case 6:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2465."; break;
+				case 7:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2466."; break;
+				case 8:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2467."; break;
+				case 9:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2468."; break;
+				case 10: m_arNumbering[unIndex].m_sNumFormat = L"^\u2469."; break;
+			}
+		}
+		else if (GetValueName(EValue::LatinSmall, eType))
+		{
+			switch (shLevel)
+			{
+				case 1:  m_arNumbering[unIndex].m_sNumFormat = L"^a."; break;
+				case 2:  m_arNumbering[unIndex].m_sNumFormat = L"^b."; break;
+				case 3:  m_arNumbering[unIndex].m_sNumFormat = L"^c."; break;
+				case 4:  m_arNumbering[unIndex].m_sNumFormat = L"^d."; break;
+				case 5:  m_arNumbering[unIndex].m_sNumFormat = L"^e."; break;
+				case 6:  m_arNumbering[unIndex].m_sNumFormat = L"^f."; break;
+				case 7:  m_arNumbering[unIndex].m_sNumFormat = L"^g."; break;
+				case 8:  m_arNumbering[unIndex].m_sNumFormat = L"^h."; break;
+				case 9:  m_arNumbering[unIndex].m_sNumFormat = L"^i."; break;
+				case 10: m_arNumbering[unIndex].m_sNumFormat = L"^j."; break;
+			}
+		}
+		else if (GetValueName(EValue::CircledHangulSyllable, eType) ||
+		         GetValueName(EValue::CircledHangulJamo, eType))
+		{
+			switch (shLevel)
+			{
+				case 1:  m_arNumbering[unIndex].m_sNumFormat = L"^\u326E."; break;
+				case 2:  m_arNumbering[unIndex].m_sNumFormat = L"^\u326F."; break;
+				case 3:  m_arNumbering[unIndex].m_sNumFormat = L"^\u3270."; break;
+				case 4:  m_arNumbering[unIndex].m_sNumFormat = L"^\u3271."; break;
+				case 5:  m_arNumbering[unIndex].m_sNumFormat = L"^\u3272."; break;
+				case 6:  m_arNumbering[unIndex].m_sNumFormat = L"^\u3273."; break;
+				case 7:  m_arNumbering[unIndex].m_sNumFormat = L"^\u3274."; break;
+				case 8:  m_arNumbering[unIndex].m_sNumFormat = L"^\u3275."; break;
+				case 9:  m_arNumbering[unIndex].m_sNumFormat = L"^\u3276."; break;
+				case 10: m_arNumbering[unIndex].m_sNumFormat = L"^\u3277."; break;
+			}
+		}
+		else if (GetValueName(EValue::RomanSmall, eType))
+		{
+			switch (shLevel)
+			{
+				case 1:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2170."; break;
+				case 2:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2171."; break;
+				case 3:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2172."; break;
+				case 4:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2173."; break;
+				case 5:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2174."; break;
+				case 6:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2175."; break;
+				case 7:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2176."; break;
+				case 8:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2177."; break;
+				case 9:  m_arNumbering[unIndex].m_sNumFormat = L"^\u2178."; break;
+				case 10: m_arNumbering[unIndex].m_sNumFormat = L"^\u2179."; break;
+			}
+		}
+
+		++unIndex;
+
+		if (7 == unIndex)
+			return;
+	}
+	END_WHILE
+}
+
+short CHWPRecordNumbering::GetStart() const
+{
+	return m_shStart;
+}
+
+HWP_STRING CHWPRecordNumbering::GetNumFormat(unsigned short ushIndex) const
+{
+	if (ushIndex >= 7)
+		return HWP_STRING();
+
+	return m_arNumbering[ushIndex].m_sNumFormat;
+}
+
+HWP_BYTE CHWPRecordNumbering::GetAlign(unsigned short ushIndex) const
+{
+	if (ushIndex >= 7)
+		return 0;
+
+	return m_arNumbering[ushIndex].m_chAlign;
+}
+
+int CHWPRecordNumbering::GetStartNumber(unsigned short ushIndex) const
+{
+	if (ushIndex >= 7)
+		return 0;
+
+	return m_arNumbering[ushIndex].m_nStartNumber;
+}
+
+int CHWPRecordNumbering::GetCharShape(unsigned short ushIndex) const
+{
+	if (ushIndex >= 7)
+		return 0;
+
+	return m_arNumbering[ushIndex].m_nCharShape;
+}
+}

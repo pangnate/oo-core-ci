@@ -1,0 +1,169 @@
+/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "OfficeArtContent.h"
+
+namespace DocFileFormat
+{
+	OfficeArtContent::OfficeArtContent (const FileInformationBlock* pFIB, POLE::Stream* pStream): m_pDrawingGroupData(NULL), m_pBackgroud(NULL), m_uLastShapeId(1024)
+	{
+		VirtualStreamReader oStearmReader(pStream, 0 , pFIB->m_nWordVersion);
+
+		if (pFIB->m_FibWord97.fcDggInfo > oStearmReader.GetSize()) return;
+
+		oStearmReader.Seek (pFIB->m_FibWord97.fcDggInfo, 0/*STREAM_SEEK_SET*/);
+
+		if (pFIB->m_FibWord97.lcbDggInfo > 0)
+		{
+			unsigned int maxPosition	=	(int)(pFIB->m_FibWord97.fcDggInfo + pFIB->m_FibWord97.lcbDggInfo);
+
+			// read the DrawingGroupData
+			m_pDrawingGroupData = dynamic_cast<DrawingGroup*>(RecordFactory::ReadRecord (&oStearmReader, 0));
+
+			while (oStearmReader.GetPosition() < maxPosition)
+			{
+				OfficeArtWordDrawing drawing;
+				drawing.dgglbl = (DrawingType)oStearmReader.ReadByte();
+				drawing.container =	dynamic_cast<DrawingContainer*>(RecordFactory::ReadRecord (&oStearmReader, 0));
+
+				for (size_t i = 0; drawing.container && i < drawing.container->Children.size(); ++i)
+				{
+					Record* groupChild = drawing.container->Children[i];
+					if (groupChild)
+					{
+						if (GroupContainer::TYPE_CODE_0xF003 == groupChild->TypeCode)
+						{
+							GroupContainer* group = dynamic_cast<GroupContainer*>(groupChild);
+							if (group)
+							{
+								group->Index =	(int)i;
+							}
+						}
+						else if (ShapeContainer::TYPE_CODE_0xF004 == groupChild->TypeCode)
+						{
+							ShapeContainer* shape = dynamic_cast<ShapeContainer*>(groupChild);
+							if (shape)
+							{
+								shape->m_nIndex = (int)i;
+								if (shape->m_bBackground)
+								{
+									m_pBackgroud = shape;
+								}
+							}
+						}
+						else if (DrawingRecord::TYPE_CODE_0xF008 == groupChild->TypeCode)
+						{
+							DrawingRecord* dr = dynamic_cast<DrawingRecord*>(groupChild);
+							if (dr)
+							{
+								m_uLastShapeId = dr->spidCur;
+							}
+						}
+					}
+				}
+
+				m_arrDrawings.push_back( drawing );
+			}
+		}
+	}
+	OfficeArtContent::~OfficeArtContent()
+	{
+		RELEASEOBJECT (m_pDrawingGroupData);
+
+		for (auto& iter : m_arrDrawings)
+			RELEASEOBJECT(iter.container);
+	}
+
+	ShapeContainer* OfficeArtContent::GetShapeContainer (int spid)
+	{
+		ShapeContainer* ret = NULL;
+
+		for (auto& iter : m_arrDrawings)
+		{
+			if (iter.container)
+			{
+				GroupContainer* group = iter.container->FirstChildWithType<GroupContainer>();
+				if (group)
+				{
+					for (size_t i = 1; i < group->Children.size(); ++i)
+					{
+						Record* groupChild = group->Children[i];
+
+						if (groupChild->TypeCode == GroupContainer::TYPE_CODE_0xF003)
+						{
+							//It's a group of shapes
+							GroupContainer* subgroup = dynamic_cast<GroupContainer*>(groupChild);
+
+							//the referenced shape must be the first shape in the group
+							ShapeContainer* container = subgroup ? dynamic_cast<ShapeContainer*>(subgroup->Children[0]) : NULL;
+							Shape* shape = container ? dynamic_cast<Shape*>(container->Children[1]) : NULL;
+
+							if (shape && shape->GetShapeID() == spid)
+							{
+								ret = container;
+								break;
+							}
+						}
+						else if (groupChild->TypeCode == ShapeContainer::TYPE_CODE_0xF004)
+						{
+							//It's a singe shape
+							ShapeContainer* container = dynamic_cast<ShapeContainer*>(groupChild);
+							Shape* shape = container ? dynamic_cast<Shape*>(container->Children[0]) : NULL;
+
+							if (shape && shape->GetShapeID() == spid)
+							{
+								ret = container;
+								break;
+							}
+						}
+					}
+				}
+				else
+				{
+					continue;
+				}
+
+				if (ret)
+					break;
+			}
+		}
+
+		return ret;
+	}
+	const DrawingGroup* OfficeArtContent::GetDrawingGroup () const
+	{
+		return m_pDrawingGroupData;
+	}
+}

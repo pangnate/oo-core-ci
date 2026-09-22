@@ -1,0 +1,186 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+#pragma once
+
+#include <iosfwd>
+
+#include "office_elements.h"
+#include "office_elements_create.h"
+
+#include "../../DataTypes/common_attlists.h"
+#include "../../DataTypes/lengthorpercent.h"
+#include "../../DataTypes/stylehorizontalpos.h"
+#include "../../DataTypes/stylehorizontalrel.h"
+#include "../../DataTypes/styleverticalrel.h"
+#include "../../DataTypes/styleverticalpos.h"
+#include "../../DataTypes/anchortype.h"
+#include "../../DataTypes/stylewrap.h"
+#include "../../DataTypes/hyphenationladdercount.h"
+#include "../../DataTypes/stylewrapcontourmode.h"
+#include "../../DataTypes/runthrough.h"
+#include "../../DataTypes/linestyle.h"
+#include "../../DataTypes/markerstyle.h"
+#include "../../DataTypes/verticalalign.h"
+#include "../../DataTypes/gradientstyle.h"
+#include "../../DataTypes/wrapoption.h"
+
+
+namespace cpdoccore { 
+namespace odf_reader {
+
+class graphic_format_properties
+{
+public:
+    void add_attributes( const xml::attributes_wc_ptr & Attributes );
+
+    void apply_from(const graphic_format_properties * Other);
+	
+	void apply_to(std::vector<_property> & properties);
+
+	_CP_OPT(odf_types::length_or_percent)	fo_min_width_;
+    _CP_OPT(odf_types::length_or_percent)	fo_min_height_;
+    
+    _CP_OPT(odf_types::length_or_percent)	fo_max_width_;
+    _CP_OPT(odf_types::length_or_percent)	fo_max_height_;
+
+///////////////////////////////
+	_CP_OPT(odf_types::color)				svg_stroke_color_;
+	_CP_OPT(odf_types::length_or_percent)	svg_stroke_opacity_;
+	_CP_OPT(odf_types::line_style)			draw_stroke_;
+	_CP_OPT(std::wstring)					draw_stroke_dash_;
+	_CP_OPT(odf_types::length_or_percent)	svg_stroke_width_;
+
+	_CP_OPT(std::wstring)					draw_stroke_gradient_name_;
+
+	_CP_OPT(odf_types::marker_style)		draw_marker_end_;
+	_CP_OPT(odf_types::marker_style)		draw_marker_start_;
+    _CP_OPT(odf_types::length)              draw_marker_start_width_;
+    _CP_OPT(odf_types::length)              draw_marker_end_width_;
+
+	_CP_OPT(odf_types::text_align)			draw_textarea_horizontal_align_;
+	_CP_OPT(odf_types::vertical_align)		draw_textarea_vertical_align_;
+	
+	_CP_OPT(bool)							draw_auto_grow_height_;
+	_CP_OPT(bool)							draw_auto_grow_width_;
+
+    _CP_OPT(bool)							style_shrink_to_fit_;
+	_CP_OPT(std::wstring)					draw_fit_to_size_str_;
+	_CP_OPT(bool)							draw_fit_to_size_; // draw:fit-to-size="shrink-to-fit" style:shrink-to-fit="true" - cebre_1.odp
+	_CP_OPT(bool)							draw_fit_to_contour_;
+	_CP_OPT(std::wstring)					draw_wrap_influence_on_position_;
+
+    _CP_OPT(unsigned int)					draw_ole_draw_aspect_;
+
+	odf_types::common_draw_rel_size_attlist			common_draw_rel_size_attlist_;
+	odf_types::common_draw_fill_attlist				common_draw_fill_attlist_;  
+	odf_types::common_horizontal_margin_attlist		common_horizontal_margin_attlist_;
+	odf_types::common_vertical_margin_attlist		common_vertical_margin_attlist_;
+    odf_types::common_margin_attlist				common_margin_attlist_;
+
+    odf_types::common_horizontal_pos_attlist		common_horizontal_pos_attlist_;
+    odf_types::common_horizontal_rel_attlist		common_horizontal_rel_attlist_;   
+    odf_types::common_vertical_pos_attlist			common_vertical_pos_attlist_;
+    odf_types::common_vertical_rel_attlist			common_vertical_rel_attlist_;
+    odf_types::common_text_anchor_attlist			common_text_anchor_attlist_;
+	odf_types::common_text_animation_attlist		common_text_animation_attlist_;
+	odf_types::common_border_attlist				common_border_attlist_;
+    odf_types::common_border_line_width_attlist		common_border_line_width_attlist_;
+    odf_types::common_padding_attlist				common_padding_attlist_;    
+    odf_types::common_shadow_attlist				common_shadow_attlist_;    
+    odf_types::common_background_color_attlist		common_background_color_attlist_;    
+ 
+    _CP_OPT(bool)							style_print_content_;
+    _CP_OPT(std::wstring)					style_protect_;
+	_CP_OPT(bool)							style_editable_;
+    _CP_OPT(odf_types::style_wrap)			style_wrap_;
+    _CP_OPT(unsigned int)					style_wrap_dynamic_treshold_;
+    _CP_OPT(odf_types::integer_or_nolimit)	style_number_wrapped_paragraphs_;
+    _CP_OPT(bool)							style_wrap_contour_;
+    _CP_OPT(odf_types::wrap_contour_mode)	style_wrap_contour_mode_;
+    _CP_OPT(odf_types::run_through)			style_run_through_; 
+    _CP_OPT(bool)							style_flow_with_text_;
+    _CP_OPT(std::wstring)					style_overflow_behavior_;
+    _CP_OPT(std::wstring)					style_mirror_;
+
+    _CP_OPT(std::wstring)					fo_clip_;
+    _CP_OPT(odf_types::wrap_option)			fo_wrap_option_;
+    
+    office_element_ptr		style_background_image_;        
+    office_element_ptr      style_columns_;
+};
+typedef boost::shared_ptr<graphic_format_properties> graphic_format_properties_ptr;
+
+class style_graphic_properties : public office_element_impl<style_graphic_properties>
+{
+public:
+    static const wchar_t * ns;
+    static const wchar_t * name;
+    static const xml::NodeType xml_type = xml::typeElement;
+    static const ElementType type = typeStyleGraphicPropertis;
+
+    CPDOCCORE_DEFINE_VISITABLE();
+
+    graphic_format_properties content_;
+
+private:
+    virtual void add_attributes( const xml::attributes_wc_ptr & Attributes );
+    virtual void add_child_element( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
+ 
+};
+CP_REGISTER_OFFICE_ELEMENT2(style_graphic_properties);
+
+class loext_graphic_properties : public office_element_impl<style_graphic_properties>
+{
+public:
+    static const wchar_t * ns;
+    static const wchar_t * name;
+    static const xml::NodeType xml_type = xml::typeElement;
+    static const ElementType type = typeStyleGraphicPropertis;
+
+    CPDOCCORE_DEFINE_VISITABLE();
+
+	graphic_format_properties content_;
+
+private:
+    virtual void add_attributes		( const xml::attributes_wc_ptr & Attributes );
+    virtual void add_child_element	( xml::sax * Reader, const std::wstring & Ns, const std::wstring & Name);
+ 
+
+};
+CP_REGISTER_OFFICE_ELEMENT2(loext_graphic_properties);
+
+}
+}
+

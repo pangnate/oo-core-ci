@@ -1,0 +1,124 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+#pragma once
+
+#include <iosfwd>
+#include <CPOptional.h>
+#include <xml/xmlelement.h>
+#include <xml/nodetype.h>
+
+#include "office_elements_create.h"
+
+namespace cpdoccore { 
+namespace odf_writer {
+
+/// \brief  table:named-expressions
+class table_named_expressions : public office_element_impl<table_named_expressions>
+{
+public:
+    static const wchar_t * ns;
+    static const wchar_t * name;
+
+    static const ElementType type = typeTableNamedExpressions;
+
+    
+
+	virtual void create_child_element(const std::wstring & Ns, const std::wstring & Name);
+    virtual void add_child_element( const office_element_ptr & child_element);
+
+    virtual void serialize(std::wostream & _Wostream);
+
+    office_element_ptr_array named_range_;
+    office_element_ptr_array named_expression_;
+
+};
+
+CP_REGISTER_OFFICE_ELEMENT2(table_named_expressions);
+
+/// \brief  table:named-range
+class table_named_range : public office_element_impl<table_named_range>
+{
+public:
+    static const wchar_t * ns;
+    static const wchar_t * name;
+
+    static const ElementType type = typeTableNamedRange;
+
+    
+
+	virtual void create_child_element(const std::wstring & Ns, const std::wstring & Name){}
+	virtual void add_child_element( const office_element_ptr & child_element){}
+
+    virtual void serialize(std::wostream & _Wostream);
+
+    _CP_OPT(std::wstring) table_name_;
+    _CP_OPT(std::wstring) table_cell_range_address_;
+    _CP_OPT(std::wstring) table_base_cell_address_;
+
+	_CP_OPT(std::wstring) table_range_usable_as_;//printrange, filter, repeatrow, repeatcolumn separated by space
+
+};
+
+CP_REGISTER_OFFICE_ELEMENT2(table_named_range);
+
+
+/// \brief  table:named-expression
+class table_named_expression : public office_element_impl<table_named_expression>
+{
+public:
+    static const wchar_t * ns;
+    static const wchar_t * name;
+
+    static const ElementType type = typeTableNamedExpression;
+
+    
+
+	virtual void create_child_element(const std::wstring & Ns, const std::wstring & Name){}
+	virtual void add_child_element( const office_element_ptr & child_element){}
+
+    virtual void serialize(std::wostream & _Wostream);
+
+    _CP_OPT(std::wstring) table_name_;
+    _CP_OPT(std::wstring) table_expression_;
+    _CP_OPT(std::wstring) table_base_cell_address_;
+
+};
+
+CP_REGISTER_OFFICE_ELEMENT2(table_named_expression);
+
+
+
+}
+}

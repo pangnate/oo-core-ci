@@ -1,0 +1,99 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "DefaultRowHeight.h"
+
+namespace XLS
+{
+	DefaultRowHeight_BIFF2::DefaultRowHeight_BIFF2()
+	{}
+	DefaultRowHeight_BIFF2::~DefaultRowHeight_BIFF2()
+	{}
+	BaseObjectPtr DefaultRowHeight_BIFF2::clone()
+	{
+		return BaseObjectPtr(new DefaultRowHeight_BIFF2(*this));
+	}
+//--------------------------------------------------------------
+	DefaultRowHeight::DefaultRowHeight() : miyRw(-1)
+	{}
+	DefaultRowHeight::~DefaultRowHeight()
+	{}
+	BaseObjectPtr DefaultRowHeight::clone()
+	{
+		return BaseObjectPtr(new DefaultRowHeight(*this));
+	}
+	void DefaultRowHeight::readFields(CFRecord& record)
+	{
+		GlobalWorkbookInfoPtr global_info = record.getGlobalWorkbookInfo();
+
+		unsigned short flags;
+		record >> flags;
+
+		if (global_info->Version == 0x0200)
+		{
+			miyRw = GETBITS(flags, 0, 14);
+		}
+		else
+		{
+			fUnsynced = GETBIT(flags, 0);
+			fDyZero = GETBIT(flags, 1);
+			fExAsc = GETBIT(flags, 2);
+			fExDsc = GETBIT(flags, 3);
+
+			record >> miyRw;
+		}
+
+		if (!global_info->sheets_info.empty())
+		{
+			global_info->sheets_info.back().defaultRowHeight = miyRw / 20.;
+		}
+
+	}
+
+    void DefaultRowHeight::writeFields(CFRecord& record)
+    {
+        if(miyRw == -1)
+            miyRw = 290;
+        unsigned short flags = 0;
+
+        SETBIT(flags, 0, fUnsynced);
+        SETBIT(flags, 1, fDyZero);
+        SETBIT(flags, 2, fExAsc);
+        SETBIT(flags, 3, fExDsc);
+
+        record << flags << miyRw;
+    }
+} // namespace XLS
+

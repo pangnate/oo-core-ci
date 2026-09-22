@@ -1,0 +1,49 @@
+vendor/archives/*.7z filter=lfs diff=lfs merge=lfs -text
+vendor/archives/*.tar.gz filter=lfs diff=lfs merge=lfs -text
+vendor/archives/*.tgz filter=lfs diff=lfs merge=lfs -text
+vendor/archives/*.tar.bz2 filter=lfs diff=lfs merge=lfs -text
+vendor/runtime/*.tar.gz filter=lfs diff=lfs merge=lfs -text
+vendor/runtime/*.zip filter=lfs diff=lfs merge=lfs -text
+
+# 默认不主动转换已有文件换行符
+* text=auto
+
+# --------------------------------------------------
+# ONLYOFFICE upstream core
+# 保持原文件字节，不做 CRLF/LF 转换
+# --------------------------------------------------
+core/** -text
+
+# --------------------------------------------------
+# 我们自己维护的脚本 / 配置统一 LF
+# --------------------------------------------------
+*.sh text eol=lf
+*.py text eol=lf
+*.ps1 text eol=lf
+
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+*.pro text eol=lf
+*.pri text eol=lf
+
+# Windows cmd/bat 保持 CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# --------------------------------------------------
+# Binary
+# --------------------------------------------------
+*.7z binary
+*.zip binary
+*.gz binary
+*.zst binary
+*.tar binary
+
+*.dll binary
+*.lib binary
+*.so binary
+*.a binary
+*.exe binary

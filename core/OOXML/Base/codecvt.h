@@ -1,0 +1,120 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+#pragma once
+#ifndef UTILITY_CODECVT_INCLUDE_H_
+#define UTILITY_CODECVT_INCLUDE_H_
+
+/**	Several code conversions facets.
+
+	E.g. this is how to convert UCS-2 to UTF-8
+
+	@code
+	wifstream ifs("input", ios_base::binary);
+	wofstream ofs("output", ios_base::binary);
+
+	ifs.rdbuf()->pubimbue(locale(locale(), new ucs2_conversion()));
+	ofs.rbbuf()->pubimbue(locale(locale(), new utf8_conversion()));
+	ofs << ifs.rdbuf();
+	@endcode
+
+	@author Vladimir Prus <ghost@cs.msu.su>
+
+	@file
+*/
+#include <locale>
+
+
+/**	Conversion facet that allows to use Unicode files in UCS-2 encoding */
+class ucs2_conversion : public std::codecvt<wchar_t, char, std::mbstate_t>
+{
+protected:
+	result do_in(std::mbstate_t& state,
+				 const char* from, const char* from_end, const char*& from_next,
+				 wchar_t* to, wchar_t* to_limit, wchar_t*& to_next) const;
+
+	result do_out(std::mbstate_t& state,
+				  const wchar_t* from, const wchar_t* from_end, const wchar_t*& from_next,
+				  char* to, char* to_limit, char*& to_next) const;
+
+	bool do_always_noconv() const throw() { return false; }
+	int  do_encoding() const throw() { return 2; }
+};
+
+
+class ube_conversion : public std::codecvt<wchar_t, char, std::mbstate_t>
+{
+protected:
+	result do_in(std::mbstate_t& state,
+				 const char* from, const char* from_end, const char*& from_next,
+				 wchar_t* to, wchar_t* to_limit, wchar_t*& to_next) const;
+
+	result do_out(std::mbstate_t& state,
+				  const wchar_t* from, const wchar_t* from_end, const wchar_t*& from_next,
+				  char* to, char* to_limit, char*& to_next) const;
+
+	bool do_always_noconv() const throw() { return false; }
+	int  do_encoding() const throw() { return 2; }
+};
+
+
+/**	Conversion facet that allows to read Unicode files in UTF-8 encoding */
+class utf8_conversion : public std::codecvt<wchar_t, char, std::mbstate_t>
+{
+protected:
+	result do_in(std::mbstate_t& state,
+				 const char* from, const char* from_end, const char*& from_next,
+				 wchar_t* to, wchar_t* to_limit, wchar_t*& to_next) const;
+
+	result in(std::mbstate_t& state,
+				 const char* from, const char* from_end, const char*& from_next,
+				 wchar_t* to, wchar_t* to_limit, wchar_t*& to_next) const;
+
+	result do_out(std::mbstate_t& state,
+				  const wchar_t* from, const wchar_t* from_end, const wchar_t*& from_next,
+				  char* to, char* to_limit, char*& to_next) const;
+
+	result out(std::mbstate_t& state,
+				  const wchar_t* from, const wchar_t* from_end, const wchar_t*& from_next,
+				  char* to, char* to_limit, char*& to_next) const;
+
+	bool do_always_noconv() const throw() { return false; }
+	int  do_encoding() const throw() { return 2; }
+
+private:
+	const unsigned char take_6_bits(const unsigned int value, const size_t right_position) const;
+	const size_t most_signifant_bit_position(const unsigned int value) const;
+};
+
+#endif // UTILITY_CODECVT_INCLUDE_H_

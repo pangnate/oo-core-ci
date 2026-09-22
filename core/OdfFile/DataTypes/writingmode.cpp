@@ -1,0 +1,109 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "writingmode.h"
+#include <boost/algorithm/string.hpp>
+
+#include <ostream>
+
+namespace cpdoccore { namespace odf_types { 
+
+std::wostream & operator << (std::wostream & _Wostream, const writing_mode & _Val)
+{
+    switch(_Val.get_type())
+    {
+    case writing_mode::LrTb:
+        _Wostream << L"lr-tb";
+        break;
+    case writing_mode::RlTb:
+        _Wostream << L"rl-tb";
+        break;
+    case writing_mode::TbRl:
+        _Wostream << L"tb-rl";
+        break;
+    case writing_mode::TbLr:
+        _Wostream << L"tb-lr";
+        break;
+    case writing_mode::Lr:
+        _Wostream << L"lr";
+        break;
+    case writing_mode::Rl:
+        _Wostream << L"rl";
+        break;
+    case writing_mode::Tb:
+        _Wostream << L"tb";
+        break;
+    case writing_mode::Page:
+        _Wostream << L"page";
+        break;
+	case writing_mode::BtLr:
+		_Wostream << L"bt-lr";
+		break;
+    default:
+        break;
+    }
+    return _Wostream;    
+}
+
+writing_mode writing_mode::parse(const std::wstring & Str)
+{
+    std::wstring tmp = Str;
+    boost::algorithm::to_lower(tmp);
+
+    if (tmp == L"lr-tb")
+        return writing_mode( LrTb );
+    else if (tmp == L"rl-tb")
+        return writing_mode( RlTb );
+    else if (tmp == L"tb-rl")
+        return writing_mode( TbRl );
+    else if (tmp == L"tb-lr")
+        return writing_mode( TbLr );
+    else if (tmp == L"lr")
+        return writing_mode( Lr );
+    else if (tmp == L"rl")
+        return writing_mode( Rl );
+    else if (tmp == L"tb")
+        return writing_mode( Tb );
+    else if (tmp == L"page")
+        return writing_mode( Page );
+	else if (tmp == L"bt-lr")
+		return writing_mode( BtLr );
+	else
+    {
+        return writing_mode( LrTb );
+    }
+}
+
+} }

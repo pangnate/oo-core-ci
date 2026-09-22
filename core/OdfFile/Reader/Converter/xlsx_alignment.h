@@ -1,0 +1,81 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+#pragma once
+
+#include <iosfwd>
+#include <string>
+#include <CPOptional.h>
+
+namespace cpdoccore { 
+
+namespace odf_reader {
+
+	class text_format_properties;
+	typedef boost::shared_ptr<text_format_properties> text_format_properties_ptr;
+
+	class paragraph_format_properties;
+	class style_table_cell_properties_attlist;
+}
+
+namespace oox {
+
+	class xlsx_conversion_context;
+
+struct xlsx_alignment
+{
+    _CP_OPT(std::wstring)	horizontal;
+    _CP_OPT(int)			indent;
+    _CP_OPT(bool)			justifyLastLine;
+    _CP_OPT(int)			readingOrder;
+    _CP_OPT(int)			relativeIndent;
+    _CP_OPT(bool)			shrinkToFit;
+    _CP_OPT(unsigned int)	textRotation;
+    _CP_OPT(std::wstring)	vertical;
+    _CP_OPT(bool)			wrapText;   
+
+    bool operator == (const xlsx_alignment & rVal) const;
+    bool operator != (const xlsx_alignment & rVal) const;
+
+    friend void xlsx_serialize(std::wostream & _Wostream, const xlsx_alignment & alignment);
+    friend bool is_default(const xlsx_alignment & rVal);
+    friend std::size_t hash_value(xlsx_alignment const & val);
+};
+xlsx_alignment OdfProperties2XlsxAlignment( xlsx_conversion_context									* context,
+											const odf_reader::text_format_properties_ptr	textProp, 
+											const odf_reader::paragraph_format_properties			* parProp,
+											const odf_reader::style_table_cell_properties_attlist	* cellProp);
+
+}
+}

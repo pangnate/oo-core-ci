@@ -1,0 +1,183 @@
+/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "NvPicPr.h"
+
+namespace PPTX
+{
+	namespace Logic
+	{
+		NvPicPr::NvPicPr(std::wstring ns)
+		{
+			m_namespace = ns;
+		}
+		NvPicPr& NvPicPr::operator=(const NvPicPr& oSrc)
+		{
+			parentFile		= oSrc.parentFile;
+			parentElement	= oSrc.parentElement;
+
+			cNvPr		= oSrc.cNvPr;
+			cNvPicPr	= oSrc.cNvPicPr;
+			nvPr		= oSrc.nvPr;
+
+			m_namespace	= oSrc.m_namespace;
+
+			return *this;
+		}
+		void NvPicPr::fromXML(XmlUtils::CXmlLiteReader& oReader)
+		{
+			m_namespace = XmlUtils::GetNamespace(oReader.GetName());
+
+			if ( oReader.IsEmptyNode() )
+				return;
+
+			int nParentDepth = oReader.GetDepth();
+			while( oReader.ReadNextSiblingNode( nParentDepth ) )
+			{
+				std::wstring strName = XmlUtils::GetNameNoNS(oReader.GetName());
+
+				if (_T("cNvPr") == strName)
+					cNvPr.fromXML( oReader);
+				else if (_T("cNvPicPr") == strName)
+					cNvPicPr.fromXML( oReader);
+				else if (_T("nvPr") == strName)
+					nvPr.fromXML( oReader);
+			}
+		}
+		void NvPicPr::fromXML(XmlUtils::CXmlNode& node)
+		{
+			m_namespace = XmlUtils::GetNamespace(node.GetName());
+
+			std::vector<XmlUtils::CXmlNode> oNodes;
+			if (node.GetNodes(_T("*"), oNodes))
+			{
+				size_t nCount = oNodes.size();
+				for (size_t i = 0; i < nCount; ++i)
+				{
+					XmlUtils::CXmlNode& oNode = oNodes[i];
+
+					std::wstring strName = XmlUtils::GetNameNoNS(oNode.GetName());
+
+					if (_T("cNvPr") == strName)
+						cNvPr = oNode;
+					else if (_T("cNvPicPr") == strName)
+						cNvPicPr = oNode;
+					else if (_T("nvPr") == strName)
+						nvPr = oNode;
+				}
+			}
+
+			FillParentPointersForChilds();
+		}
+		std::wstring NvPicPr::toXML() const
+		{
+			XmlUtils::CNodeValue oValue;
+			oValue.Write(cNvPr);
+			oValue.Write(cNvPicPr);
+			oValue.Write(nvPr);
+
+			return XmlUtils::CreateNode(m_namespace + L":nvPicPr", oValue);
+		}
+		void NvPicPr::toXmlWriter(NSBinPptxRW::CXmlWriter* pWriter) const
+		{
+			std::wstring namespace_ = m_namespace;
+
+			if (pWriter->m_lDocType == XMLWRITER_DOC_TYPE_DOCX ||
+				pWriter->m_lDocType == XMLWRITER_DOC_TYPE_DOCX_GLOSSARY)		namespace_ = L"pic";
+			else if (pWriter->m_lDocType == XMLWRITER_DOC_TYPE_XLSX)			namespace_ = L"xdr";
+			else if (pWriter->m_lDocType == XMLWRITER_DOC_TYPE_GRAPHICS)		namespace_ = L"a";
+			else if (pWriter->m_lDocType == XMLWRITER_DOC_TYPE_CHART_DRAWING)	namespace_ = L"cdr";
+			else if (pWriter->m_lDocType == XMLWRITER_DOC_TYPE_DIAGRAM)			namespace_ = L"dgm";
+			else if (pWriter->m_lDocType == XMLWRITER_DOC_TYPE_DSP_DRAWING)		namespace_ = L"dsp";
+
+			pWriter->StartNode(namespace_ + L":nvPicPr");
+
+			pWriter->EndAttributes();
+
+			cNvPr.toXmlWriter(pWriter);
+			cNvPicPr.toXmlWriter(pWriter);
+
+			if (pWriter->m_lDocType == XMLWRITER_DOC_TYPE_PPTX ||
+				pWriter->m_lDocType == XMLWRITER_DOC_TYPE_DOCX ||
+				pWriter->m_lDocType == XMLWRITER_DOC_TYPE_DOCX_GLOSSARY)
+					nvPr.toXmlWriter(pWriter);
+
+			pWriter->EndNode(namespace_ + L":nvPicPr");
+		}
+		void NvPicPr::toPPTY(NSBinPptxRW::CBinaryFileWriter* pWriter) const
+		{
+			pWriter->WriteRecord1(0, cNvPr);
+			pWriter->WriteRecord1(1, cNvPicPr);
+			pWriter->WriteRecord1(2, nvPr);
+		}
+		void NvPicPr::fromPPTY(NSBinPptxRW::CBinaryFileReader* pReader)
+		{
+			LONG _end_rec = pReader->GetPos() + pReader->GetRecordSize() + 4;
+
+			while (pReader->GetPos() < _end_rec)
+			{
+				BYTE _at = pReader->GetUChar();
+				switch (_at)
+				{
+					case 0:
+					{
+						cNvPr.fromPPTY(pReader);
+						break;
+					}
+					case 1:
+					{
+						cNvPicPr.fromPPTY(pReader);
+						break;
+					}
+					case 2:
+					{
+						nvPr.fromPPTY(pReader);
+						break;
+					}
+					default:
+						break;
+				}
+			}
+
+			pReader->Seek(_end_rec);
+		}
+		void NvPicPr::FillParentPointersForChilds()
+		{
+			cNvPr.SetParentPointer(this);
+			cNvPicPr.SetParentPointer(this);
+			nvPr.SetParentPointer(this);
+		}
+	} // namespace Logic
+} // namespace PPTX

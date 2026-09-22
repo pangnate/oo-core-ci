@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "platform": "win-x64",
+  "input": "D:\\docservice\\idp-office\\core-fonts",
+  "generatedAt": "2026-08-17T06:29:56.705Z",
+  "outputs": {
+    "allFonts": "f0f304818792972a5780aeeef0376e885d47cbb4fa533bf18f3b5de5bb4d79b5",
+    "fontSelection": "6ad98a48b4930291f37fe01dffcca29b0577393097b13aacc66fcd4d935f7897"
+  }
+}

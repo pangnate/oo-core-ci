@@ -1,0 +1,42 @@
+{
+  "boost": {
+    "version": "1.72.0",
+    "url": "https://archives.boost.io/release/1.72.0/source/boost_1_72_0.tar.bz2",
+    "sha256": "59c9b274bc451cf91a9ba1dd2c7fdcaf5d60b1b3aa83f2c9fa143417cc660722"
+  },
+  "icu": {
+    "version": "74.2",
+    "url": "https://github.com/unicode-org/icu/releases/download/release-74-2/icu4c-74_2-src.tgz",
+    "sha256": null
+  },
+  "brotli": {
+    "commit": "a47d7475063eb223c87632eed806c0070e70da29",
+    "url": "https://github.com/google/brotli/archive/a47d7475063eb223c87632eed806c0070e70da29.tar.gz",
+    "sha256": null
+  },
+  "qt_linux_amd64": {
+    "version": "5.9.9",
+    "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/qt/qt_binary_5.9.9_gcc_64.7z",
+    "sha256": null
+  },
+  "qt_linux_arm64": {
+    "version": "5.9.9",
+    "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/qt/qt_binary_5.9.9_gcc_arm64.7z",
+    "sha256": null
+  },
+  "sysroot_linux_amd64": {
+    "version": "ubuntu16",
+    "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/sysroot/ubuntu16-amd64-sysroot.tar.gz",
+    "sha256": null
+  },
+  "sysroot_linux_arm64": {
+    "version": "ubuntu16",
+    "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/sysroot/ubuntu16-arm64-sysroot.tar.gz",
+    "sha256": null
+  },
+  "python3_linux": {
+    "version": "ONLYOFFICE-portable",
+    "url": "https://github.com/ONLYOFFICE-data/build_tools_data/raw/refs/heads/master/python/python3.tar.gz",
+    "sha256": null
+  }
+}

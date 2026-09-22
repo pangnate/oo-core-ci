@@ -1,0 +1,183 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "utils.h"
+#include <vector>
+
+#if defined(_WIN32) || defined(_WIN64)
+    #ifndef min
+    #define min(a,b) (((a)<(b))?(a):(b))
+    #endif
+    #ifndef max
+    #define max(a,b) (((a)>(b))?(a):(b))
+    #endif
+    #include <windows.h>
+    #include <gdiplus.h>
+    #undef min
+    #undef max
+	#pragma comment(lib, "gdiplus.lib")
+#endif
+
+#include "../../DesktopEditor/raster/BgraFrame.h"
+#include "../../DesktopEditor/common/File.h"
+#include "../Reader/Converter/measuredigits.h"
+
+namespace _graphics_utils_
+{
+	bool GetResolution(const wchar_t* fileName, double & Width, double &Height) //px
+	{
+		NSFile::CFileBinary file;
+		if (false == file.OpenFile(fileName)) return false;
+
+		long file_size = file.GetFileSize();
+		file.CloseFile();
+
+		if (file_size < 1) return false;
+        bool result = false;
+
+		try
+		{
+			CBgraFrame image;
+			if (result = image.OpenFile(fileName, 0))
+			{
+				Width = image.get_Width();
+				Height = image.get_Height();
+
+				result = true;
+			}
+		}
+		catch (...)
+		{
+			result = false;
+		}
+
+		if (!result)
+        {
+#if defined(_WIN32) || defined(_WIN64)
+            Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+            ULONG_PTR gdiplusToken=0;
+            Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
+            Gdiplus::Bitmap *file = new Gdiplus::Bitmap(fileName,false);
+            if ((file) && (file->GetLastStatus()==Gdiplus::Ok))
+            {
+                    Height = file->GetHeight();
+                    Width  = file->GetWidth();
+
+                    double dpi_x = file->GetHorizontalResolution();
+                    double dpi_y = file->GetVerticalResolution();
+
+                    if (dpi_x <1 ) dpi_x = 96;
+                    if (dpi_y <1 ) dpi_y = 96;
+
+                    Height = Height *72. / dpi_y;
+                    Width = Width * 72. /dpi_x;
+
+                    result = true;
+                    delete file;
+            }
+            Gdiplus::GdiplusShutdown(gdiplusToken);
+#endif
+        }
+		return result;
+	}
+	std::pair<double, double> calculate_size_symbol_win(std::wstring name, double size, bool italic, bool bold, std::wstring test_str)
+	{
+		std::pair<double, double> result = std::make_pair(7., 8.);
+
+#if defined(_WIN32) || defined(_WIN64)
+		Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+		ULONG_PTR gdiplusToken=0;
+		Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+		////
+		bool to_one_char = false;
+		if (test_str.empty())
+		{
+			test_str = L"0123456789";
+			to_one_char = true;
+		}
+
+		int style = Gdiplus::FontStyleRegular;
+		if (bold && italic)	style = Gdiplus::FontStyleBoldItalic;
+		else if (bold)		style = Gdiplus::FontStyleBold;
+		else if (italic)	style = Gdiplus::FontStyleItalic;
+
+		Gdiplus::Graphics * gr = new Gdiplus::Graphics(GetWindowDC(NULL));
+		if (gr)
+		{
+			Gdiplus::Font *font = new Gdiplus::Font(name.c_str(),size,style);
+			if (font)
+			{
+
+				Gdiplus::SizeF layout;
+					
+				Gdiplus::RectF bound;
+				Gdiplus::Status res = gr->MeasureString(test_str.c_str(),test_str.length(),font,layout,&bound);
+
+				if (res == 0)
+				{
+					result.first = (bound.Width - 2);
+					result.second = (bound.Height - 2);
+				}
+				if (to_one_char)
+				{
+					result.first /= test_str.length();
+				}
+
+				//normalize to dpi = 96;
+				double dpiX = gr->GetDpiX();
+				double dpiY = gr->GetDpiY();
+
+				result.first = result.first * 96./ dpiX;
+				result.second = result.second * 96. / dpiY;
+
+				delete font;
+			}
+			delete gr;
+		}
+		Gdiplus::GdiplusShutdown(gdiplusToken);
+#endif
+		return result;
+	}
+	std::pair<double, double> calculate_size_symbol_asc(std::wstring name, double size, bool italic, bool bold , NSFonts::IApplicationFonts *appFonts)
+	{
+		if (name.empty())
+			name = L"Calibri";
+
+		std::pair<double, double> val = cpdoccore::utils::GetMaxDigitSizePixels(name, size, 96., 0 , appFonts);
+
+        return val;
+	}
+};

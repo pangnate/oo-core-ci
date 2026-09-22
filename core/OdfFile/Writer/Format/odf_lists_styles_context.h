@@ -1,0 +1,101 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+#pragma once
+
+#include <string>
+#include <vector>
+#include <boost/unordered_map.hpp>
+
+#include "office_elements_create.h"
+
+
+namespace cpdoccore {
+namespace odf_writer {
+
+class ods_conversion_context;
+class style_list_level_properties;
+class style_list_level_label_alignment;
+class text_format_properties;
+
+class office_element;
+typedef shared_ptr<office_element>::Type office_element_ptr;
+
+struct list_format_state
+{
+	int								oox_based_number;
+	int								restart_number = 0;
+	std::vector<office_element_ptr> elements;
+
+	std::wstring					odf_list_style_name;
+	bool							automatic;
+};
+
+class odf_lists_styles_context
+{
+public:
+    odf_lists_styles_context();
+	void set_odf_context(odf_conversion_context * Context);
+
+	void start_style(bool bMaster, int number = -1);
+		int start_style_level(int level, int type);
+			style_list_level_properties			* get_list_level_properties();
+			style_list_level_label_alignment	* get_list_level_alignment_properties();
+			text_format_properties				* get_text_properties();
+
+			void set_bullet_image_size(double size);
+			void set_bullet_image	(std::wstring ref);
+			
+			void set_bullet_char	(std::wstring val);
+			
+			void set_numeric_format (std::wstring val);
+			
+			void set_start_number	(int val);
+			void set_restart_number (int val);
+			void set_text_style_name(std::wstring val);
+		void end_style_level();
+	void end_style();
+
+	void process_styles(office_element_ptr root, bool automatic);
+
+	std::wstring get_style_name(int oox_style_num = -1);
+private:
+	std::vector<list_format_state> lists_format_array_;	
+	std::map<int, size_t> lists_format_map_;
+
+//-----------------------------------
+	odf_conversion_context *odf_context_;
+};
+}
+}

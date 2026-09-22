@@ -1,0 +1,197 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "OBJECTS.h"
+#include "TEXTOBJECT.h"
+#include "OBJ.h"
+#include "CHART.h"
+#include "IMDATAOBJECT.h"
+
+#include "../Biff_records/MsoDrawingSelection.h"
+#include "../Biff_records/MsoDrawing.h"
+#include "../Biff_records/Continue.h"
+#include "../Biff_records/Obj.h"
+#include "../Biff_records/IMDATA.h"
+
+namespace XLS
+{
+
+
+OBJECTS::OBJECTS(const bool is_inside_chart_sheet)
+:	is_inside_chart_sheet_(is_inside_chart_sheet)
+{
+}
+
+
+OBJECTS::~OBJECTS()
+{
+}
+
+
+class Parenthesis_OBJECTS_2: public ABNFParenthesis
+{
+	BASE_OBJECT_DEFINE_CLASS_NAME(Parenthesis_OBJECTS_2)
+public:
+	Parenthesis_OBJECTS_2(MsoDrawingPtr mso_drawing)  : mso_drawing_(mso_drawing)
+	{
+	}
+	BaseObjectPtr clone()
+	{
+		return BaseObjectPtr(new Parenthesis_OBJECTS_2(*this));
+	}
+
+	const bool loadContent(BinProcessor& proc)
+	{
+		OBJ OBJ_(mso_drawing_);
+		bool res1 =	proc.optional(OBJ_);
+
+		TEXTOBJECT TEXTOBJECT_(mso_drawing_);
+		bool res2 =	proc.optional(TEXTOBJECT_);
+
+		CHART CHART_(mso_drawing_);
+		bool res3 = proc.optional(CHART_);
+
+		if (proc.getGlobalWorkbookInfo()->Version < 0x0600)
+		{
+			res3 = res3 || proc.optional<IMDATAOBJECT>();
+		}
+
+		return res1 || res2 || res3;
+	}
+	
+	MsoDrawingPtr mso_drawing_;
+};
+
+
+class Parenthesis_OBJECTS_1: public ABNFParenthesis
+{
+	BASE_OBJECT_DEFINE_CLASS_NAME(Parenthesis_OBJECTS_1)
+public:
+
+	Parenthesis_OBJECTS_1(MsoDrawingPtr mso_drawing) : mso_drawing_(mso_drawing)
+	{
+	}
+
+	BaseObjectPtr clone()
+	{
+		return BaseObjectPtr(new Parenthesis_OBJECTS_1(mso_drawing_));
+	}
+
+	const bool loadContent(BinProcessor& proc)
+	{
+		return false;
+	}
+
+
+	const bool loadContentRead(BinReaderProcessor& proc)
+	{
+		bool res = proc.optional(*mso_drawing_);
+
+        Parenthesis_OBJECTS_2 parenthesis_objects_2(mso_drawing_);
+        
+		int count2 = proc.repeated(parenthesis_objects_2, 0, 0);
+		
+		return res || (count2>0);
+	}
+
+	MsoDrawingPtr mso_drawing_;
+};
+
+
+
+BaseObjectPtr OBJECTS::clone()
+{
+	return BaseObjectPtr(new OBJECTS(*this));
+}
+
+
+const bool OBJECTS::loadContent(BinProcessor& proc)
+{
+	return false;
+}
+
+
+// OBJECTS = *(MSODRAWING *(TEXTOBJECT / OBJ / CHART)) [MsoDrawingSelection]
+const bool OBJECTS::loadContentRead(BinReaderProcessor& proc)
+{
+	m_MsoDrawing = boost::shared_ptr<MsoDrawing>(new MsoDrawing(is_inside_chart_sheet_));
+	
+    Parenthesis_OBJECTS_1 parenthesis_objects_1(m_MsoDrawing);
+
+    int count_1 = proc.repeated(parenthesis_objects_1, 0, 0);
+
+    MsoDrawingSelection mso_drawing_selection;
+    int count_4  = proc.optional(mso_drawing_selection);
+	
+	for (std::list<BaseObjectPtr>::iterator elem = elements_.begin(); elem != elements_.end(); elem++)
+	{
+		if (elem->get()->get_type() == typeMsoDrawing)
+		{
+			elements_.erase(elem);
+			break;
+		}
+	}
+
+	try
+	{
+		m_MsoDrawing->resetToBegin();
+		m_MsoDrawing->readFields();		
+	}
+	catch(...)
+	{
+	}
+
+	return count_1 > 0 || count_4 > 0;
+}
+
+const bool OBJECTS::saveContent(BinProcessor& proc)
+{
+	if(m_MsoDrawing != nullptr)
+		proc.mandatory(*m_MsoDrawing);
+	for(auto i : m_arrObject)
+	{
+		if(i.first != nullptr)
+			proc.mandatory(*i.first);
+		for(auto j : i.second)
+			if(j != nullptr)
+				proc.mandatory(*j);
+	}
+	return true;
+}
+
+
+
+} // namespace XLS
+

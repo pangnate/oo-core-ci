@@ -1,0 +1,98 @@
+/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+#pragma once
+
+#include "common.h"
+
+#include "gtest/gtest.h"
+
+#include "Writer/Converter/Oox2OdfConverter.h"
+#include "Writer/Format/odp_conversion_context.h"
+#include "Writer/Format/anim_elements.h"
+#include "Writer/Format/draw_page.h"
+
+#include "Reader/Format/odf_document.h"
+#include "Reader/Converter/pptx_conversion_context.h"
+
+class ODP2OOX_AnimationAudioEnvironment : public ODP2OOX_AnimationEnvironment
+{
+public:
+	ODP2OOX_AnimationAudioEnvironment();
+
+	static const cpdoccore::oox::pptx_animation_context& GetAnimationContext();
+
+private:
+	static boost::shared_ptr<cpdoccore::odf_reader::odf_document>		sInputOdf;
+	static boost::shared_ptr<cpdoccore::oox::pptx_conversion_context>	sConverionContext;
+};
+
+class ODP2OOX_AnimationAudioTest : public testing::Test
+{
+public:
+	void SetUp() override;
+	void TearDown() override
+	{ }
+
+	const cpdoccore::oox::pptx_animation_context::Impl::_par_animation_ptr&				GetInnerPar(const cpdoccore::oox::pptx_animation_context::Impl::_par_animation_ptr& par);
+	const cpdoccore::oox::pptx_animation_context::Impl::_seq_animation_ptr&				GetMainSequence();
+	const cpdoccore::oox::pptx_animation_context::Impl::_par_animation_array&			GetMainSequenceArray();
+	const cpdoccore::oox::pptx_animation_context::Impl::_animation_element_array&		GetActionArray(const cpdoccore::oox::pptx_animation_context::Impl::_par_animation_ptr& par);
+	const cpdoccore::oox::pptx_animation_context::Impl::_par_animation_ptr				GetInnermostPar(const cpdoccore::oox::pptx_animation_context::Impl::_par_animation_ptr& par);
+	const cpdoccore::oox::pptx_animation_context::Impl::_animation_element_array&		GetAnimationActionsByIndex(size_t index);
+
+
+public:
+	const cpdoccore::oox::pptx_animation_context* mAnimationContext;
+};
+
+class OOX2ODP_AudioAnimationEnvironment : public OOX2ODP_AnimationEnvironment
+{
+public:
+	OOX2ODP_AudioAnimationEnvironment();
+
+public:
+	static cpdoccore::odf_writer::odp_conversion_context* GetContext();
+
+private:
+	static boost::shared_ptr<Oox2Odf::Converter> mConverter;
+	static cpdoccore::odf_writer::odp_conversion_context* mContext;
+};
+
+class OOX2ODP_AudioAnimationTest : public OOX2ODP_AnimationTest
+{
+public:
+	void SetUp() override;
+	void TearDown() override {}
+};

@@ -1,0 +1,135 @@
+﻿/*
+ * Copyright (C) Ascensio System SIA, 2009-2026
+ *
+ * This program is a free software product. You can redistribute it and/or
+ * modify it under the terms of the GNU Affero General Public License (AGPL)
+ * version 3 as published by the Free Software Foundation, together with the
+ * additional terms provided in the LICENSE file.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
+ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
+ *
+ * You can contact Ascensio System SIA by email at info@onlyoffice.com
+ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
+ * LV-1050, Latvia, European Union.
+ *
+ * The interactive user interfaces in modified versions of the Program
+ * are required to display Appropriate Legal Notices in accordance with
+ * Section 5 of the GNU AGPL version 3.
+ *
+ * No trademark rights are granted under this License.
+ *
+ * All non-code elements of the Product, including illustrations,
+ * icon sets, and technical writing content, are licensed under the
+ * Creative Commons Attribution-ShareAlike 4.0 International License:
+ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
+ *
+ * This license applies only to such non-code elements and does not
+ * modify or replace the licensing terms applicable to the Program's
+ * source code, which remains licensed under the GNU Affero General
+ * Public License v3.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+#include "NameParsedFormula.h"
+#include "StringPtgParser.h"
+#include <boost/algorithm/string/trim.hpp>
+namespace XLS
+{
+
+ParsedFormula::ParsedFormula(const CellRef& cell_base_ref)
+:	cce(0),
+	cce_is_set(false),
+	rgce(cell_base_ref)
+{
+}
+ParsedFormula& ParsedFormula::operator=(const std::wstring& value)
+{
+    parseStringFormula(value, L"");
+	return *this;
+}
+void ParsedFormula::set_base_ref(const CellRef& cell_base_ref)
+{
+	rgce.set_base_ref(cell_base_ref);
+}
+void ParsedFormula::setCCE(const size_t cce_val)
+{
+	rgce.setCCE(cce_val);
+}
+
+const size_t ParsedFormula::getCCE() const
+{
+	return rgce.getCCE();
+}
+
+const bool ParsedFormula::IsVolatile() const
+{
+	const PtgVector& ptgs = rgce.getPtgs();
+	for (PtgVectorIterator it = ptgs.begin(), itEnd = ptgs.end(); it != itEnd; ++it)
+	{
+		if (0x0119/*PtgAttrSemi*/ == (*it)->getPtgId())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+const bool ParsedFormula::HasPtgTbl() const
+{
+	const PtgVector& ptgs = rgce.getPtgs();
+	for(PtgVectorIterator it = ptgs.begin(), itEnd = ptgs.end(); it != itEnd; ++it)
+	{
+		if(0x0002/*PtgTbl*/ == (*it)->getPtgId())
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+
+const std::wstring ParsedFormula::getAssembledFormula(bool full_ref) const
+{
+	const PtgVector& ptgs = rgce.getPtgs();
+	if(ptgs.empty())
+	{
+		return L"";
+	}
+
+	try
+	{
+		AssemblerStack ptg_stack;
+		PtgQueue extra_data = rgcb.getPtgs();
+		for(PtgVectorIterator it = ptgs.begin(), itEnd = ptgs.end(); it != itEnd; ++it)
+		{
+			(*it)->assemble(ptg_stack, extra_data, full_ref);
+		}
+		if(1 != ptg_stack.size())
+		{
+			return L"";
+			//EXCEPT::LE::WrongAPIUsage("Wrong formula assembling.", __FUNCTION__);
+		}
+		return ptg_stack.top();
+	}
+	catch(...)
+	{
+	}
+	return L"";
+}
+
+
+const bool ParsedFormula::parseStringFormula(const std::wstring formula, const std::wstring & tag_name)
+{
+    StringPtgParser parser;
+    if(parser.parseToPtgs(boost::algorithm::trim_copy(formula), rgce, rgcb, tag_name))
+    {
+        return true;
+    }
+    return false;
+}
+
+
+} // namespace XLS
+
