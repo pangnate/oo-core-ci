@@ -22,6 +22,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            target: linux_64
+          - arch: arm64
+            target: linux_arm64
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,35 +49,125 @@ jobs:
       - name: Prepare offline sources, Qt, sysroots and runtime SOs
         run: python3 scripts/prepare.py --platform linux
 
-      - name: Configure build_tools without downloads
-        run: python3 scripts/configure_build.py --platform linux
+      - name: Configure build_tools for ${{ matrix.target }}
+        env:
+          X2T_TARGET: ${{ matrix.target }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          from pathlib import Path
 
-      - name: Build only Boost and ICU
+          root = Path.cwd()
+          bt = root / "build_tools"
+          detected_file = root / "vendor" / "detected-deps.json"
+
+          detected = {}
+          if detected_file.exists():
+              detected = json.loads(
+                  detected_file.read_text(encoding="utf-8")
+              )
+
+          qt_version = (
+              detected
+              .get("qt_linux_amd64", {})
+              .get("version", "5.9.9")
+          )
+
+          target = os.environ["X2T_TARGET"]
+
+          cmd = [
+              sys.executable,
+              str(bt / "configure.py"),
+              "--update", "0",
+              "--module", "core",
+              "--config", "no_tests",
+              "--clean", "1",
+              "--platform", target,
+              "--sysroot", "1",
+              "--qt-dir",
+              str(
+                  bt
+                  / "tools"
+                  / "linux"
+                  / "qt_build"
+                  / f"Qt-{qt_version}"
+              ).replace("\\", "/"),
+          ]
+
+          print("+", " ".join(cmd))
+          subprocess.run(cmd, check=True)
+          PY
+
+      - name: Build Boost and ICU for ${{ matrix.target }}
         run: python3 scripts/make_minimal_deps.py
 
-      - name: Build X2T linux amd64 + arm64
+      - name: Build X2T ${{ matrix.target }}
         run: python3 scripts/build_x2t.py
 
-      - name: Verify ELF binaries
+      - name: Verify ${{ matrix.target }} binary
+        env:
+          X2T_TARGET: ${{ matrix.target }}
+          X2T_ARCH: ${{ matrix.arch }}
         run: |
-          file core/build/bin/linux_64/x2t
-          file core/build/bin/linux_arm64/x2t
-          readelf -h core/build/bin/linux_64/x2t | grep -E 'Machine:.*X86-64'
-          readelf -h core/build/bin/linux_arm64/x2t | grep -E 'Machine:.*AArch64'
-          LD_LIBRARY_PATH="$PWD/core/build/lib/linux_64:$PWD/core/build/lib/linux_64/system:$PWD/core/Common/3dParty/icu/linux_64/build" ldd core/build/bin/linux_64/x2t | tee /tmp/x2t-ldd.txt
-          ! grep -q 'not found' /tmp/x2t-ldd.txt
+          set -euo pipefail
 
-      - name: Package Linux
+          X2T="core/build/bin/${X2T_TARGET}/x2t"
+          test -x "$X2T"
+
+          echo "=== file ==="
+          file "$X2T"
+
+          echo "=== ELF header ==="
+          readelf -h "$X2T"
+
+          if [ "$X2T_ARCH" = "amd64" ]; then
+            file "$X2T" | grep -Ei 'x86-64|x86_64'
+            readelf -h "$X2T" | grep -E 'Machine:.*X86-64'
+
+            echo "=== dynamic dependencies ==="
+            LD_LIBRARY_PATH="$PWD/core/build/lib/linux_64:$PWD/core/build/lib/linux_64/system:$PWD/core/Common/3dParty/icu/linux_64/build" \
+              ldd "$X2T" | tee /tmp/x2t-ldd.txt
+
+            ! grep -q 'not found' /tmp/x2t-ldd.txt
+          else
+            file "$X2T" | grep -Ei 'aarch64|ARM'
+            readelf -h "$X2T" | grep -E 'Machine:.*AArch64'
+
+            echo "=== ARM64 dynamic NEEDED entries ==="
+            readelf -d "$X2T" | grep NEEDED || true
+          fi
+
+      - name: Package Linux ${{ matrix.arch }}
+        env:
+          X2T_TARGET: ${{ matrix.target }}
+          X2T_ARCH: ${{ matrix.arch }}
         run: |
+          set -euo pipefail
+
           mkdir -p dist
-          cp core/build/bin/linux_64/x2t dist/x2t-linux-amd64
-          cp core/build/bin/linux_arm64/x2t dist/x2t-linux-arm64
-          sha256sum dist/x2t-* > dist/SHA256SUMS-linux
 
-      - uses: actions/upload-artifact@v4
+          cp \
+            "core/build/bin/${X2T_TARGET}/x2t" \
+            "dist/x2t-linux-${X2T_ARCH}"
+
+          sha256sum \
+            "dist/x2t-linux-${X2T_ARCH}" \
+            > "dist/SHA256SUMS-linux-${X2T_ARCH}"
+
+          ls -lh dist/
+
+      - name: Upload Linux ${{ matrix.arch }}
+        uses: actions/upload-artifact@v4
         with:
-          name: x2t-linux-${{ github.sha }}
-          path: dist/
+          name: x2t-linux-${{ matrix.arch }}
+          path: |
+            dist/x2t-linux-${{ matrix.arch }}
+            dist/SHA256SUMS-linux-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 30
 
   windows:
     if: ${{ inputs.platform == 'windows' || inputs.platform == 'all' }}
@@ -113,16 +212,32 @@ jobs:
           dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
           dumpbin /dependents core\build\bin\win_64\x2t.exe
 
-      - name: Package Windows
+      - name: Package Windows amd64
         shell: powershell
         run: |
           New-Item dist -ItemType Directory -Force | Out-Null
-          Copy-Item core\build\bin\win_64\x2t.exe dist\x2t-windows-amd64.exe
 
-          (Get-FileHash dist\x2t-windows-amd64.exe -Algorithm SHA256).Hash.ToLower() |
-            Set-Content dist\SHA256-windows.txt
+          Copy-Item `
+            core\build\bin\win_64\x2t.exe `
+            dist\x2t-windows-amd64.exe
 
-      - uses: actions/upload-artifact@v4
+          $hash = (
+            Get-FileHash `
+              dist\x2t-windows-amd64.exe `
+              -Algorithm SHA256
+          ).Hash.ToLower()
+
+          "$hash  x2t-windows-amd64.exe" |
+            Set-Content dist\SHA256SUMS-windows-amd64
+
+          Get-ChildItem dist
+
+      - name: Upload Windows amd64
+        uses: actions/upload-artifact@v4
         with:
-          name: x2t-windows-${{ github.sha }}
-          path: dist/
+          name: x2t-windows-amd64
+          path: |
+            dist/x2t-windows-amd64.exe
+            dist/SHA256SUMS-windows-amd64
+          if-no-files-found: error
+          retention-days: 30
