@@ -1,8 +1,15 @@
 {
   "core-source": {
-    "sha256": "36b44c3ad72017028200fdbd8a3b326da994cfa4a0076c9c81b214208c784d28",
-    "ref": "3250a848ee4ef20c2fb8c38dc86350ec579124b8",
-    "url": "https://codeload.github.com/ONLYOFFICE/core/tar.gz/3250a848ee4ef20c2fb8c38dc86350ec579124b8"
+    "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+    "source": "D:\\workspace\\only9-master\\core",
+    "files": 21117,
+    "treeSha256": "d295be2275c56fe612c8ee05a67f3468fff3d669e996951d7d1dc1cd9539dc7e",
+    "treeHashAlgorithm": "sha256(sorted UTF-8 path + NUL + raw file SHA256)",
+    "overlays": [
+      "Common/copyright.txt",
+      "X2tConverter/build/Qt/X2tSLN.pri",
+      "X2tConverter/build/Qt/X2tConverter.pro"
+    ]
   },
   "build-tools-source": {
     "sha256": "fbbcde972ecb8b63efb202e3c7045e5d1fffa9c2b5e15d761fc7f5fe076a1d3d",
@@ -50,18 +57,18 @@
     "file": "vendor/archives/python3.tar.gz"
   },
   "runtime-linux-amd64": {
-    "sha256": "cf408714779dbdc0198509c553626b9374b1d1f6247a0632af3846433fc345e9",
-    "source": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\native-bin\\linux-amd64\\bin",
+    "sha256": "6a4c7d622e50272432b837c092f5c5a33bf347600e7d8925cd674825ddfe59ed",
+    "source": "D:\\workspace\\only9-merge\\docker-tools\\amd64\\bin",
     "file": "vendor/runtime/linux-amd64-runtime.tar.gz"
   },
   "runtime-linux-arm64": {
-    "sha256": "c9b14f03ae19739d100ac4d7e856742f4268cdfb63fb1fb4a3572dbbc977bc17",
-    "source": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\native-bin\\linux-arm64\\bin",
+    "sha256": "a2d936570c8bfdb23c785c72ec28d9acc695fd2906b92fa0dde5588286dd1c1e",
+    "source": "D:\\workspace\\only9-merge\\docker-tools\\arm64\\bin",
     "file": "vendor/runtime/linux-arm64-runtime.tar.gz"
   },
   "runtime-windows-amd64": {
-    "sha256": "0bdbe2f4a90a30d8f441cebbf3ec69c918284142c4b91c0862a0cc64689f5bea",
-    "source": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\native-bin\\windows\\bin",
+    "sha256": "1d562e5f9481f862f174bbdd4f43251af0a1f8763d8e665fdaf20e9be1af4b48",
+    "source": "D:\\docservice\\idp-all\\idp-office\\native\\runtime\\win-x64\\bin",
     "file": "vendor/runtime/windows-amd64-runtime.zip"
   },
   "qt_windows_amd64": {

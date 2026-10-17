@@ -1,5 +1,7 @@
 {
-  "coreRef": "3250a848ee4ef20c2fb8c38dc86350ec579124b8",
+  "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
   "buildToolsRef": "a9f9895b172b09595abcafe85d56fab163f9ecb7",
-  "note": "Keep local runtime SO/DLL files from the same ONLYOFFICE core baseline as coreRef."
+  "note": "Local Core snapshot with preserved company branding and X2T CI patches. New baseline requires three-platform CI and conversion validation.",
+  "coreSource": "D:\\workspace\\only9-master\\core",
+  "coreDescribe": "v10.0.0.169-2-ged63e94de8"
 }

@@ -74,10 +74,6 @@ include(X2tConverter.pri)
 	SOURCES += ../../src/dylib/x2t.cpp
 }
 
-core_mac | core_ios {
-    LIBS += -framework Security
-}
-
 # BASEMETAS_X2T_CI_BEGIN
 core_linux {
     QMAKE_LFLAGS += -Wl,-rpath-link,$$CORE_BUILDS_LIBRARIES_PATH

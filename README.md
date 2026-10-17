@@ -1,6 +1,6 @@
-# ONLYOFFICE X2T Core-only CI 验证项目
+# ONLYOFFICE X2T Core-only 构建项目
 
-这个仓库用于验证：**只编译 X2T 及其必要静态格式库**，产出 Linux amd64、Linux arm64、Windows amd64 三个平台的 `x2t`，不构建 ONLYOFFICE Server / SDKJS / Web Apps / 完整 Core runtime。
+这个仓库用于**只编译 X2T 及其必要静态格式库**，产出 Linux amd64、Linux arm64、Windows amd64 三个平台的 `x2t`，不构建 ONLYOFFICE Server / SDKJS / Web Apps / 完整 Core runtime。当前已同步 10.0 源码和三平台 runtime；新基线尚待重新编译验证。
 
 ## 你需要准备
 
@@ -27,26 +27,26 @@ python scripts/download.py \
 
 ```bash
 python scripts/download.py \
-  --core-ref 3250a848ee4ef20c2fb8c38dc86350ec579124b8 \
+  --core-ref ed63e94de814ff1d4ea28cddfaba6939bc9df9ed \
   --build-tools-ref a9f9895b172b09595abcafe85d56fab163f9ecb7 \
   --linux-amd64-libs ./native-bin/linux-amd64/bin \
   --linux-arm64-libs ./native-bin/linux-arm64/bin \
   --windows-amd64-dlls 'D:\ONLYOFFICE\onlyoffice-x2t-ci\native-bin\windows\bin'
 ```
 
-- core  3250a848ee4ef20c2fb8c38dc86350ec579124b8
+- core  ed63e94de814ff1d4ea28cddfaba6939bc9df9ed
 - build_tools  a9f9895b172b09595abcafe85d56fab163f9ecb7
 
 脚本会：
 
 1. 下载并展开 `ONLYOFFICE/core` 到 `core/`。
 2. 下载并展开 `ONLYOFFICE/build_tools` 到 `build_tools/`。
-3. 下载 Boost 1.72、ICU 74.2、Brotli 固定 commit、Linux Qt 5.9.9、Ubuntu16 amd64/arm64 sysroot、ONLYOFFICE portable Python3。
+3. 根据 `vendor/detected-deps.json` 下载与选定 Core/build_tools 基线匹配的 Boost、ICU、Brotli、Linux Qt、Ubuntu 16 sysroot 和 ONLYOFFICE portable Python3。当前锁定输入为 Boost 1.58.0、ICU 74.2、Brotli `a47d7475063eb223c87632eed806c0070e70da29`、Linux Qt 5.9.9。
 4. 将你本地的 Linux `*.so*` 打成 vendor runtime 包。
 5. 将 Windows `*.dll` 打成 vendor runtime 包。
 6. 自动给 `X2tSLN.pri` 补 `CryptoPPLib` 依赖，并给 Linux x2t 增加 `rpath-link`。
 
-所有需要 GitHub Actions 使用的大文件都放在 `vendor/`，由 Git LFS 管理；CI 不再从第三方网站下载。
+源码快照保存在 `core/` 和 `build_tools/`；构建所需的大文件保存在 `vendor/` 并由 Git LFS 管理。CI 从仓库/LFS 获取这些固定输入，不执行 `scripts/download.py` 的在线 bootstrap 下载。Linux workflow 仍通过 apt 安装 runner 上的构建工具。
 
 ## 第二步：在 Windows 本地准备 Qt 5.15.2
 
@@ -84,31 +84,31 @@ git push -u origin main
 
 > 如果你的 GitHub LFS 配额不足，把 `vendor/archives` / `vendor/runtime` 放到自己的制品库，然后把 workflow 的获取方式改成下载制品即可；项目本身的构建逻辑不变。
 
-## GitHub Actions 实际做什么
+## 当前构建状态与 GitHub Actions 流程
+
+旧基线的三平台编译曾通过；当前 10.0 基线尚待重新运行 CI。workflow 可通过 `workflow_dispatch` 选择 `all`、`linux` 或 `windows`，各平台分别上传带 SHA256 文件的构建产物。
 
 ### Linux
 
 Ubuntu 24.04 x64 host：
 
 1. 从仓库 LFS 恢复第三方 archive。
-2. 离线展开 Qt 5.9.9 和 Ubuntu16 sysroot。
-3. 离线展开 Boost / ICU / Brotli 源码。
-4. 用 ONLYOFFICE 原构建模块只编 Boost + ICU。
-5. 用 `X2tSLN.pro` 编译 X2T 静态依赖闭包。
-6. 原生生成 `linux_64/x2t`。
-7. 通过官方 aarch64 cross toolchain/sysroot 生成 `linux_arm64/x2t`。
-8. `file/readelf/ldd` 验证产物。
+2. `scripts/prepare.py` 展开 Qt 5.9.9、Ubuntu 16 sysroot、第三方源码及预编译 Linux runtime 库。
+3. 使用固定版本的 `build_tools` 分别配置 `linux_64` 和 `linux_arm64` 构建环境。
+4. 通过 ONLYOFFICE 构建模块为目标架构编译 Boost 和 ICU。
+5. 使用 `X2tSLN.pro` 编译 X2T 静态依赖闭包；amd64 原生构建，arm64 使用官方交叉工具链和 sysroot。
+6. 使用 `file`、`readelf` 检查架构；amd64 额外使用 `ldd` 检查动态依赖。
 
 ### Windows
 
 `windows-2022` runner：
 
 1. 使用 VS2022 Host + v142 (14.29) toolset。
-2. 使用 Qt 5.15.2 `msvc2019_64` qmake。
-3. 离线展开 Boost / ICU / Brotli 源码。
-4. 从你的 Windows runtime DLL 自动生成 `graphics.lib/kernel.lib/...` import libraries。
+2. 使用 Qt 5.15.2 `msvc2019_64` qmake 和 v142 编译工具集。
+3. 展开 Boost / ICU / Brotli 源码并编译 Boost、ICU。
+4. 从 Windows runtime DLL 生成缺少的 import libraries。
 5. 编译 X2T 静态依赖闭包并链接 `x2t.exe`。
-6. `dumpbin` 验证 x64 PE 和 DLL dependencies。
+6. 使用 `dumpbin` 检查 x64 PE 架构和 DLL dependencies。
 
 ## 重点边界
 
@@ -135,16 +135,19 @@ UnicodeConverter
 
 ## Windows DLL -> import LIB 的说明
 
-CI 使用 `dumpbin /exports` 生成 `.def`，再用 `lib.exe` 生成 import library。这对普通导出函数是可行的，也是本 POC 要验证的一部分。如果某个 ONLYOFFICE DLL 存在必须标记为 `DATA` 的导出、ordinal-only 导出或其他特殊 PE 导出，链接可能在该 DLL 上失败；届时该 DLL 需要提供原始 `.lib`，或者把这一项动态库纳入 Windows bootstrap 编译。这不会影响 Linux 路线。
+CI 对缺少 import library 的 DLL 使用 `dumpbin /exports` 生成 `.def`，再用 `lib.exe` 生成 import library；该流程已通过当前基线的 Windows 编译验证。如果未来 DLL 存在必须标记为 `DATA` 的导出、ordinal-only 导出或其他特殊 PE 导出，自动生成可能无法覆盖，届时应提供该 DLL 对应的原始 `.lib`。这不会影响 Linux 路线。
 
-## 第一次 POC 推荐
+## 编译验证与功能验证的边界
 
-先不要应用 `distribute` 修改，先让三平台把原始同版本 X2T 编过一次。三平台成功后，再修改：
+旧基线三平台编译已通过；升级至 10.0 后，需要重新验证 Core/build_tools、第三方依赖和预编译 runtime 能否完成链接。当前 workflow 的自动检查覆盖产物架构和动态依赖；它没有执行文档转换 fixture 或 `distribute` round-trip。因此，功能改动仍需通过实际转换输入/输出验证，不能仅凭编译成功判断格式行为正确。
 
-```text
-core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
-core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
-core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+## 10.0 本地输入同步（2026-10-17）
+
+```powershell
+python scripts/sync_local_inputs.py --core D:\workspace\only9-master\core --linux-amd64 D:\workspace\only9-merge\docker-tools\amd64\bin --linux-arm64 D:\workspace\only9-merge\docker-tools\arm64\bin --windows-amd64 D:\docservice\idp-all\idp-office\native\runtime\win-x64\bin
+python scripts/verify_vendor.py --platform all
 ```
 
-这样如果失败，可以明确区分“构建系统问题”和“功能补丁问题”。
+Core 来自干净的 `v10.0.0.169-2-ged63e94de8` 工作区；保留本仓库公司名，重新应用 CryptoPP 和 Linux rpath-link 补丁。build_tools 沿用现有固定提交，尚未验证与新 Core 的构建兼容性。Windows 输入元数据版本为 `10.0.0.169`；Linux 使用指定 docker-tools 的两种架构 bin。
+
+同步脚本仅将构建需要的 SO/DLL 打入 vendor runtime，保持现有 CI 输入布局；不将来源中的 x2t、字体缓存或其他应用资源打进链接 SDK。生成的可执行文件需部署至对应版本的完整运行环境。来源、Core 树摘要及 runtime SHA256 记录在 `ci/baseline.json` 和 `vendor/checksums.json`。
