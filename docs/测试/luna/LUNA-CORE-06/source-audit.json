@@ -1,0 +1,484 @@
+{
+  "taskId": "LUNA-CORE-06",
+  "level": "SOURCE ANCHORS ONLY; semantics require manual review",
+  "cppAssertionsExecuted": 0,
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "staging": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\vendor\\work\\codec-audit-dev-20261019",
+  "entries": [
+    {
+      "path": "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h",
+      "sha256": "4e7a8300a5483ee8e44df2ece1d1c5dd81c4b3b7d47a3059a105504f3823ff23",
+      "anchors": [
+        {
+          "anchor": "Spacing_AfterLines = 48",
+          "lines": [
+            365
+          ],
+          "excerpts": [
+            {
+              "line": 365,
+              "text": "\t\tSpacing_AfterLines = 48,"
+            }
+          ]
+        },
+        {
+          "anchor": "Spacing_BeforeLines = 49",
+          "lines": [
+            366
+          ],
+          "excerpts": [
+            {
+              "line": 366,
+              "text": "\t\tSpacing_BeforeLines = 49,"
+            }
+          ]
+        },
+        {
+          "anchor": "CompressText = 44",
+          "lines": [
+            426
+          ],
+          "excerpts": [
+            {
+              "line": 426,
+              "text": "\t\tCompressText = 44,"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp",
+      "sha256": "c627e9da93c215d9d3c324687f750bcce985a50f3d295ab1486b0f2b0a23686e",
+      "anchors": [
+        {
+          "anchor": "Spacing.m_oAfterLines.IsInit()",
+          "lines": [
+            1371
+          ],
+          "excerpts": [
+            {
+              "line": 1371,
+              "text": "\tif (false != Spacing.m_oAfterLines.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "Spacing.m_oBeforeLines.IsInit()",
+          "lines": [
+            1377
+          ],
+          "excerpts": [
+            {
+              "line": 1377,
+              "text": "\tif (false != Spacing.m_oBeforeLines.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteLONG(Spacing.m_oAfterLines->GetValue())",
+          "lines": [
+            1375
+          ],
+          "excerpts": [
+            {
+              "line": 1375,
+              "text": "\t\tm_oBcw.m_oStream.WriteLONG(Spacing.m_oAfterLines->GetValue());"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteLONG(Spacing.m_oBeforeLines->GetValue())",
+          "lines": [
+            1381
+          ],
+          "excerpts": [
+            {
+              "line": 1381,
+              "text": "\t\tm_oBcw.m_oStream.WriteLONG(Spacing.m_oBeforeLines->GetValue());"
+            }
+          ]
+        },
+        {
+          "anchor": "rPr->m_oW.IsInit()",
+          "lines": [
+            853
+          ],
+          "excerpts": [
+            {
+              "line": 853,
+              "text": "\tif (rPr->m_oW.IsInit() && rPr->m_oW->m_oVal.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteLONG(rPr->m_oW->m_oVal->GetValue())",
+          "lines": [
+            857
+          ],
+          "excerpts": [
+            {
+              "line": 857,
+              "text": "\t\tm_oBcw.m_oStream.WriteLONG(rPr->m_oW->m_oVal->GetValue());"
+            }
+          ]
+        },
+        {
+          "anchor": "brPrs.Write_rPr",
+          "lines": [
+            1177,
+            2866,
+            2986,
+            3091,
+            3373,
+            3659,
+            5344,
+            5740,
+            5752,
+            5758,
+            6808,
+            8257,
+            8381,
+            9247,
+            9261
+          ],
+          "excerpts": [
+            {
+              "line": 1177,
+              "text": "\t\tbrPrs.Write_rPr(pPr.m_oRPr.GetPointer());"
+            },
+            {
+              "line": 2866,
+              "text": "\t\t\tbrPrs.Write_rPr(oDocDefaults.m_oRunPr.GetPointer());"
+            },
+            {
+              "line": 2986,
+              "text": "\t\tbrPrs.Write_rPr(style.m_oRunPr.GetPointer());"
+            },
+            {
+              "line": 3091,
+              "text": "\t\t\tbrPrs.Write_rPr(oProperty.m_oRunPr.GetPointer());"
+            },
+            {
+              "line": 3373,
+              "text": "\t\t\tbrPrs.Write_rPr(p_rPr);"
+            },
+            {
+              "line": 3659,
+              "text": "\tbrPrs.Write_rPr(&oRPr);"
+            },
+            {
+              "line": 5344,
+              "text": "\t\tbrPrs.Write_rPr(pMRun->m_oRPr.GetPointer());"
+            },
+            {
+              "line": 5740,
+              "text": "\t\tbrPrs.Write_rPr(pCtrlPr.m_oRPr.GetPointer());"
+            },
+            {
+              "line": 5752,
+              "text": "\t\tbrPrs.Write_rPrChange(pCtrlPr.m_oDel.get());"
+            },
+            {
+              "line": 5758,
+              "text": "\t\tbrPrs.Write_rPrChange(pCtrlPr.m_oIns.get());"
+            },
+            {
+              "line": 6808,
+              "text": "\t\t\tbrPrs.Write_rPr(oCur_rPr);"
+            },
+            {
+              "line": 8257,
+              "text": "\t\tbrPrs.Write_rPr(pStd->m_oSdtEndPr->m_oRPr.GetPointer());"
+            },
+            {
+              "line": 8381,
+              "text": "\t\tbrPrs.Write_rPr(oStdPr.m_oRPr.GetPointer());"
+            },
+            {
+              "line": 9247,
+              "text": "\t\tbrPrs.Write_rPr(&oRPr);"
+            },
+            {
+              "line": 9261,
+              "text": "\t\tbrPrs.Write_rPr(&oRPr);"
+            }
+          ]
+        },
+        {
+          "anchor": "bpPrs.Write_pPr",
+          "lines": [
+            2860,
+            2993,
+            3098,
+            3359,
+            3651,
+            4147
+          ],
+          "excerpts": [
+            {
+              "line": 2860,
+              "text": "\t\t\tbpPrs.Write_pPr(oDocDefaults.m_oParPr.get());"
+            },
+            {
+              "line": 2993,
+              "text": "\t\tbpPrs.Write_pPr(style.m_oParPr.get());"
+            },
+            {
+              "line": 3098,
+              "text": "\t\t\tbpPrs.Write_pPr(oProperty.m_oParPr.get());"
+            },
+            {
+              "line": 3359,
+              "text": "\t\tbpPrs.Write_pPr(lvl.m_oPPr.get());"
+            },
+            {
+              "line": 3651,
+              "text": "\tbpPrs.Write_pPr(oPPr);"
+            },
+            {
+              "line": 4147,
+              "text": "\t\t\tbpPrs.Write_pPr(*pPr);"
+            }
+          ]
+        },
+        {
+          "anchor": "WritePPrChange",
+          "lines": [
+            1185,
+            1256
+          ],
+          "excerpts": [
+            {
+              "line": 1185,
+              "text": "\t\tWritePPrChange(pPr.m_oPPrChange.get());"
+            },
+            {
+              "line": 1256,
+              "text": "void Binary_pPrWriter::WritePPrChange(const OOX::Logic::CPPrChange& pPrChange)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp",
+      "sha256": "72ac63d379f0438ec233ebab3a90bbb1e60c7754ab939e3cd9672520b8e009d5",
+      "anchors": [
+        {
+          "anchor": "case c_oSerProp_rPrType::CompressText:",
+          "lines": [
+            922
+          ],
+          "excerpts": [
+            {
+              "line": 922,
+              "text": "\t\tcase c_oSerProp_rPrType::CompressText:"
+            }
+          ]
+        },
+        {
+          "anchor": "pRPr->m_oW->m_oVal->SetValue",
+          "lines": [
+            925
+          ],
+          "excerpts": [
+            {
+              "line": 925,
+              "text": "\t\t\tpRPr->m_oW->m_oVal.Init(); pRPr->m_oW->m_oVal->SetValue(m_oBufferedStream.GetLong());"
+            }
+          ]
+        },
+        {
+          "anchor": "pSpacing->m_oAfterLines->SetValue",
+          "lines": [
+            1351
+          ],
+          "excerpts": [
+            {
+              "line": 1351,
+              "text": "\t\tpSpacing->m_oAfterLines->SetValue(m_oBufferedStream.GetLong());"
+            }
+          ]
+        },
+        {
+          "anchor": "pSpacing->m_oBeforeLines->SetValue",
+          "lines": [
+            1356
+          ],
+          "excerpts": [
+            {
+              "line": 1356,
+              "text": "\t\tpSpacing->m_oBeforeLines->SetValue(m_oBufferedStream.GetLong());"
+            }
+          ]
+        },
+        {
+          "anchor": "ReadrPrChange2",
+          "lines": [
+            920,
+            949
+          ],
+          "excerpts": [
+            {
+              "line": 920,
+              "text": "\t\t\tREAD1_DEF(length, res, this->ReadrPrChange2, pRPr->m_oRPrChange.GetPointer());"
+            },
+            {
+              "line": 949,
+              "text": "int Binary_rPrReader::ReadrPrChange2(BYTE type, long length, void* poResult)"
+            }
+          ]
+        },
+        {
+          "anchor": "ReadPPrChange",
+          "lines": [
+            1086,
+            1184
+          ],
+          "excerpts": [
+            {
+              "line": 1086,
+              "text": "\t\tREAD1_DEF(length, res, this->ReadPPrChange, pPPr->m_oPPrChange.GetPointer());"
+            },
+            {
+              "line": 1184,
+              "text": "int Binary_pPrReader::ReadPPrChange(BYTE type, long length, void* poResult)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Common/ComplexTypes.cpp",
+      "sha256": "2b96684ca339135f71a2885cfb55bf3773888041d756f29e63b8e7e211b68046",
+      "anchors": [
+        {
+          "anchor": "L\"w:afterLines\", m_oAfterLines",
+          "lines": [
+            2535,
+            2627
+          ],
+          "excerpts": [
+            {
+              "line": 2535,
+              "text": "\t\tXmlMacroReadAttributeBase(oNode, L\"w:afterLines\", m_oAfterLines);"
+            },
+            {
+              "line": 2627,
+              "text": "\t\tWritingElement_ReadAttributes_Read_else_if(oReader, L\"w:afterLines\", m_oAfterLines)"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"w:beforeLines\", m_oBeforeLines",
+          "lines": [
+            2538,
+            2630
+          ],
+          "excerpts": [
+            {
+              "line": 2538,
+              "text": "\t\tXmlMacroReadAttributeBase(oNode, L\"w:beforeLines\", m_oBeforeLines);"
+            },
+            {
+              "line": 2630,
+              "text": "\t\tWritingElement_ReadAttributes_Read_else_if(oReader, L\"w:beforeLines\", m_oBeforeLines)"
+            }
+          ]
+        },
+        {
+          "anchor": "if (m_oAfterLines.IsInit())",
+          "lines": [
+            2565
+          ],
+          "excerpts": [
+            {
+              "line": 2565,
+              "text": "\t\tif (m_oAfterLines.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "if (m_oBeforeLines.IsInit())",
+          "lines": [
+            2584
+          ],
+          "excerpts": [
+            {
+              "line": 2584,
+              "text": "\t\tif (m_oBeforeLines.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "oProperties.m_oAfterLines = Merge",
+          "lines": [
+            2613
+          ],
+          "excerpts": [
+            {
+              "line": 2613,
+              "text": "\t\toProperties.m_oAfterLines = Merge(oPrev.m_oAfterLines, oCurrent.m_oAfterLines);"
+            }
+          ]
+        },
+        {
+          "anchor": "oProperties.m_oBeforeLines = Merge",
+          "lines": [
+            2616
+          ],
+          "excerpts": [
+            {
+              "line": 2616,
+              "text": "\t\toProperties.m_oBeforeLines = Merge(oPrev.m_oBeforeLines, oCurrent.m_oBeforeLines);"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/DocxFormat/Logic/RunProperty.cpp",
+      "sha256": "109e68e638bf9a4a6b8cd2352d3c22ec26c591f6b3bee17c01dd4f0863c9ac3c",
+      "anchors": [
+        {
+          "anchor": "m_oW = oChild",
+          "lines": [
+            544
+          ],
+          "excerpts": [
+            {
+              "line": 544,
+              "text": "\t\t\t\tm_oW = oChild;"
+            }
+          ]
+        },
+        {
+          "anchor": "m_oW->ValNode",
+          "lines": [
+            590
+          ],
+          "excerpts": [
+            {
+              "line": 590,
+              "text": "\t\t\tif (m_oW.IsInit())\t\t\t\tsResult += m_oW->ValNode(L\"w:w\");"
+            }
+          ]
+        },
+        {
+          "anchor": "oProperties.m_oW = Merge",
+          "lines": [
+            781
+          ],
+          "excerpts": [
+            {
+              "line": 781,
+              "text": "\t\t\toProperties.m_oW = Merge(oPrev.m_oW, oCurrent.m_oW);"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
