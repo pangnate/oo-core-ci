@@ -177,6 +177,9 @@ def main() -> int:
     env["GYP_MSVS_VERSION"] = "2019"
     env["GCLIENT_SUPPRESS_GIT_VERSION_WARNING"] = "1"
     env["VPYTHON_BYPASS"] = "manually managed python not supported by chrome operations"
+    env["GIT_CONFIG_COUNT"] = "1"
+    env["GIT_CONFIG_KEY_0"] = "core.longpaths"
+    env["GIT_CONFIG_VALUE_0"] = "true"
     run(["cmd", "/c", str(depot / "bootstrap/win_tools.bat")], cwd=build, env=env, timeout=900)
     python_pointer = depot / "python3_bin_reldir.txt"
     if not python_pointer.is_file():
