@@ -134,7 +134,8 @@ def prepare_depot_tools(depot: Path) -> None:
     if git_bootstrap_call in bootstrap_text:
         replace_once(bootstrap, git_bootstrap_call, "    #_win_git_bootstrap_config()",
                      already_ok="    #_win_git_bootstrap_config()")
-    elif "_win_git_bootstrap_config" in bootstrap_text:
+    elif any("_win_git_bootstrap_config()" in line and not line.lstrip().startswith("#")
+             for line in bootstrap_text.splitlines()):
         raise RuntimeError("unexpected depot_tools Windows git bootstrap call context")
 
 
