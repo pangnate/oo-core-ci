@@ -1,0 +1,107 @@
+diff --git a/core/OOXML/DocxFormat/Logic/Annotations.cpp b/core/OOXML/DocxFormat/Logic/Annotations.cpp
+--- a/core/OOXML/DocxFormat/Logic/Annotations.cpp
++++ b/core/OOXML/DocxFormat/Logic/Annotations.cpp
+@@ -1168,7 +1168,11 @@
+ 		}
+ 		void CPermEnd::fromXML(XmlUtils::CXmlNode& oNode)
+ 		{
+-			XmlMacroReadAttributeBase(oNode, L"w:displacedbyCustomXml", m_oDisplacedByCustomXml );
++			// Standard spelling wins over the historical alias, even when both occur.
++			std::wstring sDisplacedByCustomXml;
++			if (oNode.GetAttributeIfExist(L"w:displacedByCustomXml", sDisplacedByCustomXml) ||
++				oNode.GetAttributeIfExist(L"w:displacedbyCustomXml", sDisplacedByCustomXml))
++				m_oDisplacedByCustomXml = sDisplacedByCustomXml;
+ 			XmlMacroReadAttributeBase(oNode, L"w:id",                   m_sId );
+ 		}
+ 		void CPermEnd::fromXML(XmlUtils::CXmlLiteReader& oReader)
+@@ -1182,7 +1186,7 @@
+ 		{
+ 			std::wstring sResult = L"<w:permEnd";
+ 
+-			ComplexTypes_WriteAttribute_( L" w:displacedbyCustomXml=\"", m_oDisplacedByCustomXml );
++			ComplexTypes_WriteAttribute_( L" w:displacedByCustomXml=\"", m_oDisplacedByCustomXml );
+ 
+ 			if ( m_sId.IsInit() )
+ 			{
+@@ -1201,11 +1205,24 @@
+ 		}
+ 		void CPermEnd::ReadAttributes(XmlUtils::CXmlLiteReader& oReader)
+ 		{
+-			
+-			WritingElement_ReadAttributes_Start( oReader )
+-			WritingElement_ReadAttributes_Read_if     ( oReader, L"w:displacedbyCustomXml", m_oDisplacedByCustomXml )
++			bool bHasStandardDisplacedByCustomXml = false;
++			bool bHasLegacyDisplacedByCustomXml = false;
++			std::wstring sLegacyDisplacedByCustomXml;
++			WritingElement_ReadAttributes_Start( oReader )
++			if (L"w:displacedByCustomXml" == wsName)
++			{
++				m_oDisplacedByCustomXml = oReader.GetText();
++				bHasStandardDisplacedByCustomXml = true;
++			}
++			else if (L"w:displacedbyCustomXml" == wsName)
++			{
++				sLegacyDisplacedByCustomXml = oReader.GetText();
++				bHasLegacyDisplacedByCustomXml = true;
++			}
+ 			WritingElement_ReadAttributes_Read_else_if( oReader, L"w:id",                   m_sId )
+ 			WritingElement_ReadAttributes_End( oReader )
++			if (!bHasStandardDisplacedByCustomXml && bHasLegacyDisplacedByCustomXml)
++				m_oDisplacedByCustomXml = sLegacyDisplacedByCustomXml;
+ 		}
+ 
+ 		CPermStart::CPermStart(OOX::Document *pMain) : WritingElement(pMain)
+@@ -1218,7 +1235,11 @@
+ 		{
+ 			XmlMacroReadAttributeBase(oNode, L"w:colFirst",             m_oColFirst );
+ 			XmlMacroReadAttributeBase(oNode, L"w:colLast",              m_oColLast );
+-			XmlMacroReadAttributeBase(oNode, L"w:displacedbyCustomXml", m_oDisplacedByCustomXml );
++			// Standard spelling wins over the historical alias, even when both occur.
++			std::wstring sDisplacedByCustomXml;
++			if (oNode.GetAttributeIfExist(L"w:displacedByCustomXml", sDisplacedByCustomXml) ||
++				oNode.GetAttributeIfExist(L"w:displacedbyCustomXml", sDisplacedByCustomXml))
++				m_oDisplacedByCustomXml = sDisplacedByCustomXml;
+ 			XmlMacroReadAttributeBase(oNode, L"w:ed",                   m_sEd );
+ 			XmlMacroReadAttributeBase(oNode, L"w:edGrp",                m_oEdGrp );
+ 			XmlMacroReadAttributeBase(oNode, L"w:id",                   m_sId );
+@@ -1236,7 +1257,7 @@
+ 
+ 			ComplexTypes_WriteAttribute_( L" w:colFirst=\"", m_oColFirst );
+ 			ComplexTypes_WriteAttribute_( L" w:colLast=\"", m_oColLast );
+-			ComplexTypes_WriteAttribute_( L" w:displacedbyCustomXml=\"", m_oDisplacedByCustomXml );
++			ComplexTypes_WriteAttribute_( L" w:displacedByCustomXml=\"", m_oDisplacedByCustomXml );
+ 			ComplexTypes_WriteAttribute2_(L" w:ed=\"", m_sEd);
+ 			ComplexTypes_WriteAttribute_( L" w:edGrp=\"", m_oEdGrp );
+ 			ComplexTypes_WriteAttribute2_(L" w:id=\"", m_sId);
+@@ -1251,14 +1272,28 @@
+ 		}
+ 		void CPermStart::ReadAttributes(XmlUtils::CXmlLiteReader& oReader)
+ 		{
+-			WritingElement_ReadAttributes_Start( oReader )
+-			WritingElement_ReadAttributes_Read_if     ( oReader, L"w:colFirst",             m_oColFirst )
++			bool bHasStandardDisplacedByCustomXml = false;
++			bool bHasLegacyDisplacedByCustomXml = false;
++			std::wstring sLegacyDisplacedByCustomXml;
++			WritingElement_ReadAttributes_Start( oReader )
++			if (L"w:displacedByCustomXml" == wsName)
++			{
++				m_oDisplacedByCustomXml = oReader.GetText();
++				bHasStandardDisplacedByCustomXml = true;
++			}
++			else if (L"w:displacedbyCustomXml" == wsName)
++			{
++				sLegacyDisplacedByCustomXml = oReader.GetText();
++				bHasLegacyDisplacedByCustomXml = true;
++			}
++			WritingElement_ReadAttributes_Read_else_if( oReader, L"w:colFirst",             m_oColFirst )
+ 			WritingElement_ReadAttributes_Read_else_if( oReader, L"w:colLast",              m_oColLast )
+-			WritingElement_ReadAttributes_Read_else_if( oReader, L"w:displacedbyCustomXml", m_oDisplacedByCustomXml )
+ 			WritingElement_ReadAttributes_Read_else_if( oReader, L"w:ed",                   m_sEd )
+ 			WritingElement_ReadAttributes_Read_else_if( oReader, L"w:edGrp",                m_oEdGrp )
+ 			WritingElement_ReadAttributes_Read_else_if( oReader, L"w:id",                   m_sId )
+ 			WritingElement_ReadAttributes_End( oReader )
++			if (!bHasStandardDisplacedByCustomXml && bHasLegacyDisplacedByCustomXml)
++				m_oDisplacedByCustomXml = sLegacyDisplacedByCustomXml;
+ 		}
+ 
+ 		CProofErr::CProofErr(OOX::Document *pMain) : WritingElement(pMain)

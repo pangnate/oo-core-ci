@@ -23,6 +23,11 @@
       "dependsOn": [
         "patches/core/004-word-character-indents.patch"
       ]
+    },
+    {
+      "path": "patches/core/007-word-permission-xml-spelling.patch",
+      "sha256": "44dde10b3151759148a48842bbb8dbfeb2e292d10bcd8f88e8c5983b9fe6d23f",
+      "purpose": "CORE-07: standard permission attribute spelling with legacy read alias and order-independent standard precedence; source-only candidate"
     }
   ]
 }
