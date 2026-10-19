@@ -31,8 +31,11 @@ def verify_baseline(profile: dict) -> int:
     checks.that(baseline.get("coreOverlays") == ["Common/copyright.txt"], "Core overlay declaration changed")
     checks.that((ROOT / "scripts" / "patch_x2t_sln.py").is_file(), "declared X2T build patch is missing")
     checks.that((ROOT / "overlays" / "core" / "Common" / "copyright.txt").is_file(), "declared Core branding overlay is missing")
-    feature_patches = list((ROOT / "patches" / "core").glob("*.patch"))
-    checks.that(not feature_patches, f"CORE-00 baseline unexpectedly contains feature patches: {feature_patches}")
+    series = json.loads((ROOT / "patches" / "core" / "series.json").read_text(encoding="utf-8"))
+    checks.that(series["coreRef"] == core["ref"] and series["coreTreeSha256"] == core["treeSha256"],
+                "active patch series source identity does not match baseline")
+    feature_patches = series["patches"]
+    checks.that(not feature_patches, f"CORE-00 baseline unexpectedly enables feature patches: {feature_patches}")
     core_status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", "core"],
                                  cwd=ROOT, capture_output=True, text=True, check=True)
     checks.that(not core_status.stdout.strip(), "official Core worktree contains modified or untracked source")

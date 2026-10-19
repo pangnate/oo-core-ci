@@ -5,6 +5,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -199,6 +200,31 @@ def verify_patch_staging(_profile: dict) -> int:
 
 
 class PatchStagingTests(unittest.TestCase):
+    def test_baseline_uses_active_series_and_never_discovers_candidates(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            repo, source, baseline, checksums, series = _fixture_repo(Path(temp))
+            (repo / "vendor" / "checksums.json").write_text(json.dumps(checksums), encoding="utf-8")
+            active = repo / "patches" / "core" / "series.json"
+            candidate = repo / "patches" / "core" / "series-word-candidate.json"
+            candidate.write_text(json.dumps(series), encoding="utf-8")
+            active.write_text(json.dumps(dict(series, patches=[])), encoding="utf-8")
+            with patch.object(downloader, "ROOT", repo), patch.object(downloader, "LOCK_FILE", repo / "vendor" / "checksums.json"):
+                downloader.write_baseline(series["coreRef"], "c" * 40)
+                output = repo / "ci" / "baseline.json"
+                self.assertEqual(json.loads(output.read_text())["corePatches"], [])
+                # Promotion is explicit and retains the hash-locked order.
+                active.write_text(json.dumps(series), encoding="utf-8")
+                downloader.write_baseline(series["coreRef"], "c" * 40)
+                expected = [entry["path"] for entry in series["patches"]]
+                self.assertEqual(json.loads(output.read_text())["corePatches"], expected)
+                saved = output.read_bytes()
+                (repo / expected[0]).write_text("tampered", encoding="utf-8")
+                with self.assertRaisesRegex(RuntimeError, "hash-mismatched"):
+                    downloader.write_baseline(series["coreRef"], "c" * 40)
+                self.assertEqual(output.read_bytes(), saved)
+                with self.assertRaisesRegex(RuntimeError, "requested baseline"):
+                    downloader.write_baseline("d" * 40, "c" * 40)
+
     def test_fixture_staging_contract(self) -> None:
         self.assertGreater(verify_patch_staging({}), 0)
 

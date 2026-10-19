@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "scripts" / "feature_deps"))
 from common import safe_extract_archive
-from stage_core_source import inventory_fingerprint
+from stage_core_source import inventory_fingerprint, validate_patch_series
 
 VENDOR = ROOT / "vendor"
 ARCHIVES = VENDOR / "archives"
@@ -134,7 +134,19 @@ def pack_windows_runtime(source: Path, dest: Path) -> str:
 
 def write_baseline(core_ref: str, build_tools_ref: str) -> None:
     patches_dir = ROOT / "patches" / "core"
-    patches = sorted(path.relative_to(ROOT).as_posix() for path in patches_dir.glob("*.patch")) if patches_dir.exists() else []
+    # Only the default, explicitly enabled series belongs to the baseline.
+    # Unbuilt candidate files may coexist here without entering a running POC.
+    series = json.loads((patches_dir / "series.json").read_text(encoding="utf-8"))
+    core_lock = json.loads(LOCK_FILE.read_text(encoding="utf-8"))["core-source"]
+    validate_patch_series(series, core_lock)
+    if series["coreRef"] != core_ref:
+        raise RuntimeError("active Core patch series does not match requested baseline")
+    patches = []
+    for entry in series["patches"]:
+        path = ROOT / entry["path"]
+        if not path.is_file() or sha256(path) != entry["sha256"]:
+            raise RuntimeError(f"active Core patch is missing or hash-mismatched: {entry['path']}")
+        patches.append(entry["path"])
     overlay_root = ROOT / "overlays" / "core"
     overlays = sorted(path.relative_to(overlay_root).as_posix() for path in overlay_root.rglob("*") if path.is_file()) if overlay_root.exists() else []
     data = {
