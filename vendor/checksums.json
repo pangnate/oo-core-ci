@@ -2,7 +2,7 @@
   "core-source": {
     "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
     "files": 21117,
-    "treeSha256": "d295be2275c56fe612c8ee05a67f3468fff3d669e996951d7d1dc1cd9539dc7e",
+    "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
     "treeHashAlgorithm": "sha256(sorted UTF-8 path + NUL + raw file SHA256)",
     "url": "https://codeload.github.com/ONLYOFFICE/core/tar.gz/ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
     "projectPatches": ["scripts/patch_x2t_sln.py"],
