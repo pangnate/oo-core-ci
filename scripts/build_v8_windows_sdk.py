@@ -175,6 +175,12 @@ def main() -> int:
     env["DEPOT_TOOLS_WIN_TOOLCHAIN"] = "0"
     env["DEPOT_TOOLS_UPDATE"] = "0"
     env["GYP_MSVS_VERSION"] = "2019"
+    vs_install = env.get("V8_VS_INSTALL_PATH")
+    if vs_install:
+        # V8 8.9 predates VS 2022 detection. The Actions runner supplies the
+        # VS 2022 installation with the pinned v142 toolset; expose that path
+        # through the VS 2019 compatibility key understood by this checkout.
+        env["vs2019_install"] = vs_install
     env["GCLIENT_SUPPRESS_GIT_VERSION_WARNING"] = "1"
     env["VPYTHON_BYPASS"] = "manually managed python not supported by chrome operations"
     env["GIT_CONFIG_COUNT"] = "1"

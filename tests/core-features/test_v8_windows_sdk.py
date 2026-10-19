@@ -47,9 +47,11 @@ class V8WindowsSdkLockTests(unittest.TestCase):
         self.assertIn("bootstrap/win_tools.bat", script)
         self.assertIn("manually managed python not supported by chrome operations", script)
         self.assertIn('env["GIT_CONFIG_KEY_0"] = "core.longpaths"', script)
+        self.assertIn('env["vs2019_install"] = vs_install', script)
         self.assertIn("# changed by build_tools", script)
         self.assertIn("args.work_root = args.work_root.resolve()", script)
         self.assertIn("args.dist = args.dist.resolve()", script)
+        self.assertIn('V8_VS_INSTALL_PATH=$vs', workflow)
 
     def test_depot_tools_bootstrap_recipe_is_narrow_and_repeatable(self):
         with tempfile.TemporaryDirectory() as temporary:

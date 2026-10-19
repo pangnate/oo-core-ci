@@ -30,6 +30,7 @@ jobs:
           $v142 = Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC') -Directory | Where-Object { $_.Name -like '14.29*' } | Select-Object -First 1
           if (!$v142) { throw 'MSVC v142 (14.29) is required by the V8 SDK ABI lock' }
           "REAL_VCVARSALL=$(Join-Path $vs 'VC\Auxiliary\Build\vcvarsall.bat')" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "V8_VS_INSTALL_PATH=$vs" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           "V8_V142_VERSION=$($v142.Name)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build V8, link SDK probe, and run JavaScript
