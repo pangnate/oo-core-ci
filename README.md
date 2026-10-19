@@ -114,6 +114,43 @@ Ubuntu 24.04 x64 host：
 5. 编译 X2T 静态依赖闭包并链接 `x2t.exe`。
 6. 使用 `dumpbin` 检查 x64 PE 架构和 DLL dependencies。
 
+## V8 Windows SDK：首次构建后固定复用
+
+V8保留现有静态链接方式，不另建仓库或改成V8 DLL。独立workflow `Build pinned V8 Windows SDK`只手动触发，使用 `config/v8-windows.lock.json` 的完整规范化SHA256作为Release tag及精确cache key。普通Core源码、patch或文档变化不会重编V8。
+
+在GitHub Actions中选择该workflow的 **Run workflow**：
+
+- `operation=promote`：填写已成功构建V8的 `source_run_id`，下载该run的 `v8-windows-x64-sdk` artifact，验证来源仓库、workflow、成功状态、原提交的完整输入锁以及SDK内容。旧版artifact可以直接发布，不需要为了接入Release再编一次。
+- `operation=build`：仅在该锁对应的Release不存在时冷构建V8；已有Release时直接恢复和运行探针。
+- `operation=reuse`（默认）：只恢复、校验和运行已有SDK探针；缺包明确失败，绝不回退源码构建。
+
+run `39254838375` 已完成 1700/1700 个 V8 monolith 构建步骤，但独立 probe 因缺少 `v8/include` 搜索路径而失败，没有可供 `promote` 使用的成功 artifact。当前脚本已补齐该路径；首次发布仍需手动运行 `operation=build` 并通过完整的 probe、归档校验和发布验证。本地无需编译。
+
+首次发布前会从SDK ZIP重新解包、验证头文件与静态库、重新编译链接C++探针并执行JavaScript `1 + 2`。发布包含ZIP、SHA256和 `sdk-release.json`；先创建draft，附件完整后发布，并再次下载核对。已有同名tag不会覆盖，不使用 `latest`、`--clobber` 或宽泛cache restore-key。Release是固定来源，Actions artifact仅用于首次迁移和短期下载，cache仅加速下载。
+
+后续Windows功能workflow可在Python 3.11+环境中直接使用恢复action：
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/setup-python@v5
+  with:
+    python-version: '3.11'
+- name: Prepare isolated patched source
+  shell: pwsh
+  run: python scripts/stage_core_source.py --destination vendor/work/feature-build
+- name: Restore V8 development dependency
+  id: v8
+  uses: ./.github/actions/restore-v8-windows-sdk
+  with:
+    token: ${{ github.token }}
+    destination: ${{ runner.temp }}/v8-sdk
+    staging-root: vendor/work/feature-build
+```
+
+普通消费者只需要 `contents: read`；首次导入artifact需要 `actions: read`，发布job需要 `contents: write`。action输出 `sdk-root`、`include-root`、`library-path`、`archive-sha256` 和 `sdk-key`。可选的 `staging-root` 只接受 `stage_core_source.py`生成且Core来源匹配的隔离目录，按现有qmake布局放置头文件与 `v8_monolith.lib`，记录 `.v8-sdk-input.json`；不写官方 `core/` 输入树。未提供该参数时只恢复独立SDK目录。
+
+SDK下载命中cache后仍验证所有hash、V8/depot_tools提交、GN参数、ABI和解包后的头文件。改变V8/工具链/GN配置会生成新tag；若二进制配方改变而这些字段未变，必须同步递增锁中的 `sdkId`（例如追加 `-r2`），不能覆盖旧包。现有X2T-only workflow不需要V8 SDK，保持原有入口；完整Core功能编译仍由后续BLD卡实现和实测，不因SDK恢复入口就绪而视为通过。
+
 ## 重点边界
 
 本项目适合改动：

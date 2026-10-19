@@ -21,10 +21,10 @@
       {"id": "freetype-2.10.4", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/DesktopEditor/graphics/pro/freetype.pri", "core/PdfFile/PdfFile.pro"], "validation": "vendored source within pinned Core tree; target library not yet built"},
       {"id": "harfbuzz", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/DesktopEditor/graphics/pro/fontengine.pri", "core/Common/3dParty/harfbuzz/harfbuzz.pri"], "validation": "vendored source within pinned Core tree; enabled by qmake feature flag and target library not yet built"},
       {"id": "openjpeg", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/PdfFile/PdfFile.pro", "core/DesktopEditor/raster/Jp2/openjpeg/openjpeg.pri"], "validation": "vendored source within pinned Core tree; target library not yet built"},
-      {"id": "v8-windows-sdk", "kind": "development-sdk", "status": "unavailable", "version": "V8 8.9 branch-heads", "source": "build_tools/scripts/core_common/modules/v8_89.py", "reason": "core/Common/3dParty/v8_89 contains only .gitignore; exact V8 commit, depot_tools revision, GN args lock, headers, libraries and probe are absent."}
+      {"id": "v8-windows-sdk", "kind": "development-sdk", "status": "unavailable", "version": "V8 8.9 a2d8eca22ad478a95ca67bb2421a9a2535113925", "source": "config/v8-windows.lock.json; scripts/manage_v8_windows_sdk.py; fixed GitHub Release SDK", "reason": "Revisions, ABI and GN arguments are pinned; the SDK Release publication, download verification and hosted reuse probe are still pending. Restore never falls back to rebuilding V8; a successful matching workflow artifact can be promoted without another cold build."}
     ],
     "blockers": [
-      "Pin V8 and depot_tools revisions plus the complete Windows GN/CRT/ICU/snapshot/pointer-compression configuration; build or acquire and probe a matching SDK.",
+      "Publish the first verified matching V8 SDK (or promote a successful same-lock run), then verify fixed Release download and native reuse probe on Windows Actions.",
       "Run an actual clean Windows build to discover all Qt/compiler/linker/system SDK inputs and lock resulting DLL closure."
     ]
   },

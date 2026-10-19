@@ -10,3 +10,5 @@ core/Common/3dParty/icu/win_64/
 core/Common/3dParty/brotli/brotli/
 build_tools/config
 *.part
+__pycache__/
+*.pyc

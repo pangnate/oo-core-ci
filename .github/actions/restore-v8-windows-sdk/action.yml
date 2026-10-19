@@ -1,0 +1,88 @@
+name: Restore fixed V8 Windows SDK
+description: Restore and verify the locked public headers and static V8 library; never compile V8.
+inputs:
+  repository:
+    description: Repository hosting the fixed SDK Release
+    required: true
+    default: ${{ github.repository }}
+  token:
+    description: Token with contents read access to the SDK repository
+    required: true
+  destination:
+    description: New destination directory for the extracted SDK
+    required: true
+  allow-missing:
+    description: Only the SDK bootstrap workflow may handle a missing release
+    default: 'false'
+  staging-root:
+    description: Optional stage_core_source.py directory to fill the existing Core qmake V8 layout
+    default: ''
+outputs:
+  found:
+    description: Whether the fixed SDK was restored
+    value: ${{ steps.restore.outputs.found }}
+  sdk-root:
+    description: SDK root containing include and lib directories
+    value: ${{ steps.restore.outputs.sdk-root }}
+  include-root:
+    description: Public include directory
+    value: ${{ steps.restore.outputs.include-root }}
+  library-path:
+    description: Static v8_monolith.lib path
+    value: ${{ steps.restore.outputs.library-path }}
+  sdk-key:
+    description: SHA256 of the canonical SDK input lock
+    value: ${{ steps.identity.outputs.sdk-key }}
+  release-tag:
+    description: Exact release tag, never latest
+    value: ${{ steps.identity.outputs.release-tag }}
+  archive-sha256:
+    description: Verified SDK archive hash
+    value: ${{ steps.restore.outputs.archive-sha256 }}
+  core-v8-root:
+    description: Installed qmake dependency root when staging-root was supplied
+    value: ${{ steps.install.outputs.core-v8-root }}
+runs:
+  using: composite
+  steps:
+    - name: Identify locked SDK
+      id: identity
+      shell: pwsh
+      run: |
+        $script = Join-Path $env:GITHUB_ACTION_PATH '../../../scripts/manage_v8_windows_sdk.py'
+        python $script identity
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+    - name: Restore exact SDK archive cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/v8-sdk-cache/${{ inputs.repository }}/${{ steps.identity.outputs.sdk-key }}
+        key: v8-windows-sdk-${{ inputs.repository }}-${{ steps.identity.outputs.sdk-key }}
+
+    - name: Download fixed release and verify every input
+      id: restore
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        SDK_REPOSITORY: ${{ inputs.repository }}
+        SDK_CACHE: ${{ runner.temp }}/v8-sdk-cache/${{ inputs.repository }}/${{ steps.identity.outputs.sdk-key }}
+        SDK_DESTINATION: ${{ inputs.destination }}
+        SDK_ALLOW_MISSING: ${{ inputs.allow-missing }}
+      run: |
+        $script = Join-Path $env:GITHUB_ACTION_PATH '../../../scripts/manage_v8_windows_sdk.py'
+        $arguments = @($script, 'restore', '--repo', $env:SDK_REPOSITORY, '--asset-dir', $env:SDK_CACHE, '--output', $env:SDK_DESTINATION)
+        if ($env:SDK_ALLOW_MISSING -eq 'true') { $arguments += '--allow-missing' }
+        python @arguments
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+    - name: Install dependency into owned Core staging
+      id: install
+      if: steps.restore.outputs.found == 'true' && inputs.staging-root != ''
+      shell: pwsh
+      env:
+        SDK_ROOT: ${{ steps.restore.outputs.sdk-root }}
+        SDK_STAGING: ${{ inputs.staging-root }}
+      run: |
+        $script = Join-Path $env:GITHUB_ACTION_PATH '../../../scripts/manage_v8_windows_sdk.py'
+        python $script install --sdk-root "$env:SDK_ROOT" --staging-root "$env:SDK_STAGING"
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }

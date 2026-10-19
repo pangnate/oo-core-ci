@@ -29,15 +29,16 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def run(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int = 3600) -> str:
+def run(command: list[str], *, cwd: Path, env: dict[str, str], timeout: int = 3600, capture: bool = True) -> str:
     print("+", subprocess.list2cmdline(command), flush=True)
     completed = subprocess.run(command, cwd=cwd, env=env, text=True, encoding="utf-8",
-                               errors="replace", stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               errors="replace", stdout=subprocess.PIPE if capture else None, stderr=subprocess.STDOUT,
                                timeout=timeout)
-    print(completed.stdout, end="", flush=True)
+    if capture:
+        print(completed.stdout, end="", flush=True)
     if completed.returncode:
         raise RuntimeError(f"command failed ({completed.returncode}): {command[0]}")
-    return completed.stdout
+    return completed.stdout or ""
 
 
 def replace_once(path: Path, old: str, new: str, *, already_ok: str | None = None) -> None:
@@ -52,6 +53,7 @@ def replace_once(path: Path, old: str, new: str, *, already_ok: str | None = Non
 def probe(v8: Path, library: Path, work: Path, env: dict[str, str]) -> None:
     source = work / "v8_probe.cc"
     executable = work / "v8_probe.exe"
+    include = v8 / "include"
     source.write_text(r'''#include <iostream>
 #include "include/libplatform/libplatform.h"
 #include "include/v8.h"
@@ -87,7 +89,8 @@ int main() {
 ''', encoding="utf-8")
     libs = [str(library), "winmm.lib", "advapi32.lib", "Shell32.lib", "DbgHelp.lib", "Shlwapi.lib"]
     run(["cl", "/nologo", "/EHsc", "/MD", "/std:c++14", "/DV8_COMPRESS_POINTERS",
-         f"/I{v8}", str(source), *libs, f"/Fe:{executable}"], cwd=work, env=env, timeout=600)
+         f"/I{v8}", f"/I{include}", str(source), *libs, f"/Fe:{executable}"],
+        cwd=work, env=env, timeout=600)
     output = run([str(executable)], cwd=work, env=env, timeout=120)
     if "V8_PROBE_RESULT=3" not in output:
         raise RuntimeError("V8 linked executable did not produce the expected JS result")
@@ -251,7 +254,7 @@ def main() -> int:
     finally:
         ninja_file.write_text(original, encoding="utf-8", newline="")
     run([str(ninja), "-C", out, "-j", str(min(int(env.get("NUMBER_OF_PROCESSORS", "4")), 4)), "v8_monolith"],
-        cwd=v8, env=env, timeout=14400)
+        cwd=v8, env=env, timeout=14400, capture=False)
 
     library = v8 / out / "obj/v8_monolith.lib"
     include = v8 / "include"
@@ -277,16 +280,17 @@ def main() -> int:
         "platform": LOCK["platform"],
         "abi": LOCK["abi"],
         "entries": [
-            {"id": "v8-headers", "role": "include", "status": "verified", "source": f"V8 {head} public headers", "path": "dist/v8-windows-x64-sdk/include-headers.zip", "sha256": sha256(headers_archive)},
-            {"id": "v8-monolith", "role": "library", "status": "verified", "source": f"V8 {head} GN/Ninja build", "path": "dist/v8-windows-x64-sdk/lib/win_64/release/obj/v8_monolith.lib", "sha256": sha256(sdk / "lib/win_64/release/obj/v8_monolith.lib")}
+            {"id": "v8-headers", "role": "include", "status": "verified", "source": f"V8 {head} public headers", "path": "include-headers.zip", "sha256": sha256(headers_archive)},
+            {"id": "v8-monolith", "role": "library", "status": "verified", "source": f"V8 {head} GN/Ninja build", "path": "lib/win_64/release/obj/v8_monolith.lib", "sha256": sha256(sdk / "lib/win_64/release/obj/v8_monolith.lib")}
         ]
     }
     (sdk / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    validate_sdk_manifest(manifest, repo_root=ROOT, platform=LOCK["platform"], kind="development",
+    validate_sdk_manifest(manifest, repo_root=sdk, platform=LOCK["platform"], kind="development",
                           abi=LOCK["abi"], required_roles={"include", "library"})
+    lock_sha256 = hashlib.sha256(json.dumps(LOCK, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
     provenance = {"schemaVersion": 1, "sdkId": LOCK["sdkId"], "coreRef": LOCK["coreRef"],
                   "buildToolsRef": LOCK["buildToolsRef"], "v8Ref": head, "depotToolsRef": depot_head,
-                  "gnArgs": LOCK["gnArgs"], "abi": LOCK["abi"],
+                  "gnArgs": LOCK["gnArgs"], "abi": LOCK["abi"], "sdkLockSha256": lock_sha256,
                   "bootstrapRecipe": "ONLYOFFICE build_tools v8_89 Windows 8.9 bootstrap compatibility edits",
                   "probe": {"source": "1 + 2", "expected": 3, "status": "passed"}}
     (sdk / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")

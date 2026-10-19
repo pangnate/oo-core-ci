@@ -5,9 +5,11 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
+import build_v8_windows_sdk as builder
 from build_v8_windows_sdk import prepare_depot_tools
 
 
@@ -91,6 +93,17 @@ class V8WindowsSdkLockTests(unittest.TestCase):
         script = (ROOT / "scripts/build_v8_windows_sdk.py").read_text(encoding="utf-8")
         self.assertIn('ninja_candidates = (v8 / "third_party/ninja/ninja.exe", depot / "ninja.exe")', script)
         self.assertIn('gn_candidates = (v8 / "buildtools/win/gn.exe", depot / "gn.exe")', script)
+
+    def test_probe_compiles_against_v8_repository_and_public_include_roots(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            work = root / "work"
+            work.mkdir()
+            with patch.object(builder, "run", side_effect=["", "V8_PROBE_RESULT=3\n"]) as run:
+                builder.probe(root / "v8", root / "v8/out/obj/v8_monolith.lib", work, {})
+            compile_command = run.call_args_list[0].args[0]
+            self.assertIn(f"/I{root / 'v8'}", compile_command)
+            self.assertIn(f"/I{root / 'v8/include'}", compile_command)
 
 
 if __name__ == "__main__":

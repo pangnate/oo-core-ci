@@ -1,25 +1,64 @@
 name: Build pinned V8 Windows SDK
 
+# Dependency bootstrap is explicit; documentation/Core edits never start a cold V8 build.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/build-v8-windows.yml'
-      - 'config/v8-windows.lock.json'
-      - 'scripts/build_v8_windows_sdk.py'
-      - 'scripts/feature_deps/common.py'
-      - 'docs/Core三端功能改造_执行总表_2026-10-19.md'
+    inputs:
+      operation:
+        description: 'reuse: verify fixed SDK; build: build only if missing; promote: publish a successful run artifact'
+        type: choice
+        default: reuse
+        options: [reuse, build, promote]
+      source_run_id:
+        description: 'Successful build-v8-windows run ID, required for promote'
+        type: string
+        default: ''
 
 permissions:
   contents: read
+
+concurrency:
+  group: v8-windows-sdk-publication
+  cancel-in-progress: false
 
 jobs:
   v8-windows-x64:
     runs-on: windows-2022
     timeout-minutes: 360
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SDK_OPERATION: ${{ inputs.operation }}
+      SDK_SOURCE_RUN: ${{ inputs.source_run_id }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate bootstrap request
+        shell: pwsh
+        run: |
+          if ($env:SDK_OPERATION -notin @('reuse', 'build', 'promote')) {
+            throw 'operation must be reuse, build or promote'
+          }
+          if ($env:SDK_OPERATION -eq 'promote' -and $env:SDK_SOURCE_RUN -notmatch '^[1-9][0-9]*$') {
+            throw 'promote requires a successful V8 source_run_id; it never starts a new build'
+          }
+          if ($env:SDK_OPERATION -ne 'promote' -and $env:SDK_SOURCE_RUN) {
+            throw 'source_run_id is only accepted for operation=promote'
+          }
+
+      - name: Restore fixed SDK before considering a build
+        id: restored
+        uses: ./.github/actions/restore-v8-windows-sdk
+        with:
+          token: ${{ github.token }}
+          destination: ${{ runner.temp }}/restored-v8-windows-sdk
+          allow-missing: ${{ inputs.operation != 'reuse' }}
 
       - name: Locate Visual Studio 2019 toolset
         shell: powershell
@@ -34,30 +73,61 @@ jobs:
           "V8_V142_VERSION=$($v142.Name)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Build V8, link SDK probe, and run JavaScript
+        if: steps.restored.outputs.found != 'true' && inputs.operation == 'build'
         shell: cmd
         run: |
           call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
           if errorlevel 1 exit /b 1
           python scripts\build_v8_windows_sdk.py --work-root vendor\work --dist dist
 
-      - name: Verify SDK manifest and archive hash
-        shell: powershell
+      - name: Import first successful SDK artifact without rebuilding
+        if: steps.restored.outputs.found != 'true' && inputs.operation == 'promote'
+        shell: pwsh
         run: |
-          $manifest = Get-Content dist\v8-windows-x64-sdk\manifest.json -Raw | ConvertFrom-Json
-          if ($manifest.schemaVersion -ne 1 -or $manifest.abi -ne 'msvc-v142-14.29-dynamic-crt-x64') { throw 'SDK manifest ABI/schema mismatch' }
-          if ($manifest.entries.Count -ne 2 -or ($manifest.entries | Where-Object status -ne 'verified').Count) { throw 'SDK manifest entries are incomplete' }
-          $expected = (Get-Content dist\v8-windows-x64-sdk.zip.sha256).Split(' ')[0]
-          $actual = (Get-FileHash dist\v8-windows-x64-sdk.zip -Algorithm SHA256).Hash.ToLower()
-          if ($expected -ne $actual) { throw 'SDK archive SHA256 mismatch' }
-          Get-ChildItem dist\v8-windows-x64-sdk
+          python scripts/manage_v8_windows_sdk.py import-run --repo "$env:GITHUB_REPOSITORY" --run-id "$env:SDK_SOURCE_RUN" --asset-dir dist
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Verify SDK manifest and archive hash
+        id: unpacked
+        if: steps.restored.outputs.found != 'true'
+        shell: pwsh
+        run: |
+          python scripts/manage_v8_windows_sdk.py unpack --asset-dir dist --output "$env:RUNNER_TEMP/v8-sdk-publication-probe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Probe extracted SDK with the Core ABI
+        shell: cmd
+        env:
+          SDK_ROOT: ${{ steps.restored.outputs.sdk-root || steps.unpacked.outputs.sdk-root }}
+        run: |
+          call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
+          if errorlevel 1 exit /b 1
+          python scripts\manage_v8_windows_sdk.py probe --sdk-root "%SDK_ROOT%" --receipt dist\sdk-probe.json
+
+      - name: Publish fixed SDK Release and verify downloaded bytes
+        if: steps.restored.outputs.found != 'true'
+        shell: pwsh
+        run: |
+          python scripts/manage_v8_windows_sdk.py publish --repo "$env:GITHUB_REPOSITORY" --asset-dir dist --probe-receipt dist/sdk-probe.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - uses: actions/upload-artifact@v4
+        if: steps.restored.outputs.found != 'true'
         with:
           name: v8-windows-x64-sdk
           path: |
             dist/v8-windows-x64-sdk.zip
             dist/v8-windows-x64-sdk.zip.sha256
-            dist/v8-windows-x64-sdk/manifest.json
-            dist/v8-windows-x64-sdk/provenance.json
+            dist/sdk-release.json
+            dist/sdk-probe.json
           if-no-files-found: error
           retention-days: 30
+
+      - name: Record SDK reuse result
+        shell: pwsh
+        env:
+          SDK_TAG: ${{ steps.restored.outputs.release-tag }}
+          SDK_FOUND: ${{ steps.restored.outputs.found }}
+        run: |
+          "V8 SDK: $env:SDK_TAG; existing release restored: $env:SDK_FOUND" >> $env:GITHUB_STEP_SUMMARY
+          'SDK extraction and native JavaScript probe passed. SDK bootstrap is separate from Core feature builds.' >> $env:GITHUB_STEP_SUMMARY
