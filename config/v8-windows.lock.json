@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "sdkId": "onlyoffice-core-v8-8.9-windows-x64",
+  "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+  "buildToolsRef": "a9f9895b172b09595abcafe85d56fab163f9ecb7",
+  "v8": {
+    "url": "https://chromium.googlesource.com/v8/v8.git",
+    "ref": "a2d8eca22ad478a95ca67bb2421a9a2535113925",
+    "branch": "branch-heads/8.9"
+  },
+  "depotTools": {
+    "url": "https://chromium.googlesource.com/chromium/tools/depot_tools.git",
+    "ref": "82b992a1656d7d1cd0ee3cbea8ff609ffdfed380"
+  },
+  "platform": "windows-amd64",
+  "abi": "msvc-v142-14.29-dynamic-crt-x64",
+  "gnArgs": {
+    "is_debug": false,
+    "is_clang": false,
+    "is_component_build": false,
+    "target_cpu": "x64",
+    "treat_warnings_as_errors": false,
+    "use_custom_libcxx": false,
+    "v8_enable_pointer_compression": true,
+    "v8_monolithic": true,
+    "v8_static_library": true,
+    "v8_target_cpu": "x64",
+    "v8_use_external_startup_data": false
+  }
+}

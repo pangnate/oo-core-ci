@@ -1,0 +1,62 @@
+name: Build pinned V8 Windows SDK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-v8-windows.yml'
+      - 'config/v8-windows.lock.json'
+      - 'scripts/build_v8_windows_sdk.py'
+      - 'scripts/feature_deps/common.py'
+      - 'docs/Core三端功能改造_执行总表_2026-10-19.md'
+
+permissions:
+  contents: read
+
+jobs:
+  v8-windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate Visual Studio 2019 toolset
+        shell: powershell
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vs) { throw 'Visual Studio C++ tools not found' }
+          $v142 = Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC') -Directory | Where-Object { $_.Name -like '14.29*' } | Select-Object -First 1
+          if (!$v142) { throw 'MSVC v142 (14.29) is required by the V8 SDK ABI lock' }
+          "REAL_VCVARSALL=$(Join-Path $vs 'VC\Auxiliary\Build\vcvarsall.bat')" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "V8_V142_VERSION=$($v142.Name)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build V8, link SDK probe, and run JavaScript
+        shell: cmd
+        run: |
+          call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
+          if errorlevel 1 exit /b 1
+          python scripts\build_v8_windows_sdk.py --work-root vendor\work --dist dist
+
+      - name: Verify SDK manifest and archive hash
+        shell: powershell
+        run: |
+          $manifest = Get-Content dist\v8-windows-x64-sdk\manifest.json -Raw | ConvertFrom-Json
+          if ($manifest.schemaVersion -ne 1 -or $manifest.abi -ne 'msvc-v142-14.29-dynamic-crt-x64') { throw 'SDK manifest ABI/schema mismatch' }
+          if ($manifest.entries.Count -ne 2 -or ($manifest.entries | Where-Object status -ne 'verified').Count) { throw 'SDK manifest entries are incomplete' }
+          $expected = (Get-Content dist\v8-windows-x64-sdk.zip.sha256).Split(' ')[0]
+          $actual = (Get-FileHash dist\v8-windows-x64-sdk.zip -Algorithm SHA256).Hash.ToLower()
+          if ($expected -ne $actual) { throw 'SDK archive SHA256 mismatch' }
+          Get-ChildItem dist\v8-windows-x64-sdk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v8-windows-x64-sdk
+          path: |
+            dist/v8-windows-x64-sdk.zip
+            dist/v8-windows-x64-sdk.zip.sha256
+            dist/v8-windows-x64-sdk/manifest.json
+            dist/v8-windows-x64-sdk/provenance.json
+          if-no-files-found: error
+          retention-days: 30
