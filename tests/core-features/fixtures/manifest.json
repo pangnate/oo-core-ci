@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "sourceRoot": "D:/docservice/idp-all/idp-example/public/templates",
+  "sourceTemplates": {
+    "blank.docx": "2b4868b3e8db1881649308630e53728cbb9d202c91986e2ace07cf0d8ea9da6a",
+    "blank.pptx": "6f96985775fbb26d3b93c530fd8c99b801fecc0c0b1a59f92dee67740042c1d6",
+    "blank.xlsx": "c5787773d17f00aad75b271162f5a371b70e68083270b62b176bc559089f3825"
+  },
+  "expectations": {
+    "wordCharsFields": 4,
+    "wordBoolFields": 6,
+    "wordCharsBoolCombinations": 1024,
+    "wordLineValues": [
+      0,
+      50,
+      100,
+      200
+    ],
+    "wordTextScaleValues": [
+      80,
+      100,
+      120
+    ],
+    "permissionMarkers": [
+      "permStart",
+      "permEnd"
+    ],
+    "slideAlignments": [
+      "l",
+      "ctr",
+      "r",
+      "just",
+      "dist",
+      "justLow",
+      "thaiDist"
+    ],
+    "slideBoolCombinations": 8,
+    "lineSpacingUnits": [
+      "pct",
+      "pts"
+    ],
+    "textDirections": [
+      "horz",
+      "vert",
+      "vert270",
+      "eaVert"
+    ],
+    "sheetFeatures": [
+      "shared-background",
+      "filled-cells",
+      "no-gridlines",
+      "multi-page",
+      "repeated-titles"
+    ],
+    "imageFixtures": [
+      "valid-png",
+      "invalid-png"
+    ]
+  },
+  "files": {
+    "bad.png": "e27510b29d3cca708f18595054435ce5f83bd6159fa36faf3a72908fe8eb2973",
+    "known.png": "7a7fec50f1de5f48232b4852653b1e5fb4db2907db1e937563e2fdaf58c9a7b0",
+    "sheet-core-features.xlsx": "dc7e0ce7f61ee798788ecfe12512924ccdce9e67026c15dea363bfa6f92b0e06",
+    "slide-core-features.pptx": "cd60ee45138abd213165aa669a74705f1be6936587df107a8a3876eff6ce4d0e",
+    "source-blank.docx": "2b4868b3e8db1881649308630e53728cbb9d202c91986e2ace07cf0d8ea9da6a",
+    "source-blank.pptx": "6f96985775fbb26d3b93c530fd8c99b801fecc0c0b1a59f92dee67740042c1d6",
+    "source-blank.xlsx": "c5787773d17f00aad75b271162f5a371b70e68083270b62b176bc559089f3825",
+    "word-core-features.docx": "6afe4670e6f93283d03522fcfc77d1aada239ca13059b19f4e36d3e3636f2339"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "name": "source-windows-core10",
+  "level": "source",
+  "platform": "windows-amd64",
+  "core": {
+    "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+    "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34"
+  },
+  "inputs": {
+    "core-source": {
+      "path": "vendor/checksums.json",
+      "sha256": "a29ee17b5d1f3f1c3ea473f5bbe483b2509de8b2923ef6ac7be423f6cd571206"
+    },
+    "fixture-manifest": {
+      "path": "tests/core-features/fixtures/manifest.json",
+      "sha256": "272ca7c91544ed95982d6be125da715af958b7f89e3e3bb0aa1666f3d9f71bdf"
+    },
+    "baseline-evidence": {
+      "path": "docs/测试/luna/LUNA-CORE-00/evidence.md",
+      "sha256": "b21fb181b755d6ad9e39ac15167799d734f38918d2fdeed92f17157363bdbc73"
+    }
+  }
+}
