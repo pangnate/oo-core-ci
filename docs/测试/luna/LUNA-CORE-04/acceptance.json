@@ -1,0 +1,22 @@
+{
+  "taskId": "LUNA-CORE-04",
+  "case": "word-chars",
+  "execution": "NOT-RUN",
+  "container": {"tag": 1, "lengthType": 6},
+  "fields": [
+    {"xml": "leftChars", "model": "StartChars", "tag": 206},
+    {"xml": "rightChars", "model": "EndChars", "tag": 207},
+    {"xml": "firstLineChars", "model": "FirstLineChars", "tag": 208},
+    {"xml": "hangingChars", "model": "HangingChars", "tag": 209}
+  ],
+  "fieldLengthType": 4,
+  "values": [null, 0, 1, 50, 100, 275, -125],
+  "directions": ["LTR", "RTL"],
+  "physicalFallbackCases": ["absent", "coexists with character values", "firstLine and hanging conflict: preserve existing physical codec precedence"],
+  "characterConflictRule": "Retain all independently present raw fields, including firstLineChars and hangingChars; no sign clamp or cross-field normalization",
+  "containers": ["direct pPr", "docDefaults", "style pPr", "numbering level pPr", "pPrChange"],
+  "routes": ["DOCX -> BIN -> DOCX -> BIN -> DOCX"],
+  "negativeCases": ["character tag with non-4-byte payload: reader error", "unknown Ind tag is skipped without corrupting the next known field"],
+  "assertions": ["explicit zero remains present", "raw signed integer retained", "all tags reside inside Ind, not pPr", "physical fallback unchanged", "style zero override survives merge", "unrelated fields and old alignment values unchanged"],
+  "runtimeAssertionsExecuted": 0
+}

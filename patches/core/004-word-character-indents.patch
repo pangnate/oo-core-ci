@@ -1,0 +1,90 @@
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h b/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+--- a/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
++++ b/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+@@ -363,7 +363,12 @@
+ 		SnapToGrid = 46,
+ 		Bidi = 47,
+ 		Spacing_AfterLines = 48,
+-		Spacing_BeforeLines = 49
++		Spacing_BeforeLines = 49,
++		// Private character indents inside Ind (tag 1); raw 1/100 character values.
++		Ind_LeftChars = 206,
++		Ind_RightChars = 207,
++		Ind_FirstLineChars = 208,
++		Ind_HangingChars = 209
+ 	};}
+ 	namespace c_oSerProp_rPrType{enum c_oSerProp_rPrType
+ 	{
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+--- a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
++++ b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+@@ -1253,6 +1253,31 @@
+ 		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::Ind_FirstLineTwips);
+ 		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Long);
+ 		m_oBcw.m_oStream.WriteLONG( -1 * Ind.m_oHanging->ToTwips());
++	}
++	// Retain character units independently of the existing physical fallback.
++	if (Ind.m_oStartChars.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::Ind_LeftChars);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Long);
++		m_oBcw.m_oStream.WriteLONG(Ind.m_oStartChars->GetValue());
++	}
++	if (Ind.m_oEndChars.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::Ind_RightChars);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Long);
++		m_oBcw.m_oStream.WriteLONG(Ind.m_oEndChars->GetValue());
++	}
++	if (Ind.m_oFirstLineChars.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::Ind_FirstLineChars);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Long);
++		m_oBcw.m_oStream.WriteLONG(Ind.m_oFirstLineChars->GetValue());
++	}
++	if (Ind.m_oHangingChars.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::Ind_HangingChars);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Long);
++		m_oBcw.m_oStream.WriteLONG(Ind.m_oHangingChars->GetValue());
+ 	}
+ }
+ void Binary_pPrWriter::WriteSpacing(const ComplexTypes::Word::CSpacing& Spacing)
+diff --git a/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp b/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
+--- a/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
++++ b/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
+@@ -1208,6 +1208,34 @@
+ 			pInd->m_oHanging->FromTwips(-dIndFirstLine);
+ 		}
+ 	}break;
++	case c_oSerProp_pPrType::Ind_LeftChars:
++	{
++		if (length != 4)
++			return c_oSerConstants::ErrorUnknown;
++		pInd->m_oStartChars.Init();
++		pInd->m_oStartChars->SetValue(m_oBufferedStream.GetLong());
++	}break;
++	case c_oSerProp_pPrType::Ind_RightChars:
++	{
++		if (length != 4)
++			return c_oSerConstants::ErrorUnknown;
++		pInd->m_oEndChars.Init();
++		pInd->m_oEndChars->SetValue(m_oBufferedStream.GetLong());
++	}break;
++	case c_oSerProp_pPrType::Ind_FirstLineChars:
++	{
++		if (length != 4)
++			return c_oSerConstants::ErrorUnknown;
++		pInd->m_oFirstLineChars.Init();
++		pInd->m_oFirstLineChars->SetValue(m_oBufferedStream.GetLong());
++	}break;
++	case c_oSerProp_pPrType::Ind_HangingChars:
++	{
++		if (length != 4)
++			return c_oSerConstants::ErrorUnknown;
++		pInd->m_oHangingChars.Init();
++		pInd->m_oHangingChars->SetValue(m_oBufferedStream.GetLong());
++	}break;
+ 	default:
+ 		res = c_oSerConstants::ReadUnknown;
+ 		break;

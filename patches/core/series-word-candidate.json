@@ -7,6 +7,14 @@
       "path": "patches/core/003-word-distributed-jc.patch",
       "sha256": "b91369a92089b039afd8be38cbadfa4020b9cbe4bed4a42538528cb5c83f1fa9",
       "purpose": "CORE-03: preserve paragraph distribute as Jc value 4; source-only candidate"
+    },
+    {
+      "path": "patches/core/004-word-character-indents.patch",
+      "sha256": "e327a08858de371456fd1a66472fc2eb7361feb32ac295472da4dae52e7c88e7",
+      "purpose": "CORE-04: preserve four raw character indents in Ind container; source-only candidate",
+      "dependsOn": [
+        "patches/core/003-word-distributed-jc.patch"
+      ]
     }
   ]
 }

@@ -1,0 +1,89 @@
+{
+  "taskId": "LUNA-CORE-04",
+  "completionLevel": "SOURCE-READY / WAIT-BUILD",
+  "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+  "patches": [
+    {
+      "path": "patches/core/003-word-distributed-jc.patch",
+      "sha256": "b91369a92089b039afd8be38cbadfa4020b9cbe4bed4a42538528cb5c83f1fa9",
+      "purpose": "CORE-03: preserve paragraph distribute as Jc value 4; source-only candidate"
+    },
+    {
+      "path": "patches/core/004-word-character-indents.patch",
+      "sha256": "e327a08858de371456fd1a66472fc2eb7361feb32ac295472da4dae52e7c88e7",
+      "purpose": "CORE-04: preserve four raw character indents in Ind container; source-only candidate",
+      "dependsOn": [
+        "patches/core/003-word-distributed-jc.patch"
+      ]
+    }
+  ],
+  "replayScope": "Four touched Core files copied from locked pristine source; complete candidate feature set applied in order. Not a C++ test or build. Full official inventory/staging receipt is recorded separately.",
+  "comparison": "UTF-8 text including BOM equal after CRLF/LF normalization; scoped replay pins core.eol=lf; full staging follows repository attributes. Output SHA256 binds actual replay bytes.",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--check",
+        "--directory",
+        "vendor/work/word-replay-04-3e0004f1",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\003-word-distributed-jc.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--directory",
+        "vendor/work/word-replay-04-3e0004f1",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\003-word-distributed-jc.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--check",
+        "--directory",
+        "vendor/work/word-replay-04-3e0004f1",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\004-word-character-indents.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--directory",
+        "vendor/work/word-replay-04-3e0004f1",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\004-word-character-indents.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    }
+  ],
+  "outputFileSha256": {
+    "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp": "cc092358608aad41d381c9d608df1ad1d67b3097317ea7e9a74bbfcaf1036806",
+    "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp": "40dc5577292c6fe0ef7824eb3aa8db858c022a22d7f150bffca1587f3a2ee6e8",
+    "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h": "5bf7c7946bbcfd6cccf2039f5e3f1bcea00ef652589301cb615bf19cf7ac027f",
+    "core/OOXML/DocxFormat/Logic/Annotations.cpp": "2351884b5562c96d47f56a6b3a8df71e20d553059fe9f647f52b076ddc1d77a9"
+  },
+  "sourceImplementation": "SOURCE-READY",
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "protectedPocInputsUnchanged": true,
+  "implementationCommit": "Resolve with git log -1 -- patches/core/004-word-character-indents.patch"
+}
