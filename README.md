@@ -45,7 +45,7 @@ python scripts/download.py \
 
 1. 下载并展开 `ONLYOFFICE/core` 到 `core/`。
 2. 下载并展开 `ONLYOFFICE/build_tools` 到 `build_tools/`。
-3. 根据 `vendor/detected-deps.json` 下载与选定 Core/build_tools 基线匹配的 Boost、ICU、Brotli、Linux Qt、Ubuntu 16 sysroot 和 ONLYOFFICE portable Python3。当前锁定输入为 Boost 1.58.0、ICU 74.2、Brotli `a47d7475063eb223c87632eed806c0070e70da29`、Linux Qt 5.9.9。
+3. 根据 `vendor/detected-deps.json` 下载与选定 Core/build_tools 基线匹配的 Boost、ICU、Brotli、Linux Qt、Ubuntu 16 sysroot 和 ONLYOFFICE portable Python3。当前锁定输入为 Boost 1.72.0、ICU 74.2、Brotli `a47d7475063eb223c87632eed806c0070e70da29`、Linux Qt 5.9.9。
 4. 将你本地的 Linux `*.so*` 打成 vendor runtime 包。
 5. 将 Windows `*.dll` 打成 vendor runtime 包。
 6. 自动给 `X2tSLN.pri` 补 `CryptoPPLib` 依赖，并给 Linux x2t 增加 `rpath-link`。

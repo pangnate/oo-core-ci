@@ -5,8 +5,12 @@
     "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
     "treeHashAlgorithm": "sha256(sorted UTF-8 path + NUL + raw file SHA256)",
     "url": "https://codeload.github.com/ONLYOFFICE/core/tar.gz/ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
-    "projectPatches": ["scripts/patch_x2t_sln.py"],
-    "projectOverlays": ["Common/copyright.txt"]
+    "projectPatches": [
+      "scripts/patch_x2t_sln.py"
+    ],
+    "projectOverlays": [
+      "Common/copyright.txt"
+    ]
   },
   "build-tools-source": {
     "sha256": "fbbcde972ecb8b63efb202e3c7045e5d1fffa9c2b5e15d761fc7f5fe076a1d3d",
@@ -14,9 +18,9 @@
     "url": "https://codeload.github.com/ONLYOFFICE/build_tools/tar.gz/a9f9895b172b09595abcafe85d56fab163f9ecb7"
   },
   "boost": {
-    "sha256": "fdfc204fc33ec79c99b9a74944c3e54bd78be4f7f15e260c0e2700a36dc7d3e5",
-    "url": "https://archives.boost.io/release/1.58.0/source/boost_1_58_0.tar.bz2",
-    "file": "vendor/archives/boost_1_58_0.tar.bz2"
+    "sha256": "59c9b274bc451cf91a9ba1dd2c7fdcaf5d60b1b3aa83f2c9fa143417cc660722",
+    "url": "https://archives.boost.io/release/1.72.0/source/boost_1_72_0.tar.bz2",
+    "file": "vendor/archives/boost_1_72_0.tar.bz2"
   },
   "icu": {
     "sha256": "68db082212a96d6f53e35d60f47d38b962e9f9d207a74cfac78029ae8ff5e08c",

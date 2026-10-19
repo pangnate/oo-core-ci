@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "lockId": "onlyoffice-core10-windows-feature-build-v1",
+  "core": {
+    "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+    "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
+    "buildToolsRef": "a9f9895b172b09595abcafe85d56fab163f9ecb7",
+    "buildToolsTreeSha256": "fbbcde972ecb8b63efb202e3c7045e5d1fffa9c2b5e15d761fc7f5fe076a1d3d"
+  },
+  "windowsAmd64": {
+    "toolchain": [
+      {"id": "msvc-v142", "kind": "compiler", "status": "unavailable", "version": "14.29", "source": "GitHub windows-2022 runner or local VS Build Tools", "reason": "No cl.exe, MSBuild.exe, or vswhere.exe is discoverable in the current PowerShell environment; exact installed workload must be probed by the CI card."},
+      {"id": "qt-msvc2019", "kind": "archive", "status": "verified", "version": "5.15.2", "path": "vendor/archives/qt_5.15.2_msvc2019_64.7z", "sha256": "e64a657c36383c90624d606866a926402c0ab595f6fd311fa5a20fa90227b608", "validation": "archive hash and vendor lock only; extracted qmake/build not yet tested"},
+      {"id": "python", "kind": "host-tool", "status": "verified", "version": "3.14.7", "sourceRef": "host-environment", "evidence": ["python --version returned 3.14.7"], "validation": "not a portable hosted-runner guarantee"},
+      {"id": "7zip", "kind": "host-tool", "status": "unavailable", "reason": "No 7z command is discoverable in the current PowerShell environment; CI must install or locate a pinned extractor."}
+    ],
+    "thirdParty": [
+      {"id": "boost-archive-1.72", "kind": "source-archive", "status": "verified", "version": "1.72.0", "path": "vendor/archives/boost_1_72_0.tar.bz2", "sha256": "59c9b274bc451cf91a9ba1dd2c7fdcaf5d60b1b3aa83f2c9fa143417cc660722", "validation": "archive hash matches config/deps.json; matches the pinned build_tools Windows Boost recipe"},
+      {"id": "icu-74.2", "kind": "source-archive", "status": "verified", "version": "74.2", "path": "vendor/archives/icu4c-74_2-src.tgz", "sha256": "68db082212a96d6f53e35d60f47d38b962e9f9d207a74cfac78029ae8ff5e08c", "validation": "archive hash; Windows library build not yet tested"},
+      {"id": "brotli", "kind": "source-archive", "status": "verified", "version": "a47d7475063eb223c87632eed806c0070e70da29", "path": "vendor/archives/brotli-a47d7475063eb223c87632eed806c0070e70da29.tar.gz", "sha256": "49b657a4321cb00e388863dec8d0558b94ec47100d619b837d570a58bba71379", "validation": "archive hash; module build not yet tested"},
+      {"id": "freetype-2.10.4", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/DesktopEditor/graphics/pro/freetype.pri", "core/PdfFile/PdfFile.pro"], "validation": "vendored source within pinned Core tree; target library not yet built"},
+      {"id": "harfbuzz", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/DesktopEditor/graphics/pro/fontengine.pri", "core/Common/3dParty/harfbuzz/harfbuzz.pri"], "validation": "vendored source within pinned Core tree; enabled by qmake feature flag and target library not yet built"},
+      {"id": "openjpeg", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/PdfFile/PdfFile.pro", "core/DesktopEditor/raster/Jp2/openjpeg/openjpeg.pri"], "validation": "vendored source within pinned Core tree; target library not yet built"},
+      {"id": "v8-windows-sdk", "kind": "development-sdk", "status": "unavailable", "version": "V8 8.9 branch-heads", "source": "build_tools/scripts/core_common/modules/v8_89.py", "reason": "core/Common/3dParty/v8_89 contains only .gitignore; exact V8 commit, depot_tools revision, GN args lock, headers, libraries and probe are absent."}
+    ],
+    "blockers": [
+      "Pin V8 and depot_tools revisions plus the complete Windows GN/CRT/ICU/snapshot/pointer-compression configuration; build or acquire and probe a matching SDK.",
+      "Run an actual clean Windows build to discover all Qt/compiler/linker/system SDK inputs and lock resulting DLL closure."
+    ]
+  },
+  "deferred": {
+    "linuxAmd64": "Not accepted for this Windows POC. Existing vendor files are not authorized as matching input; later Linux assets must follow the user-designated docker-tools source.",
+    "linuxArm64": "Not accepted for this Windows POC. Existing vendor files are not authorized as matching input; later Linux assets must follow the user-designated docker-tools source."
+  },
+  "anchors": [
+    {"path": "scripts/windows_build.cmd", "contains": ["scripts\\prepare.py --platform windows", "scripts\\make_minimal_deps.py", "scripts\\build_x2t.py"]},
+    {"path": "scripts/prepare.py", "contains": ["DETECTED['boost']['version']", "DETECTED['icu']['version']", "DETECTED['brotli']['commit']", "qt_5.15.2_msvc2019_64.7z"]},
+    {"path": "build_tools/scripts/core_common/modules/boost.py", "contains": ["boost_1_72_0", "boost-1.72.0"]},
+    {"path": "build_tools/scripts/core_common/modules/v8_89.py", "contains": ["remotes/branch-heads/8.9", "depot_tools"]},
+    {"path": "core/DesktopEditor/graphics/pro/freetype.pri", "contains": ["FREETYPE_VERSION=2.10.4", "FREETYPE_PATH"]},
+    {"path": "core/DesktopEditor/graphics/pro/fontengine.pri", "contains": ["harfbuzz.pri", "brotli.pri"]},
+    {"path": "core/PdfFile/PdfFile.pro", "contains": ["use_openjpeg2000", "freetype.pri"]}
+  ]
+}

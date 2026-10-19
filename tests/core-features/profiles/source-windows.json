@@ -10,7 +10,7 @@
   "inputs": {
     "core-source": {
       "path": "vendor/checksums.json",
-      "sha256": "a29ee17b5d1f3f1c3ea473f5bbe483b2509de8b2923ef6ac7be423f6cd571206"
+      "sha256": "9c1fd83092d8eab0ce28d5e68e4a76f016e6080d7b444ecd627c67aa7a2b6d91"
     },
     "fixture-manifest": {
       "path": "tests/core-features/fixtures/manifest.json",
@@ -27,6 +27,14 @@
     "feature-profile-schema": {
       "path": "docs/协议/feature-profile.schema.json",
       "sha256": "e8b3817aa04f9afc5897f0554a61b5c02f720f3347225067e35d8b1a08a3702a"
+    },
+    "build-deps-lock": {
+      "path": "config/feature-runtime-deps.lock.json",
+      "sha256": "9deee698229898e7b9fadf457a08a101e43708a0fd9150ff16d9173ad713b13e"
+    },
+    "build-deps-schema": {
+      "path": "config/feature-runtime-deps.schema.json",
+      "sha256": "5f29acbfa0de658298753b8b502550d3d60caffbd4d687b78bf8875fca09eaa9"
     }
   }
 }
