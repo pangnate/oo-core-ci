@@ -1,8 +1,8 @@
 # ONLYOFFICE X2T Core-only 构建项目
 
-这个仓库用于**只编译 X2T 及其必要静态格式库**，产出 Linux amd64、Linux arm64、Windows amd64 三个平台的 `x2t`，不构建 ONLYOFFICE Server / SDKJS / Web Apps / 完整 Core runtime。当前已同步 10.0 源码和三平台 runtime；新基线尚待重新编译验证。
+这个仓库原用于**只编译 X2T 及其必要静态格式库**，不构建 ONLYOFFICE Server / SDKJS / Web Apps / 完整 Core runtime。当前已同步 Core 10 源码。`native-bin/windows/bin`是9.4.0.129；vendor Windows runtime来自另一目录，PE版本标记10.0.0.169但同步来源注明metadata-only-reconciliation，必须先完成真实加载/转换验证，不能只凭metadata视为匹配。本轮Windows POC将先验收该候选，必要时再构建完整DLL闭包。
 
-Word、Sheet、Slide的Core功能改造已有[45张Luna执行卡及2个汇总项](./docs/Core三端功能改造_Luna开发任务卡_2026-10-19.md)，唯一领取/状态入口为[执行总表](./docs/Core三端功能改造_执行总表_2026-10-19.md)。当前按用户本地Windows环境完成Core产物POC，不等待Linux或产品新SDKJS；后续新JS集成、Linux发布分阶段保留。任务补齐Windows开发构建、SDK/V8、缓存、指标与单平台容量，已知大卡已拆子卡。这些仍是待实施计划，本轮未启动开发。
+Word、Sheet、Slide的Core功能改造已有[46张Luna执行卡及2个汇总项](./docs/Core三端功能改造_Luna开发任务卡_2026-10-19.md)，唯一领取/状态入口为[执行总表](./docs/Core三端功能改造_执行总表_2026-10-19.md)。当前按用户本地Windows环境完成Core产物POC，不等待Linux或产品新SDKJS；后续新JS集成、Linux发布分阶段保留。任务补齐Windows开发构建、SDK/V8、匹配Core 10的完整基线DLL、缓存、指标与单平台容量，已知大卡已拆子卡。逐卡执行已开始，CORE-00完成。
 
 ## 你需要准备
 
@@ -147,20 +147,10 @@ CI 对缺少 import library 的 DLL 使用 `dumpbin /exports` 生成 `.def`，�
 
 ## 从官方同步 Core 并提取本地 runtime
 
-先将 `local-input/runtime-sources.example.json` 复制为被忽略的 `local-input/runtime-sources.json`，填写本机三个运行环境的 `bin` 路径。当前机器上的配置已指向两个 Docker 工具目录和 Windows runtime 目录。之后用官方 Core 的固定 commit 运行：
-
-```powershell
-python scripts/download.py `
-  --core-ref ed63e94de814ff1d4ea28cddfaba6939bc9df9ed `
-  --build-tools-ref a9f9895b172b09595abcafe85d56fab163f9ecb7 `
-  --force-source
-python scripts/verify_vendor.py --platform all
-```
-
-`--force-source` 会重新从 `ONLYOFFICE/core` 和 `ONLYOFFICE/build_tools` 按固定 commit 下载源码，即使本地已有相同 ref 也会重置源码快照。脚本按 Core 版本检测第三方依赖，直接从配置的三个 `bin` 目录提取 `*.so*` / `*.dll` 到 `vendor/runtime/`，并更新 SHA256。当前 Core commit 为 `ed63e94de814ff1d4ea28cddfaba6939bc9df9ed`（`v10.0.0.169-2`）；build_tools 固定在 `a9f9895b172b09595abcafe85d56fab163f9ecb7`。
+旧版runtime提取流程仅用于历史归档。当前 `scripts/download.py --force-source` 会重置 Core 来源目录，并把构建补丁/overlay写回输入树；在隔离源任务 `LUNA-CORE-BLD-01-FIX02`完成前，不要用它准备本轮功能构建。`native-bin/windows/bin` 已核实为9.4.0.129，不能作为Core 10 runtime来源。实际运行库路径须以本机忽略配置为准，逐DLL记录来源与版本，并由Windows基线任务做真实加载/转换验收；`verify_vendor.py`只核验文件/hash，不核验Core版本或ABI。
 
 按当前用户要求，功能代码只维护在 `patches/core/*.patch`，不提交已打功能补丁的 `core/` 快照。`core/`是官方来源输入；构建/测试在隔离staging先应用CI构建修正，再按顺序重放功能patch，最后应用明确的品牌overlay。上游同步保留固定来源并检查patch冲突，功能代码不靠整文件overlay替换官方文件。
 
 当前 `download.py` 和workflow仍有在输入树应用/构建快照的旧行为，须由任务 `LUNA-CORE-BLD-01-FIX02` 改成隔离源流程；这不代表脚本已完成改造。改造前不要在用户当前源码执行上述force-source命令来测试功能patch，也不要通过重置Core清理历史构建/品牌或用户改动。
 
-runtime 同步只打包动态库，不会把来源中的 `x2t`、字体缓存或其他应用资源混进链接依赖。runtime 来源仍需与所选 Core 基线匹配；生成的 `x2t` 也要部署到对应版本的完整运行环境。Core 官方 commit、项目 overlays/patch 列表和 runtime SHA256 记录在 `ci/baseline.json` 与 `vendor/checksums.json`。
+runtime同步只打包动态库，不会把来源中的 `x2t`、字体缓存或其他应用资源混进链接依赖。`native-bin/windows/bin`里的9.4 DLL不能用于Core 10；当前vendor归档来自单独的10.0.0.169目录且逐文件匹配，但标记为metadata-only-reconciliation，须先做实际加载/转换验证，失败时重建匹配DLL闭包。生成的 `x2t` 也要部署到对应版本的完整运行环境。Core官方commit、项目patch列表和runtime SHA256记录在 `ci/baseline.json` 与 `vendor/checksums.json`；这些hash证明输入字节固定，不单独证明来源/ABI匹配。

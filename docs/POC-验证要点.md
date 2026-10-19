@@ -4,7 +4,7 @@
 
 旧基线的三平台 X2T 编译验证均已通过；当前 10.0 基线尚待重新编译验证。构建使用仓库固定的 ONLYOFFICE Core/build_tools 基线、vendor 第三方输入和对应架构的预编译 runtime。
 
-当前源码快照对应官方 `ONLYOFFICE/core@ed63e94de814ff1d4ea28cddfaba6939bc9df9ed`；三平台 runtime 从本地运行环境 `bin` 目录提取并以归档 SHA256 固定。旧基线结果不作为新基线编译通过的依据。
+当前源码快照对应官方 `ONLYOFFICE/core@ed63e94de814ff1d4ea28cddfaba6939bc9df9ed`。2026-10-19审查发现 `native-bin/windows/bin` 标记为DocumentServer 9.4.0.129；vendor Windows runtime另来自产品目录，PE版本均为10.0.0.169且与归档逐字节一致，但来源记录注明metadata-only-reconciliation。Windows POC须由基线卡实际加载并转换验证该候选；失败时再构建完整Core 10 DLL闭包。旧基线结果不作为新基线编译通过的依据。
 
 ## CI 覆盖范围
 
