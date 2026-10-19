@@ -27,4 +27,4 @@ Status: IN_PROGRESS — lock, bootstrap script, static checks, and Actions workf
 
 ## Pending hosted acceptance
 
-The Windows build, native link/runtime probe, manifest validation, artifact upload/download, and final SDK hash verification have not run yet. The user does not compile locally; this card remains IN_PROGRESS until the GitHub Actions run succeeds and its artifact is verified.
+The first hosted run was `39247715707` on commit `c03593ae`; VS 2022 with MSVC v142 14.29 was found. V8 fetch failed before source synchronization because the relative `vendor/work` argument was resolved again under the build working directory, creating a duplicate path to depot_tools' Python bootstrap. The script now resolves work and artifact directories to absolute paths before invoking external tools. No local compile was run. The native link/runtime probe, manifest validation, artifact upload/download, and final SDK hash verification remain pending; this card stays IN_PROGRESS until a retry succeeds.

@@ -39,6 +39,8 @@ class V8WindowsSdkLockTests(unittest.TestCase):
         self.assertIn("v8_monolith", script)
         self.assertIn("V8_PROBE_RESULT=3", script)
         self.assertIn("--revision=v8@", script)
+        self.assertIn("args.work_root = args.work_root.resolve()", script)
+        self.assertIn("args.dist = args.dist.resolve()", script)
 
 
 if __name__ == "__main__":

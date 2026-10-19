@@ -102,6 +102,9 @@ def main() -> int:
     if not shutil.which("cl") or not shutil.which("git"):
         raise SystemExit("cl.exe and git must be available on PATH")
 
+    args.work_root = args.work_root.resolve()
+    args.dist = args.dist.resolve()
+
     args.work_root.mkdir(parents=True, exist_ok=True)
     build = args.work_root / "v8-sdk-windows-x64"
     if build.exists():
