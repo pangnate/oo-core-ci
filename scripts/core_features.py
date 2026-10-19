@@ -28,6 +28,7 @@ REGISTRY = {
     "fixtures": (TEST_ROOT / "test_fixtures.py", "verify_fixtures"),
     "contract": (TEST_ROOT / "test_contract.py", "verify_contract"),
     "build-deps-contract": (TEST_ROOT / "test_build_deps_contract.py", "verify_build_deps_contract"),
+    "build-deps-io": (TEST_ROOT / "test_build_deps_io.py", "verify_build_deps_io"),
 }
 SECRET_PATTERNS = [
     (re.compile(r"(?i)(password|passwd|token|secret|authorization)(\s*[=:]\s*)([^\s,;]+)"), r"\1\2[REDACTED]"),
@@ -91,6 +92,7 @@ def validate_profile(profile_path: Path, case: str) -> tuple[dict[str, Any], Pat
         "fixtures": {"core-source", "fixture-manifest"},
         "contract": {"core-source", "feature-contract", "feature-profile-schema"},
         "build-deps-contract": {"core-source", "build-deps-lock", "build-deps-schema"},
+        "build-deps-io": {"core-source", "sdk-manifest-schema"},
     }.get(case)
     if requirements is None:
         raise RunnerError(f"case is not registered: {case}")

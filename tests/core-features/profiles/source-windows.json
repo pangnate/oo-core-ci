@@ -35,6 +35,10 @@
     "build-deps-schema": {
       "path": "config/feature-runtime-deps.schema.json",
       "sha256": "5f29acbfa0de658298753b8b502550d3d60caffbd4d687b78bf8875fca09eaa9"
+    },
+    "sdk-manifest-schema": {
+      "path": "config/sdk-manifest.schema.json",
+      "sha256": "140cdae7003b888d96e3d993af2ef126c3a9b3fa1003355938f7398a9500f9fe"
     }
   }
 }
