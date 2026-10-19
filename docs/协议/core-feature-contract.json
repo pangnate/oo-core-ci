@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "contractId": "onlyoffice-core-three-apps-v1",
+  "coreBaseline": {
+    "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+    "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
+    "featurePatches": []
+  },
+  "binaryNamespaces": {
+    "wordParagraphProperty": {"idRange": [0, 255], "projectReservedRange": [200, 239]},
+    "sheetActionType": {"idRange": [0, 255], "projectReservedRange": [200, 255]},
+    "rule": "IDs are scoped to their parent container and product; do not move existing upstream values. Before upgrading the pinned Core baseline, scan for upstream collisions and block if a reserved value is occupied."
+  },
+  "word": {
+    "jc": {
+      "container": "document.paragraph.pPr",
+      "tag": 5,
+      "length": "Byte",
+      "values": {"0": "right", "1": "left", "2": "center", "3": "both", "4": "distribute"},
+      "default": "omit; preserve the existing four encoded values",
+      "unknown": "Reject as unsupported in new conversion paths; never coerce to both or justify."
+    },
+    "paragraphBooleans": [
+      {"xml": "w:kinsoku", "binaryTag": 200},
+      {"xml": "w:wordWrap", "binaryTag": 201},
+      {"xml": "w:overflowPunct", "binaryTag": 202},
+      {"xml": "w:topLinePunct", "binaryTag": 203},
+      {"xml": "w:autoSpaceDE", "binaryTag": 204},
+      {"xml": "w:autoSpaceDN", "binaryTag": 205}
+    ],
+    "booleanEncoding": {"container": "document.paragraph.pPr", "length": "Byte", "payload": "Bool byte 0|1", "absent": "inherit/default", "explicitFalse": "encode 0; do not collapse to absent"},
+    "characterIndents": [
+      {"xml": "w:ind/@w:leftChars", "modelField": "CInd.m_oStartChars", "binaryTag": 206},
+      {"xml": "w:ind/@w:rightChars", "modelField": "CInd.m_oEndChars", "binaryTag": 207},
+      {"xml": "w:ind/@w:firstLineChars", "modelField": "CInd.m_oFirstLineChars", "binaryTag": 208},
+      {"xml": "w:ind/@w:hangingChars", "modelField": "CInd.m_oHangingChars", "binaryTag": 209}
+    ],
+    "characterIndentEncoding": {"parentTag": 1, "parentLength": "Variable", "valueLength": "Long", "unit": "integer hundredths of a character", "zero": "explicit and retained", "twipFallback": "coexist without overwriting raw character values"},
+    "existingProperties": [
+      {"xml": "w:spacing/@w:afterLines", "containerTag": 9, "tag": 48, "length": "Long", "unit": "1/100 line"},
+      {"xml": "w:spacing/@w:beforeLines", "containerTag": 9, "tag": 49, "length": "Long", "unit": "1/100 line"},
+      {"xml": "w:rPr/w:w", "tag": 44, "name": "CompressText", "length": "Long", "unit": "raw OOXML text-scale value"}
+    ],
+    "permission": {
+      "markers": {"permStart": 28, "permEnd": 29, "scope": "paragraph content stream"},
+      "fields": {"id": 0, "displacedByCustomXml": 1, "colFirst": 2, "colLast": 3, "ed": 4, "edGrp": 5},
+      "xmlAttribute": "displacedByCustomXml",
+      "legacyReadAlias": "displacedbyCustomXml",
+      "writeRule": "write only the standard spelling; retain field presence and values; do not inject identity, Space policy, or dynamic allow/deny state"
+    }
+  },
+  "slide": {
+    "paragraphAlignment": {"xml": "a:pPr/@algn", "values": ["l", "ctr", "r", "just", "dist", "justLow", "thaiDist"], "pptyCodes": {"ctr": 0, "dist": 1, "just": 2, "justLow": 3, "l": 4, "r": 5, "thaiDist": 6}},
+    "paragraphBooleans": ["eaLnBrk", "latinLnBrk", "rtl"],
+    "lineSpacing": {"xmlParent": "a:lnSpc", "alternatives": {"pct": "a:spcPct/@val", "pts": "a:spcPts/@val"}, "pptyCodes": {"pct": 0, "pts": 1}, "rule": "preserve unit and raw integer; exactly one alternative per value; conflicting dual input is unsupported and must not be silently normalized"},
+    "textDirection": {"xml": "a:bodyPr/@vert", "requiredValues": ["horz", "vert", "vert270", "eaVert"], "additionalExistingValues": ["mongolianVert", "wordArtVert", "wordArtVertRtl"], "pptyProperty": 17, "rule": "preserve direction token; eaVert keeps CJK upright and must not be implemented as character rotation"}
+  },
+  "sheet": {
+    "worksheetPicture": {"binaryTag": 29, "relationship": "relative worksheet media relationship", "sharedMedia": "allowed; resolve every sheet reference independently"},
+    "history": {"actionType": 200, "owner": "SDKJS", "coreBehavior": "consume the resulting existing Picture data; do not parse or invent a C++ History action"},
+    "print": "Native SDKJS pagination and CPdfPrinter drawForPrint path must render the background on every printed page with clipping, scaling, alpha, shared-media and missing-image behavior checked. Picture29 codec support alone is not print support."
+  },
+  "imageFailure": {
+    "legacyDefault": "tolerant for all existing ABI entrypoints",
+    "strictOptIn": "explicit versioned policy selected by X2T conversion task and passed through PdfFile to graphics",
+    "path": ["X2tConverter task/params", "CPdfFile versioned strict entry", "OnlineOfficeBinToPdf strict conversion", "MetafileToRenderer command 111", "IRenderer.DrawImageFromFile", "CPdfFile and final X2T exit"],
+    "resultCodesV1": {"0": "ok", "1": "image command failed: missing/decode/renderer returned anything other than S_OK", "2": "malformed command stream or exception", "3": "PDF output write/finalization failed", "4": "invalid policy version or struct size"},
+    "propagation": "first error stops conversion; CPdfFile returns failure; X2T returns the existing AVS_FILEUTILS_ERROR_CONVERT class and does not publish a successful candidate",
+    "abi": {"preserve": ["CConvertFromBinParams layout", "IRenderer vtable", "IMetafileToRenderter vtable", "existing exported methods"], "additive": "fixed-width POD policy/result with size and version fields plus additive V1 entrypoints; no new virtual methods or data members"}
+  },
+  "runtimeInputs": {
+    "sdkjsSource": "D:/docservice/idp-all/idp-office/engine/manifests/source-lock.json",
+    "pin": {"repository": "https://github.com/ONLYOFFICE/sdkjs.git", "tag": "10.0.0", "commit": "3a94485abd83b1683cf4e64aec229d46b89778bd", "buildId": "sha256:aeec89b2bf4aa457b0030e4b5e2eeb65412205141565fece37e9ac9f7c64e923"},
+    "requiredReceipt": ["source-lock SHA256", "browser SDKJS output SHA256", "Native SDKJS output SHA256", "Changes/History codec output SHA256", "DoctRenderer.config SHA256", "font catalog/package manifest SHA256", "WASM/loader SHA256 or explicit not-required reason", "target Core patch-set and DLL hashes", "build profile ID"],
+    "consumer": "Core accepts these as locked product inputs; it does not fork or rebuild the product SDKJS. Browser WASM is owned by the product SDKJS build. A changed C++ bridge signature, feature struct, or ABI requires a new bridge/WASM loader artifact and matching receipt."
+  },
+  "compatibilityMatrix": [
+    {"core": "old", "browserJS": "old", "nativeJS": "old", "expected": "legacy-only", "allowNewFeatureWrite": false, "allowFeaturePdfPrint": false},
+    {"core": "old", "browserJS": "old", "nativeJS": "new", "expected": "old documents only; native print gains only separately verified existing Picture29 support", "allowNewFeatureWrite": false, "allowFeaturePdfPrint": false},
+    {"core": "old", "browserJS": "new", "nativeJS": "old", "expected": "deny feature editing/materialization; old Core loses Word tags 200-209", "allowNewFeatureWrite": false, "allowFeaturePdfPrint": false},
+    {"core": "old", "browserJS": "new", "nativeJS": "new", "expected": "deny feature materialization; old Core codec is lossy for new Word tags", "allowNewFeatureWrite": false, "allowFeaturePdfPrint": false},
+    {"core": "new", "browserJS": "old", "nativeJS": "old", "expected": "legacy regression only; old JS does not implement new layout/print", "allowNewFeatureWrite": false, "allowFeaturePdfPrint": false},
+    {"core": "new", "browserJS": "old", "nativeJS": "new", "expected": "read-only legacy/new-native route only after input-profile proof; no old-browser save of new Word BIN", "allowNewFeatureWrite": false, "allowFeaturePdfPrint": false},
+    {"core": "new", "browserJS": "new", "nativeJS": "old", "expected": "editing may be isolated for codec tests; disable feature PDF/print and mixed-session collaboration", "allowNewFeatureWrite": false, "allowFeaturePdfPrint": false},
+    {"core": "new", "browserJS": "new", "nativeJS": "new", "expected": "candidate full feature route after all three profiles and end-to-end acceptance pass", "allowNewFeatureWrite": true, "allowFeaturePdfPrint": true}
+  ],
+  "sourceAnchors": [
+    {"path": "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h", "symbols": ["Jc = 5", "Spacing_AfterLines = 48", "Spacing_BeforeLines = 49", "CompressText = 44", "DisplacedByCustomXml = 1", "EdGroup = 5"]},
+    {"path": "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp", "symbols": ["void Binary_pPrWriter::WriteInd", "SimpleTypes::jcDistribute", "c_oSerProp_rPrType::CompressText", "void BinaryDocumentTableWriter::WritePermission"]},
+    {"path": "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp", "symbols": ["case c_oSerProp_pPrType::Jc", "c_oSerPermission::EdGroup == type"]},
+    {"path": "core/OOXML/Common/ComplexTypes.h", "symbols": ["m_oStartChars", "m_oEndChars", "m_oFirstLineChars", "m_oHangingChars"]},
+    {"path": "core/OOXML/DocxFormat/Logic/ParagraphProperty.h", "symbols": ["m_oAutoSpaceDE", "m_oAutoSpaceDN", "m_oKinsoku", "m_oOverflowPunct", "m_oTopLinePunct", "m_oWordWrap"]},
+    {"path": "core/OOXML/DocxFormat/Logic/Annotations.cpp", "symbols": ["w:displacedbyCustomXml"]},
+    {"path": "core/OOXML/PPTXFormat/Limit/TextAlign.cpp", "symbols": ["L\"dist\"", "return 1", "L\"thaiDist\""]},
+    {"path": "core/OOXML/PPTXFormat/Logic/TextSpacing.cpp", "symbols": ["spcPct", "spcPts", "void TextSpacing::Normalize"]},
+    {"path": "core/OOXML/PPTXFormat/Limit/TextVerticalType.cpp", "symbols": ["L\"eaVert\"", "L\"vert270\""]},
+    {"path": "core/DesktopEditor/graphics/MetafileToRenderer.cpp", "symbols": ["case ctDrawImageFromFile", "pRenderer->DrawImageFromFile"]},
+    {"path": "core/PdfFile/PdfFile.h", "symbols": ["class CConvertFromBinParams", "class PDFFILE_DECL_EXPORT CPdfFile"]},
+    {"path": "core/PdfFile/OnlineOfficeBinToPdf.cpp", "symbols": ["bool ConvertBufferToPdf", "bool ConvertBinToPdf"]},
+    {"path": "core/OOXML/Binary/Sheets/Common/BinReaderWriterDefines.h", "symbols": ["Picture = 29"]}
+  ]
+}

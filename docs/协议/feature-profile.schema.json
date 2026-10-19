@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "core-feature-profile.schema.json",
+  "title": "ONLYOFFICE Core feature test profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "name", "level", "platform", "core", "inputs"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "name": {"type": "string", "minLength": 1},
+    "level": {"enum": ["source", "dev", "runtime"]},
+    "platform": {"enum": ["windows-amd64", "linux-amd64", "linux-arm64"]},
+    "core": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "treeSha256"],
+      "properties": {
+        "ref": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "treeSha256": {"$ref": "#/$defs/sha256"},
+        "patchSetSha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    }
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

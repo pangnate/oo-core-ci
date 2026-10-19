@@ -19,6 +19,14 @@
     "baseline-evidence": {
       "path": "docs/测试/luna/LUNA-CORE-00/evidence.md",
       "sha256": "b21fb181b755d6ad9e39ac15167799d734f38918d2fdeed92f17157363bdbc73"
+    },
+    "feature-contract": {
+      "path": "docs/协议/core-feature-contract.json",
+      "sha256": "1471a765b99385ec9d442dfe9fdd2a1b6db11c4a96c0012fd84f14384e10a2b2"
+    },
+    "feature-profile-schema": {
+      "path": "docs/协议/feature-profile.schema.json",
+      "sha256": "e8b3817aa04f9afc5897f0554a61b5c02f720f3347225067e35d8b1a08a3702a"
     }
   }
 }
