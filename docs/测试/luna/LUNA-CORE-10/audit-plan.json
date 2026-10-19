@@ -1,0 +1,13 @@
+{
+  "taskId": "LUNA-CORE-10",
+  "entries": [
+    {"path": "core/OOXML/PPTXFormat/Logic/BodyPr.cpp", "anchors": ["_T(\"vert\"), vert", "L\"vert\", vert", "WriteLimit2(17, vert)", "vert = pReader->GetUChar()", "bodyPr->vert = *vert", "_T(\"lIns\"), lIns", "_T(\"rIns\"), rIns"]},
+    {"path": "core/OOXML/PPTXFormat/Limit/TextVerticalType.cpp", "anchors": ["TextVerticalType::GetBYTECode", "TextVerticalType::SetBYTECode", "L\"eaVert\"", "L\"horz\"", "L\"mongolianVert\"", "L\"vert270\"", "L\"wordArtVertRtl\""]},
+    {"path": "core/OOXML/PPTXFormat/Logic/Shape.cpp", "anchors": ["oTextBoxBodyPr = oReader", "oTextBoxBodyPr = oNode", "oTextBoxBodyPr->m_namespace = L\"wps\"", "oTextBoxBodyPr->toPPTY", "oTextBoxBodyPr->fromPPTY", "WriteRecord2(5, txBody->bodyPr)"]},
+    {"path": "core/OOXML/PPTXFormat/Logic/TxBody.cpp", "anchors": ["bodyPr = oReader", "bodyPr = oNode", "WriteRecord2(0, bodyPr)", "bodyPr->fromPPTY"]},
+    {"path": "core/OOXML/PPTXFormat/DrawingConverter/ASCOfficeDrawingConverter.cpp", "anchors": ["void CDrawingConverter::ConvertVml", "cssptLayoutFlow", "flow == SimpleTypes::Vml::csslayoutflowVerticalIdeographic", "? L\"eaVert\" : L\"vert\"", "csslayoutflowaltBottomToTop", "pShape->txBody->bodyPr->vert = pShape->oTextBoxBodyPr->vert"]},
+    {"path": "core/OOXML/Common/SimpleTypes_Vml.cpp", "anchors": ["L\"vertical-ideographic\"", "csslayoutflowVerticalIdeographic", "L\"layout-flow\""]},
+    {"path": "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp", "anchors": ["bool BinaryDocumentTableWriter::WriteDrawingPptx", "void BinaryDocumentTableWriter::WriteDrawing", "m_pOfficeDrawingConverter->AddObject"]},
+    {"path": "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp", "anchors": ["m_pDrawingConverter->SaveObjectEx"]}
+  ]
+}

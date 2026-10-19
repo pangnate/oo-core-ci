@@ -59,6 +59,11 @@
       "path": "patches/core/017-slide-paragraph-stream-bools.patch",
       "sha256": "d16bbb0db32fd3700f6c27b74de0ddf3b1e28e6fba1f559b4df073a4aff3ef69",
       "purpose": "CORE-09: confirmed codec source omissions; uncompiled candidate"
+    },
+    {
+      "path": "patches/core/018-vml-ideographic-text-direction.patch",
+      "sha256": "97947aa1d1ca6c7fe922a009e7392b94a7be3061a7626581484186aef8ec5b54",
+      "purpose": "CORE-10: confirmed codec source omissions; uncompiled candidate"
     }
   ]
 }

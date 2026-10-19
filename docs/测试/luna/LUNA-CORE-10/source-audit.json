@@ -1,0 +1,602 @@
+{
+  "taskId": "LUNA-CORE-10",
+  "level": "SOURCE ANCHORS ONLY; semantics require manual review",
+  "cppAssertionsExecuted": 0,
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "staging": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\vendor\\work\\codec-audit-dev-20261019",
+  "entries": [
+    {
+      "path": "core/OOXML/PPTXFormat/Logic/BodyPr.cpp",
+      "sha256": "06fc53557bb23558333a959f38d96e794347583979e1e60739b1524e00be870d",
+      "anchors": [
+        {
+          "anchor": "_T(\"vert\"), vert",
+          "lines": [
+            95,
+            147,
+            189
+          ],
+          "excerpts": [
+            {
+              "line": 95,
+              "text": "\t\t\t\tWritingElement_ReadAttributes_Read_else_if( oReader, _T(\"vert\"), vert )"
+            },
+            {
+              "line": 147,
+              "text": "\t\t\toAttr.WriteLimitNullable(_T(\"vert\"), vert);"
+            },
+            {
+              "line": 189,
+              "text": "\t\t\tpWriter->WriteAttribute(_T(\"vert\"), vert);"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"vert\", vert",
+          "lines": [
+            122
+          ],
+          "excerpts": [
+            {
+              "line": 122,
+              "text": "\t\t\tXmlMacroReadAttributeBase(node, L\"vert\", vert);"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteLimit2(17, vert)",
+          "lines": [
+            295
+          ],
+          "excerpts": [
+            {
+              "line": 295,
+              "text": "\t\t\tpWriter->WriteLimit2(17, vert);"
+            }
+          ]
+        },
+        {
+          "anchor": "vert = pReader->GetUChar()",
+          "lines": [
+            405
+          ],
+          "excerpts": [
+            {
+              "line": 405,
+              "text": "\t\t\t\t\t\tvert = pReader->GetUChar();"
+            }
+          ]
+        },
+        {
+          "anchor": "bodyPr->vert = *vert",
+          "lines": [
+            269
+          ],
+          "excerpts": [
+            {
+              "line": 269,
+              "text": "\t\t\t\tbodyPr->vert = *vert;"
+            }
+          ]
+        },
+        {
+          "anchor": "_T(\"lIns\"), lIns",
+          "lines": [
+            86,
+            149,
+            191
+          ],
+          "excerpts": [
+            {
+              "line": 86,
+              "text": "\t\t\t\tWritingElement_ReadAttributes_Read_else_if( oReader, _T(\"lIns\"), lIns )"
+            },
+            {
+              "line": 149,
+              "text": "\t\t\toAttr.Write(_T(\"lIns\"), lIns);"
+            },
+            {
+              "line": 191,
+              "text": "\t\t\tpWriter->WriteAttribute(_T(\"lIns\"), lIns);"
+            }
+          ]
+        },
+        {
+          "anchor": "_T(\"rIns\"), rIns",
+          "lines": [
+            88,
+            151,
+            193
+          ],
+          "excerpts": [
+            {
+              "line": 88,
+              "text": "\t\t\t\tWritingElement_ReadAttributes_Read_else_if( oReader, _T(\"rIns\"), rIns )"
+            },
+            {
+              "line": 151,
+              "text": "\t\t\toAttr.Write(_T(\"rIns\"), rIns);"
+            },
+            {
+              "line": 193,
+              "text": "\t\t\tpWriter->WriteAttribute(_T(\"rIns\"), rIns);"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/PPTXFormat/Limit/TextVerticalType.cpp",
+      "sha256": "2a4d5f9ac7d364fe2f3004b0ad3b101784941abe64a9c56f1452eda9f1fda6e3",
+      "anchors": [
+        {
+          "anchor": "TextVerticalType::GetBYTECode",
+          "lines": [
+            59
+          ],
+          "excerpts": [
+            {
+              "line": 59,
+              "text": "\t\tunsigned char TextVerticalType::GetBYTECode() const"
+            }
+          ]
+        },
+        {
+          "anchor": "TextVerticalType::SetBYTECode",
+          "lines": [
+            77
+          ],
+          "excerpts": [
+            {
+              "line": 77,
+              "text": "\t\tvoid TextVerticalType::SetBYTECode(const unsigned char& src)"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"eaVert\"",
+          "lines": [
+            48,
+            61,
+            81
+          ],
+          "excerpts": [
+            {
+              "line": 48,
+              "text": "\t\t\tif ((L\"eaVert\" == strValue) ||"
+            },
+            {
+              "line": 61,
+              "text": "\t\t\tif (L\"eaVert\" == m_strValue)"
+            },
+            {
+              "line": 81,
+              "text": "\t\t\tcase 0: m_strValue = L\"eaVert\"; break;"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"horz\"",
+          "lines": [
+            44,
+            49,
+            63,
+            82,
+            89
+          ],
+          "excerpts": [
+            {
+              "line": 44,
+              "text": "\t\t\tm_strValue = L\"horz\";"
+            },
+            {
+              "line": 49,
+              "text": "\t\t\t\t(L\"horz\" == strValue) ||"
+            },
+            {
+              "line": 63,
+              "text": "\t\t\tif (L\"horz\" == m_strValue)"
+            },
+            {
+              "line": 82,
+              "text": "\t\t\tcase 1: m_strValue = L\"horz\"; break;"
+            },
+            {
+              "line": 89,
+              "text": "\t\t\t\tm_strValue = L\"horz\";"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"mongolianVert\"",
+          "lines": [
+            50,
+            65,
+            83
+          ],
+          "excerpts": [
+            {
+              "line": 50,
+              "text": "\t\t\t\t(L\"mongolianVert\" == strValue) ||"
+            },
+            {
+              "line": 65,
+              "text": "\t\t\tif (L\"mongolianVert\" == m_strValue)"
+            },
+            {
+              "line": 83,
+              "text": "\t\t\tcase 2: m_strValue = L\"mongolianVert\"; break;"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"vert270\"",
+          "lines": [
+            52,
+            69,
+            85
+          ],
+          "excerpts": [
+            {
+              "line": 52,
+              "text": "\t\t\t\t(L\"vert270\" == strValue) ||"
+            },
+            {
+              "line": 69,
+              "text": "\t\t\tif (L\"vert270\" == m_strValue)"
+            },
+            {
+              "line": 85,
+              "text": "\t\t\tcase 4: m_strValue = L\"vert270\"; break;"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"wordArtVertRtl\"",
+          "lines": [
+            54,
+            73,
+            87
+          ],
+          "excerpts": [
+            {
+              "line": 54,
+              "text": "\t\t\t\t(L\"wordArtVertRtl\" == strValue))"
+            },
+            {
+              "line": 73,
+              "text": "\t\t\tif (L\"wordArtVertRtl\" == m_strValue)"
+            },
+            {
+              "line": 87,
+              "text": "\t\t\tcase 6: m_strValue = L\"wordArtVertRtl\"; break;"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/PPTXFormat/Logic/Shape.cpp",
+      "sha256": "bbd11b9d834aa35ef1420a22ef278e34f8756d143a50acb2f1b08bc4adf2553f",
+      "anchors": [
+        {
+          "anchor": "oTextBoxBodyPr = oReader",
+          "lines": [
+            168
+          ],
+          "excerpts": [
+            {
+              "line": 168,
+              "text": "\t\t\t\t\toTextBoxBodyPr = oReader;"
+            }
+          ]
+        },
+        {
+          "anchor": "oTextBoxBodyPr = oNode",
+          "lines": [
+            210
+          ],
+          "excerpts": [
+            {
+              "line": 210,
+              "text": "\t\t\t\t\t\toTextBoxBodyPr = oNode;"
+            }
+          ]
+        },
+        {
+          "anchor": "oTextBoxBodyPr->m_namespace = L\"wps\"",
+          "lines": [
+            318
+          ],
+          "excerpts": [
+            {
+              "line": 318,
+              "text": "\t\t\t\t\t\toTextBoxBodyPr->m_namespace = L\"wps\";"
+            }
+          ]
+        },
+        {
+          "anchor": "oTextBoxBodyPr->toPPTY",
+          "lines": [
+            531,
+            548
+          ],
+          "excerpts": [
+            {
+              "line": 531,
+              "text": "\t\t\t\t\t\toTextBoxBodyPr->toPPTY(pWriter);"
+            },
+            {
+              "line": 548,
+              "text": "\t\t\t\t\t\toTextBoxBodyPr->toPPTY(pWriter);"
+            }
+          ]
+        },
+        {
+          "anchor": "oTextBoxBodyPr->fromPPTY",
+          "lines": [
+            446
+          ],
+          "excerpts": [
+            {
+              "line": 446,
+              "text": "\t\t\t\t\toTextBoxBodyPr->fromPPTY(pReader);"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteRecord2(5, txBody->bodyPr)",
+          "lines": [
+            564
+          ],
+          "excerpts": [
+            {
+              "line": 564,
+              "text": "\t\t\t\t\tpWriter->WriteRecord2(5, txBody->bodyPr);"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/PPTXFormat/Logic/TxBody.cpp",
+      "sha256": "87658a9c8fa91a208d731d30ed2c70035805ecb1adc31f8a97d131da745a761c",
+      "anchors": [
+        {
+          "anchor": "bodyPr = oReader",
+          "lines": [
+            101
+          ],
+          "excerpts": [
+            {
+              "line": 101,
+              "text": "\t\t\t\t\tbodyPr = oReader;"
+            }
+          ]
+        },
+        {
+          "anchor": "bodyPr = oNode",
+          "lines": [
+            138
+          ],
+          "excerpts": [
+            {
+              "line": 138,
+              "text": "\t\t\t\t\t\tbodyPr = oNode;"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteRecord2(0, bodyPr)",
+          "lines": [
+            330
+          ],
+          "excerpts": [
+            {
+              "line": 330,
+              "text": "\t\t\tpWriter->WriteRecord2(0, bodyPr);"
+            }
+          ]
+        },
+        {
+          "anchor": "bodyPr->fromPPTY",
+          "lines": [
+            347
+          ],
+          "excerpts": [
+            {
+              "line": 347,
+              "text": "\t\t\t\t\t\tbodyPr->fromPPTY(pReader);"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/PPTXFormat/DrawingConverter/ASCOfficeDrawingConverter.cpp",
+      "sha256": "2b00b9611ab191dbbc932c5256065e17184e311d45724bab2af15872930ac823",
+      "anchors": [
+        {
+          "anchor": "void CDrawingConverter::ConvertVml",
+          "lines": [
+            1409
+          ],
+          "excerpts": [
+            {
+              "line": 1409,
+              "text": "void CDrawingConverter::ConvertVml(const std::wstring& sXml, std::vector<nullable<PPTX::Logic::SpTreeElem>> &elements, NSCommon::nullable<OOX::WritingElement>& anchor)"
+            }
+          ]
+        },
+        {
+          "anchor": "cssptLayoutFlow",
+          "lines": [
+            2247
+          ],
+          "excerpts": [
+            {
+              "line": 2247,
+              "text": "\t\t\t\t\t\tstd::map<SimpleTypes::Vml::ECssPropertyType, size_t>::iterator pFind = oCssStyle.m_mapProperties.find(SimpleTypes::Vml::cssptLayoutFlow);"
+            }
+          ]
+        },
+        {
+          "anchor": "flow == SimpleTypes::Vml::csslayoutflowVerticalIdeographic",
+          "lines": [
+            2252,
+            2255
+          ],
+          "excerpts": [
+            {
+              "line": 2252,
+              "text": "\t\t\t\t\t\t\tif (flow == SimpleTypes::Vml::csslayoutflowVertical || flow == SimpleTypes::Vml::csslayoutflowVerticalIdeographic)"
+            },
+            {
+              "line": 2255,
+              "text": "\t\t\t\t\t\t\t\tpShape->oTextBoxBodyPr->vert->set(flow == SimpleTypes::Vml::csslayoutflowVerticalIdeographic ? L\"eaVert\" : L\"vert\");"
+            }
+          ]
+        },
+        {
+          "anchor": "? L\"eaVert\" : L\"vert\"",
+          "lines": [
+            2255
+          ],
+          "excerpts": [
+            {
+              "line": 2255,
+              "text": "\t\t\t\t\t\t\t\tpShape->oTextBoxBodyPr->vert->set(flow == SimpleTypes::Vml::csslayoutflowVerticalIdeographic ? L\"eaVert\" : L\"vert\");"
+            }
+          ]
+        },
+        {
+          "anchor": "csslayoutflowaltBottomToTop",
+          "lines": [
+            2261
+          ],
+          "excerpts": [
+            {
+              "line": 2261,
+              "text": "\t\t\t\t\t\t\tif (oCssStyle.m_arrProperties[pFind->second]->get_Value().eLayoutFlowAlt == SimpleTypes::Vml::csslayoutflowaltBottomToTop)"
+            }
+          ]
+        },
+        {
+          "anchor": "pShape->txBody->bodyPr->vert = pShape->oTextBoxBodyPr->vert",
+          "lines": [
+            2276
+          ],
+          "excerpts": [
+            {
+              "line": 2276,
+              "text": "\t\t\t\t\t\t\tpShape->txBody->bodyPr->vert = pShape->oTextBoxBodyPr->vert;\t\t"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Common/SimpleTypes_Vml.cpp",
+      "sha256": "70e8ca5011de3a44713d521c914b156c41a5a7883375e2a2c3d8d7f5666a3e73",
+      "anchors": [
+        {
+          "anchor": "L\"vertical-ideographic\"",
+          "lines": [
+            2840
+          ],
+          "excerpts": [
+            {
+              "line": 2840,
+              "text": "\t\t\telse if ( L\"vertical-ideographic\"   == sValue ) m_oValue.eLayoutFlow = csslayoutflowVerticalIdeographic;"
+            }
+          ]
+        },
+        {
+          "anchor": "csslayoutflowVerticalIdeographic",
+          "lines": [
+            2840
+          ],
+          "excerpts": [
+            {
+              "line": 2840,
+              "text": "\t\t\telse if ( L\"vertical-ideographic\"   == sValue ) m_oValue.eLayoutFlow = csslayoutflowVerticalIdeographic;"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"layout-flow\"",
+          "lines": [
+            2449
+          ],
+          "excerpts": [
+            {
+              "line": 2449,
+              "text": "\t\t\t\t\tif      ( L\"layout-flow\" == sProperty )\t\tm_eType = cssptLayoutFlow;"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp",
+      "sha256": "c9f9fbfeb076a369b5c1e2ee589d4d8b3c1b3bbf6a173d6b982c6849a9f6c95d",
+      "anchors": [
+        {
+          "anchor": "bool BinaryDocumentTableWriter::WriteDrawingPptx",
+          "lines": [
+            7032
+          ],
+          "excerpts": [
+            {
+              "line": 7032,
+              "text": "bool BinaryDocumentTableWriter::WriteDrawingPptx(OOX::WritingElement* item)"
+            }
+          ]
+        },
+        {
+          "anchor": "void BinaryDocumentTableWriter::WriteDrawing",
+          "lines": [
+            7116
+          ],
+          "excerpts": [
+            {
+              "line": 7116,
+              "text": "void BinaryDocumentTableWriter::WriteDrawing(std::wstring* pXml, OOX::Logic::CDrawing* pDrawing, PPTX::Logic::GraphicFrame *pGraphic)"
+            }
+          ]
+        },
+        {
+          "anchor": "m_pOfficeDrawingConverter->AddObject",
+          "lines": [
+            7133
+          ],
+          "excerpts": [
+            {
+              "line": 7133,
+              "text": "\t\t\tbool bRes = m_pOfficeDrawingConverter->AddObject(*pXml, &strOutputXml);"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp",
+      "sha256": "200a68a1f930c52a892be7f2a782f0637606e5b55feb0be072ef34a745325dab",
+      "anchors": [
+        {
+          "anchor": "m_pDrawingConverter->SaveObjectEx",
+          "lines": [
+            8726
+          ],
+          "excerpts": [
+            {
+              "line": 8726,
+              "text": "        m_oFileWriter.m_pDrawingConverter->SaveObjectEx(oCDrawingProperty.DataPos, oCDrawingProperty.DataLength, sDrawingProperty, nDocType, sDrawingXml);"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
