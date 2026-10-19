@@ -1,0 +1,16 @@
+{
+  "taskId": "LUNA-CORE-15",
+  "case": "strict-entry",
+  "execution": "NOT-RUN",
+  "cppAssertionsExecuted": 0,
+  "requiredTarget": "compiled actual InputParams XML, shared PDF dispatch and X2T result/exit handling; external CPdfFile/renderer/filesystem fault injection only",
+  "policyField": "m_sImageFailurePolicyV1",
+  "policyCases": ["absent", "legacy", "0", "strict", "1", "empty element", "false", "2", "unknown token", "leading/trailing whitespace", "duplicate same value", "duplicate conflicting value"],
+  "validPolicyRule": {"legacy": ["absent", "legacy", "0"], "strict": ["strict", "1"], "otherwise": "AVS_FILEUTILS_ERROR_CONVERT_PARAMS"},
+  "overrideCases": ["file XML legacy then explicit strict override", "file XML strict then explicit legacy override", "invalid override rejected without conversion"],
+  "routes": ["DOCX -> shared renderer -> PDF", "XLSX -> shared renderer -> PDF", "PPTX -> shared renderer -> PDF", "editor BIN/package -> PDF", "raw binary commands -> PDF", "base64 commands -> PDF", "supported document routes -> PDF-A"],
+  "unsupportedRoutes": ["strict plus non-PDF target", "strict plus direct cross-platform PDF input route", "strict plus other unconnected dispatch"],
+  "outcomes": ["S_OK with result code0", "S_OK with nonzero result code", "S_FALSE", "failing HRESULT", "C++ exception", "image fault", "decode fault", "write fault", "publish fault"],
+  "assertions": ["default and legacy values retain old image tolerance", "strict non-S_OK or nonzero result code returns CONVERT error and non-success process exit", "invalid/directly mutated parameters fail before conversion", "image failure does not publish successful PDF or call signing", "pre-existing output bytes remain unchanged on conversion/save/publish failure", "only owned candidate cleaned", "numeric diagnostics contain no paths, document text or credentials", "all targeted product routes actually select V1", "unsupported strict dispatch fails closed", "InputParams initialized/destroyed safely and X2T rebuilt with matching headers"],
+  "laterGate": "CORE-16/19 full Windows DLL/X2T chain, then CORE-22/23/24 Native PDF; source implementation does not close them"
+}

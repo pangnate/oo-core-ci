@@ -41,6 +41,14 @@
       "dependsOn": [
         "patches/core/013-graphics-strict-image-errors.patch"
       ]
+    },
+    {
+      "path": "patches/core/015-x2t-strict-image-policy.patch",
+      "sha256": "87d88f782d500e79e91d4642488b7a545fdd1546df4f1a4a817eca7fbfa36448",
+      "purpose": "CORE-15: opt-in strict image TaskQueue XML parameter, PdfFile V1 dispatch and conversion error exit; source-only candidate",
+      "dependsOn": [
+        "patches/core/014-pdffile-strict-error-propagation.patch"
+      ]
     }
   ]
 }

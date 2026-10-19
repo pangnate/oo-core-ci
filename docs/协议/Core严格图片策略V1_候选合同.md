@@ -22,6 +22,6 @@ code=3表示保存/发布失败，code=4表示策略布局/version/flags错误�
 
 任务XML字段`m_sImageFailurePolicyV1`：缺省、`legacy`、`0`为旧容错；`strict`、`1`启用V1严格图片；其余值（含空字段）及同一次解析内重复字段均拒绝为`AVS_FILEUTILS_ERROR_CONVERT_PARAMS`，不沿用布尔解析把非法值转false。参数从既有TaskQueue XML进入InputParams，不新增HTTP/MQ/数据库协议。
 
-该字段保存在InputParams内部并随清理释放；InputParams不属于graphics/PdfFile的公开稳定ABI结构，本轮仍要求X2T整体重编。DOCX/XLSX/PPTX经现有`doct_bin2pdf`、原始PDF命令BIN经`bin2pdf`选择V1文件入口，继续以`S_OK`作为唯一成功值，失败映射`AVS_FILEUTILS_ERROR_CONVERT`。签名与后续发布仅在成功后运行。
+该字段保存在InputParams内部并随清理释放；InputParams不属于graphics/PdfFile的公开稳定ABI结构，本轮仍要求X2T整体重编。DOCX/XLSX/PPTX及其编辑器BIN/打包输入经现有`doct_bin2pdf`、原始PDF命令BIN经`bin2pdf`选择V1文件入口，支持PDF/PDF-A目标；根分派对其它转换方向显式返回参数错误，避免在未接线的路径静默忽略strict。继续以`S_OK`且V1结果code=0作为成功，失败映射`AVS_FILEUTILS_ERROR_CONVERT`。签名仅在转换成功后运行；签名本身仍使用原有结果/输出语义，不在本批新增签名事务机制。
 
 这些合同均为候选源码边界；13/14/15在真实组件编译/运行前保持PARTIAL，16/19补完整DLL/X2T实链，22～24补新SDKJS功能与视觉验收。
