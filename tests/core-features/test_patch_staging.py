@@ -1,0 +1,220 @@
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+STAGER_PATH = ROOT / "scripts" / "stage_core_source.py"
+spec = importlib.util.spec_from_file_location("core_source_stager", STAGER_PATH)
+assert spec and spec.loader
+stager = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(stager)
+download_spec = importlib.util.spec_from_file_location("core_source_downloader", ROOT / "scripts" / "download.py")
+assert download_spec and download_spec.loader
+downloader = importlib.util.module_from_spec(download_spec)
+download_spec.loader.exec_module(downloader)
+
+
+def _sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _patch(old: str, new: str) -> str:
+    return ("diff --git a/core/demo.txt b/core/demo.txt\n"
+            "index 0000000..1111111 100644\n"
+            "--- a/core/demo.txt\n+++ b/core/demo.txt\n"
+            f"@@ -1 +1 @@\n-{old}\n+{new}\n")
+
+
+def _fixture_repo(parent: Path, *, wrong_base: bool = False) -> tuple[Path, Path, dict, dict, dict]:
+    repo = parent / "repo"
+    source = repo / "vendor" / "work" / "source"
+    source.mkdir(parents=True)
+    (source / "demo.txt").write_text("wrong\n" if wrong_base else "base\n", encoding="utf-8")
+    (repo / "vendor" / "work").mkdir(exist_ok=True)
+    patch_dir = repo / "patches" / "core"
+    patch_dir.mkdir(parents=True)
+    first = patch_dir / "001-first.patch"
+    second = patch_dir / "002-second.patch"
+    first.write_text(_patch("base", "middle"), encoding="utf-8", newline="\n")
+    second.write_text(_patch("middle", "final"), encoding="utf-8", newline="\n")
+    ref = "a" * 40
+    tree = "b" * 64
+    lock = {"ref": ref, "treeSha256": tree, "files": 1,
+            "extractedTreeFingerprint": stager.inventory_fingerprint(source)[1],
+            "extractedTreeFingerprintAlgorithm": "sha256(sorted UTF-8 relative path + NUL + decimal size + NUL + file SHA256 hex + LF)"}
+    series = {"schemaVersion": 1, "coreRef": ref, "coreTreeSha256": tree,
+              "patches": [
+                  {"path": "patches/core/001-first.patch", "sha256": _sha(first), "purpose": "fixture first"},
+                  {"path": "patches/core/002-second.patch", "sha256": _sha(second), "purpose": "fixture second",
+                   "dependsOn": ["patches/core/001-first.patch"]},
+              ]}
+    baseline = {"coreRef": ref, "coreBuildPatches": [], "coreOverlays": []}
+    checksums = {"core-source": lock}
+    return repo, source, baseline, checksums, series
+
+
+def _verify_build_correction_precedes_feature_patch(parent: Path) -> int:
+    repo = parent / "ordered-repo"
+    source = repo / "vendor" / "work" / "source"
+    source.mkdir(parents=True)
+    (source / "demo.txt").write_text("base\n", encoding="utf-8")
+    correction = repo / "scripts" / "build-correction.py"
+    correction.parent.mkdir()
+    correction.write_text(
+        "import argparse\nfrom pathlib import Path\n"
+        "p=argparse.ArgumentParser(); p.add_argument('--core-root', type=Path); a=p.parse_args()\n"
+        "(a.core_root / 'demo.txt').write_text('middle\\n', encoding='utf-8')\n",
+        encoding="utf-8", newline="\n")
+    patch_path = repo / "patches" / "core" / "001-after-correction.patch"
+    patch_path.parent.mkdir(parents=True)
+    patch_path.write_text(_patch("middle", "final"), encoding="utf-8", newline="\n")
+    ref, tree = "c" * 40, "d" * 64
+    lock = {"ref": ref, "treeSha256": tree, "files": 1,
+            "extractedTreeFingerprint": stager.inventory_fingerprint(source)[1],
+            "extractedTreeFingerprintAlgorithm": "sha256(sorted UTF-8 relative path + NUL + decimal size + NUL + file SHA256 hex + LF)"}
+    series = {"schemaVersion": 1, "coreRef": ref, "coreTreeSha256": tree,
+              "patches": [{"path": "patches/core/001-after-correction.patch", "sha256": _sha(patch_path),
+                           "purpose": "must follow the build correction"}]}
+    baseline = {"coreRef": ref, "coreBuildPatches": ["scripts/build-correction.py"], "coreOverlays": []}
+    receipt = stager.stage_core_source(
+        repo_root=repo, source_root=source, destination=repo / "vendor" / "work" / "ordered-stage",
+        baseline=baseline, checksums={"core-source": lock}, patch_series=series)
+    assert (repo / "vendor" / "work" / "ordered-stage" / "core" / "demo.txt").read_text(encoding="utf-8") == "final\n"
+    assert receipt["buildCorrections"][0]["path"] == "scripts/build-correction.py"
+    return 2
+
+
+def verify_patch_staging(_profile: dict) -> int:
+    assertions = 0
+    with tempfile.TemporaryDirectory(prefix="patch-staging-") as temp:
+        parent = Path(temp)
+        repo, source, baseline, checksums, series = _fixture_repo(parent)
+        before = stager.inventory_fingerprint(source)
+        dest = repo / "vendor" / "work" / "stage-one"
+        receipt = stager.stage_core_source(repo_root=repo, source_root=source, destination=dest,
+                                           baseline=baseline, checksums=checksums, patch_series=series,
+                                           build_patches=[], overlay_files=[])
+        assertions += 1
+        assert (dest / "core" / "demo.txt").read_text(encoding="utf-8") == "final\n"
+        assertions += 1
+        assert (dest / ".core-staging-owner").is_file()
+        assertions += 1
+        assert stager.inventory_fingerprint(source) == before
+        assertions += 1
+        assert receipt["sourceInventorySha256Before"] == receipt["sourceInventorySha256After"]
+        assert receipt["featurePatches"] == [{"path": p["path"], "sha256": p["sha256"]} for p in series["patches"]]
+        assertions += 1
+        second_dest = repo / "vendor" / "work" / "stage-repeat"
+        second_receipt = stager.stage_core_source(repo_root=repo, source_root=source, destination=second_dest,
+                                                  baseline=baseline, checksums=checksums, patch_series=series,
+                                                  build_patches=[], overlay_files=[])
+        assert second_receipt["stagedCoreInventorySha256"] == receipt["stagedCoreInventorySha256"]
+        assertions += 1
+        try:
+            stager.stage_core_source(repo_root=repo, source_root=source, destination=dest,
+                                     baseline=baseline, checksums=checksums, patch_series=series,
+                                     build_patches=[], overlay_files=[])
+        except stager.StageError as exc:
+            assert "already exists" in str(exc)
+            assert (dest / "core" / "demo.txt").read_text(encoding="utf-8") == "final\n"
+            assertions += 1
+        else:
+            raise AssertionError("staging must refuse to reuse an existing destination")
+
+        conflict_repo, conflict_source, conflict_baseline, conflict_checksums, conflict_series = _fixture_repo(parent / "conflict", wrong_base=True)
+        conflict_dest = conflict_repo / "vendor" / "work" / "stage-conflict"
+        try:
+            stager.stage_core_source(repo_root=conflict_repo, source_root=conflict_source, destination=conflict_dest,
+                                     baseline=conflict_baseline, checksums=conflict_checksums,
+                                     patch_series=conflict_series, build_patches=[], overlay_files=[])
+        except stager.StageError as exc:
+            assert "does not apply" in str(exc)
+            assertions += 1
+        else:
+            raise AssertionError("patch against the wrong base must fail")
+        assert not conflict_dest.exists()
+        assertions += 1
+
+        unordered = json.loads(json.dumps(series))
+        unordered["patches"].reverse()
+        unordered["patches"][0].pop("dependsOn", None)
+        try:
+            stager.stage_core_source(repo_root=repo, source_root=source,
+                                     destination=repo / "vendor" / "work" / "unordered-series",
+                                     baseline=baseline, checksums=checksums, patch_series=unordered,
+                                     build_patches=[], overlay_files=[])
+        except stager.StageError as exc:
+            assert "increasing numeric order" in str(exc)
+            assertions += 1
+        else:
+            raise AssertionError("unordered patches must be rejected")
+
+        bad_series = json.loads(json.dumps(series))
+        bad_series["patches"][1]["dependsOn"] = [bad_series["patches"][1]["path"]]
+        try:
+            stager.stage_core_source(repo_root=repo, source_root=source,
+                                     destination=repo / "vendor" / "work" / "bad-series",
+                                     baseline=baseline, checksums=checksums, patch_series=bad_series,
+                                     build_patches=[], overlay_files=[])
+        except stager.StageError as exc:
+            assert "dependencies" in str(exc)
+            assertions += 1
+        else:
+            raise AssertionError("forward/self dependency must fail before staging")
+
+        for index, (patch_path, digest) in enumerate([("patches/core/003-missing.patch", "0" * 64),
+                                                     (series["patches"][0]["path"], "0" * 64)]):
+            drifted = json.loads(json.dumps(series))
+            drifted["patches"] = [{"path": patch_path, "sha256": digest, "purpose": "negative case"}]
+            try:
+                stager.stage_core_source(repo_root=repo, source_root=source,
+                                         destination=repo / "vendor" / "work" / f"bad-patch-{index}",
+                                         baseline=baseline, checksums=checksums, patch_series=drifted,
+                                         build_patches=[], overlay_files=[])
+            except stager.StageError as exc:
+                assert "missing or hash-mismatched" in str(exc)
+                assertions += 1
+            else:
+                raise AssertionError(f"missing/hash-mismatched patch must fail: {patch_path}")
+
+        wrong_checksum = dict(checksums)
+        wrong_checksum["core-source"] = dict(checksums["core-source"], extractedTreeFingerprint="0" * 64)
+        try:
+            stager.stage_core_source(repo_root=repo, source_root=source,
+                                     destination=repo / "vendor" / "work" / "wrong-source",
+                                     baseline=baseline, checksums=wrong_checksum, patch_series=series,
+                                     build_patches=[], overlay_files=[])
+        except stager.StageError as exc:
+            assert "fingerprint mismatch" in str(exc)
+            assertions += 1
+        else:
+            raise AssertionError("source fingerprint drift must fail")
+        assertions += _verify_build_correction_precedes_feature_patch(parent)
+    return assertions
+
+
+class PatchStagingTests(unittest.TestCase):
+    def test_fixture_staging_contract(self) -> None:
+        self.assertGreater(verify_patch_staging({}), 0)
+
+    def test_downloader_rejects_non_official_existing_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "core"
+            source.mkdir()
+            file = source / "file.txt"
+            file.write_text("official\n", encoding="utf-8")
+            count, fingerprint = stager.inventory_fingerprint(source)
+            lock = {"files": count, "extractedTreeFingerprint": fingerprint}
+            self.assertEqual(downloader.verify_official_core_source(source, lock), (count, fingerprint))
+            file.write_text("previously patched\n", encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "fingerprint mismatch"):
+                downloader.verify_official_core_source(source, lock)
+
+
+if __name__ == "__main__":
+    unittest.main()

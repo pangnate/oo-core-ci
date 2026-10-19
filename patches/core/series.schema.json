@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "core-patch-series.schema.json",
+  "title": "Ordered project patches for ONLYOFFICE Core",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "coreRef", "coreTreeSha256", "patches"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "coreRef": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "coreTreeSha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "patches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256", "purpose"],
+        "properties": {
+          "path": {"type": "string", "pattern": "^patches/core/[0-9]{3}-[a-z0-9-]+\\.patch$"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "purpose": {"type": "string", "minLength": 1},
+          "dependsOn": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    }
+  }
+}

@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
+import argparse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-pri = ROOT / 'core' / 'X2tConverter' / 'build' / 'Qt' / 'X2tSLN.pri'
-pro = ROOT / 'core' / 'X2tConverter' / 'build' / 'Qt' / 'X2tConverter.pro'
+parser = argparse.ArgumentParser()
+parser.add_argument('--core-root', type=Path, default=ROOT / 'core')
+args = parser.parse_args()
+CORE = args.core_root.resolve()
+pri = CORE / 'X2tConverter' / 'build' / 'Qt' / 'X2tSLN.pri'
+pro = CORE / 'X2tConverter' / 'build' / 'Qt' / 'X2tConverter.pro'
 
 if not pri.exists():
     raise SystemExit(f'Missing {pri}; run scripts/download.py first')
@@ -28,5 +33,5 @@ if pro.exists():
     if '# BASEMETAS_X2T_CI_BEGIN' not in ptext:
         ptext += block
         pro.write_text(ptext, encoding='utf-8', newline='\n')
-print('Patched X2tSLN.pri: CryptoPPLib is part of the solution')
-print('Patched X2tConverter.pro: Linux rpath-link points to core/build/lib/<platform>')
+print(f'Patched {pri}: CryptoPPLib is part of the solution')
+print(f'Patched {pro}: Linux rpath-link points to core/build/lib/<platform>')

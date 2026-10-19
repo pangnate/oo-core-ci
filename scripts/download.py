@@ -18,6 +18,11 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "scripts" / "feature_deps"))
+from common import safe_extract_archive
+from stage_core_source import inventory_fingerprint
+
 VENDOR = ROOT / "vendor"
 ARCHIVES = VENDOR / "archives"
 RUNTIME = VENDOR / "runtime"
@@ -33,6 +38,17 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def verify_official_core_source(source: Path, lock: dict) -> tuple[int, str]:
+    """Fail closed if an extracted source tree is not the pinned official input."""
+    count, fingerprint = inventory_fingerprint(source)
+    if count != lock.get("files") or fingerprint != lock.get("extractedTreeFingerprint"):
+        raise RuntimeError(
+            f"Core source fingerprint mismatch: files={count}, sha256={fingerprint}; "
+            f"expected files={lock.get('files')}, sha256={lock.get('extractedTreeFingerprint')}"
+        )
+    return count, fingerprint
+
+
 def download(url: str, dest: Path, expected_sha: str | None = None, retries: int = 5) -> str:
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists():
@@ -40,8 +56,7 @@ def download(url: str, dest: Path, expected_sha: str | None = None, retries: int
         if not expected_sha or digest.lower() == expected_sha.lower():
             print(f"[reuse] {dest.name}  sha256={digest}")
             return digest
-        print(f"[redownload] checksum mismatch: {dest}")
-        dest.unlink()
+        raise RuntimeError(f"Existing input has wrong SHA256 and was preserved: {dest}; expected {expected_sha}, got {digest}")
 
     tmp = dest.with_suffix(dest.suffix + ".part")
     headers = {"User-Agent": "basemetas-onlyoffice-x2t-bootstrap/1.0"}
@@ -70,15 +85,16 @@ def download(url: str, dest: Path, expected_sha: str | None = None, retries: int
 
 
 def extract_github_tar(archive: Path, target: Path) -> None:
+    if target.exists():
+        raise RuntimeError(f"Refusing to replace existing official source directory: {target}")
     temp_dir = Path(tempfile.mkdtemp(prefix="extract-", dir=str(ROOT)))
     try:
-        with tarfile.open(archive, "r:gz") as tf:
-            tf.extractall(temp_dir)
-        roots = [p for p in temp_dir.iterdir() if p.is_dir()]
+        unpacked = temp_dir / "unpacked"
+        safe_extract_archive(archive, unpacked, scratch_root=temp_dir)
+        roots = [p for p in unpacked.iterdir() if p.is_dir()]
         if len(roots) != 1:
             raise RuntimeError(f"Unexpected archive layout in {archive}: {roots}")
-        if target.exists():
-            shutil.rmtree(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(roots[0]), str(target))
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -114,54 +130,6 @@ def pack_windows_runtime(source: Path, dest: Path) -> str:
     digest = sha256(dest)
     print(f"[runtime] {dest.name}: {len(dlls)} DLLs  sha256={digest}")
     return digest
-
-
-def patch_core() -> None:
-    script = ROOT / "scripts" / "patch_x2t_sln.py"
-    import subprocess
-    subprocess.run([sys.executable, str(script)], check=True)
-
-
-def apply_core_overlays() -> tuple[list[str], list[str]]:
-    """Apply project-owned Core patches and file overlays over official Core."""
-    import subprocess
-
-    patches_dir = ROOT / "patches" / "core"
-    patch_files = sorted(patches_dir.glob("*.patch")) if patches_dir.exists() else []
-    applied_patches: list[str] = []
-    for patch_file in patch_files:
-        relative_patch = patch_file.relative_to(ROOT).as_posix()
-        check = subprocess.run(
-            ["git", "apply", "--check", relative_patch], cwd=ROOT,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-        )
-        if check.returncode == 0:
-            subprocess.run(["git", "apply", relative_patch], cwd=ROOT, check=True)
-            print(f"[patch] applied {relative_patch}")
-        else:
-            # download.py can reuse an already-synced tree. Avoid applying the
-            # same project patch twice, but fail if it matches neither state.
-            reverse = subprocess.run(
-                ["git", "apply", "--reverse", "--check", relative_patch], cwd=ROOT,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-            )
-            if reverse.returncode != 0:
-                raise RuntimeError(
-                    f"Cannot apply Core patch {relative_patch}:\n{check.stderr.strip()}"
-                )
-            print(f"[patch] already applied {relative_patch}")
-        applied_patches.append(relative_patch)
-
-    overlay_root = ROOT / "overlays" / "core"
-    overlay_files = sorted(path for path in overlay_root.rglob("*") if path.is_file()) if overlay_root.exists() else []
-    for source in overlay_files:
-        relative = source.relative_to(overlay_root)
-        destination = ROOT / "core" / relative
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, destination)
-        print(f"[overlay] {relative.as_posix()}")
-
-    return applied_patches, [path.relative_to(overlay_root).as_posix() for path in overlay_files]
 
 
 def write_baseline(core_ref: str, build_tools_ref: str) -> None:
@@ -273,14 +241,13 @@ def main() -> int:
     parser.add_argument(
         "--runtime-config",
         type=Path,
-        default=ROOT / "local-input" / "runtime-sources.json",
-        help="Local JSON mapping for runtime bin directories (default: local-input/runtime-sources.json).",
+        help="Optional local JSON mapping for explicitly requested runtime packaging.",
     )
     parser.add_argument("--force-source", action="store_true")
     args = parser.parse_args()
 
     runtime_sources = {}
-    if args.runtime_config.exists():
+    if args.runtime_config:
         runtime_sources = json.loads(args.runtime_config.read_text(encoding="utf-8"))
         if not isinstance(runtime_sources, dict):
             raise SystemExit(f"Runtime config must be a JSON object: {args.runtime_config}")
@@ -291,13 +258,7 @@ def main() -> int:
         "linux-arm64": args.linux_arm64_libs or runtime_sources.get("linux-arm64"),
         "windows-amd64": args.windows_amd64_dlls or runtime_sources.get("windows-amd64"),
     }
-    missing_runtime_sources = [name for name, path in runtime_paths.items() if not path]
-    if missing_runtime_sources:
-        missing = ", ".join(missing_runtime_sources)
-        raise SystemExit(
-            f"Provide all three runtime bin directories via {args.runtime_config} "
-            f"or CLI options; missing: {missing}"
-        )
+    requested_runtime = any(runtime_paths.values())
     for name, value in runtime_paths.items():
         if value:
             path = Path(value).expanduser().resolve()
@@ -305,9 +266,9 @@ def main() -> int:
                 raise SystemExit(f"Runtime bin directory for {name} does not exist: {path}")
             runtime_paths[name] = path
     runtime_source_labels = {
-        "linux-amd64": "--linux-amd64-libs" if args.linux_amd64_libs else f"{args.runtime_config.name}:linux-amd64",
-        "linux-arm64": "--linux-arm64-libs" if args.linux_arm64_libs else f"{args.runtime_config.name}:linux-arm64",
-        "windows-amd64": "--windows-amd64-dlls" if args.windows_amd64_dlls else f"{args.runtime_config.name}:windows-amd64",
+        "linux-amd64": "--linux-amd64-libs" if args.linux_amd64_libs else f"{args.runtime_config.name if args.runtime_config else 'runtime-config'}:linux-amd64",
+        "linux-arm64": "--linux-arm64-libs" if args.linux_arm64_libs else f"{args.runtime_config.name if args.runtime_config else 'runtime-config'}:linux-arm64",
+        "windows-amd64": "--windows-amd64-dlls" if args.windows_amd64_dlls else f"{args.runtime_config.name if args.runtime_config else 'runtime-config'}:windows-amd64",
     }
 
     ARCHIVES.mkdir(parents=True, exist_ok=True)
@@ -326,22 +287,38 @@ def main() -> int:
 
     baseline_file = ROOT / "ci" / "baseline.json"
     existing_baseline = json.loads(baseline_file.read_text(encoding="utf-8")) if baseline_file.exists() else {}
-    same_source = (
-        existing_baseline.get("coreRef") == args.core_ref
-        and existing_baseline.get("buildToolsRef") == args.build_tools_ref
-        and (ROOT / "core").is_dir()
-        and (ROOT / "build_tools").is_dir()
-        and not args.force_source
-    )
+    pinned = lock.get("core-source", {}).get("ref") == args.core_ref and lock.get("build-tools-source", {}).get("ref") == args.build_tools_ref
+    if not pinned:
+        raise SystemExit("Refusing to change official source refs in-place. Update the source lock in a fresh checkout.")
+    core_exists = (ROOT / "core").exists()
+    build_tools_exists = (ROOT / "build_tools").exists()
+    same_source = (existing_baseline.get("coreRef") == args.core_ref
+                   and existing_baseline.get("buildToolsRef") == args.build_tools_ref
+                   and core_exists and build_tools_exists and not args.force_source)
     if same_source:
-        print("[reuse] core/ and build_tools/ match requested baseline")
+        expected = lock["core-source"].get("extractedTreeFingerprint")
+        if expected:
+            try:
+                verify_official_core_source(ROOT / "core", lock["core-source"])
+            except RuntimeError:
+                raise SystemExit("Existing core/ does not match the pinned official source fingerprint; it was preserved. Use a fresh checkout to fetch pristine Core.")
+        print("[reuse] core/ and build_tools/ match requested baseline and Core source fingerprint")
     else:
-        core_sha = download(core_url, core_tar)
-        build_sha = download(build_url, build_tar)
-        lock["core-source"] = {"sha256": core_sha, "ref": args.core_ref, "url": core_url}
-        lock["build-tools-source"] = {"sha256": build_sha, "ref": args.build_tools_ref, "url": build_url}
+        if core_exists or build_tools_exists:
+            raise SystemExit("Refusing to replace existing core/ or build_tools/ source input. --force-source does not overwrite source trees; use a fresh checkout.")
+        core_sha = download(core_url, core_tar, lock.get("core-source", {}).get("archiveSha256"))
+        build_sha = download(build_url, build_tar, lock.get("build-tools-source", {}).get("archiveSha256")
+                             or lock.get("build-tools-source", {}).get("sha256"))
+        lock.setdefault("core-source", {}).update({"archiveSha256": core_sha, "ref": args.core_ref, "url": core_url})
+        lock.setdefault("build-tools-source", {}).update({"archiveSha256": build_sha, "ref": args.build_tools_ref, "url": build_url})
         extract_github_tar(core_tar, ROOT / "core")
         extract_github_tar(build_tar, ROOT / "build_tools")
+        expected = lock.get("core-source", {}).get("extractedTreeFingerprint")
+        if expected:
+            try:
+                verify_official_core_source(ROOT / "core", lock["core-source"])
+            except RuntimeError:
+                raise SystemExit("Downloaded Core extraction does not match the pinned source fingerprint; source was preserved for diagnosis.")
 
     deps = detect_dependency_inputs(deps_defaults)
     (VENDOR / "detected-deps.json").write_text(json.dumps(deps, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -368,12 +345,14 @@ def main() -> int:
         digest = download(item["url"], path, item.get("sha256"))
         lock[key] = {"sha256": digest, "url": item["url"], "file": path.relative_to(ROOT).as_posix()}
 
+    if requested_runtime:
+        RUNTIME.mkdir(parents=True, exist_ok=True)
     for platform, source, filename, pack in [
         ("linux-amd64", runtime_paths["linux-amd64"], "linux-amd64-runtime.tar.gz", pack_linux_runtime),
         ("linux-arm64", runtime_paths["linux-arm64"], "linux-arm64-runtime.tar.gz", pack_linux_runtime),
         ("windows-amd64", runtime_paths["windows-amd64"], "windows-amd64-runtime.zip", pack_windows_runtime),
     ]:
-        if source:
+        if requested_runtime and source:
             archive = RUNTIME / filename
             digest = pack(source, archive)
             lock[f"runtime-{platform}"] = {
@@ -383,16 +362,13 @@ def main() -> int:
             }
 
     LOCK_FILE.write_text(json.dumps(lock, indent=2, ensure_ascii=False), encoding="utf-8")
-    patch_core()
-    applied_patches, applied_overlays = apply_core_overlays()
     write_baseline(args.core_ref, args.build_tools_ref)
     core_tar.unlink(missing_ok=True)
     build_tar.unlink(missing_ok=True)
 
     print("\nBootstrap download complete.")
     print(f"Core source: ONLYOFFICE/core@{args.core_ref}")
-    print(f"Applied project Core patches: {len(applied_patches)}")
-    print(f"Applied project Core file overlays: {len(applied_overlays)}")
+    print("Official Core source was not modified with project patches or overlays.")
     print("Next:")
     print("  1) On Windows, run scripts/download_windows_qt.ps1 if the Qt archive is missing")
     print("  2) Review vendor/checksums.json and ci/baseline.json")

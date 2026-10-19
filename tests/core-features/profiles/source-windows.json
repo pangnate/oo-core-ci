@@ -5,12 +5,14 @@
   "platform": "windows-amd64",
   "core": {
     "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
-    "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34"
+    "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
+    "stagingInventorySha256": "52c0c24ea72fade14c4e36e3bc1572873dc226906e1032e3aa216237c4afd4d7",
+    "sourceInventorySha256": "cc16fb1824a7788140aa76064c6714d803e51deb90205fe8d625664f508ab5f6"
   },
   "inputs": {
     "core-source": {
       "path": "vendor/checksums.json",
-      "sha256": "9c1fd83092d8eab0ce28d5e68e4a76f016e6080d7b444ecd627c67aa7a2b6d91"
+      "sha256": "8bb077359cbafed862bf4530f1d3b9d6d5cf172b709ba95d1535165775920b2c"
     },
     "fixture-manifest": {
       "path": "tests/core-features/fixtures/manifest.json",
@@ -39,6 +41,26 @@
     "sdk-manifest-schema": {
       "path": "config/sdk-manifest.schema.json",
       "sha256": "140cdae7003b888d96e3d993af2ef126c3a9b3fa1003355938f7398a9500f9fe"
+    },
+    "patch-series": {
+      "path": "patches/core/series.json",
+      "sha256": "9e69d0ec44c46030967c1247d3b72e7daf374b37105cd8503c76d09afd700a77"
+    },
+    "patch-series-schema": {
+      "path": "patches/core/series.schema.json",
+      "sha256": "a94c8d17f570811b37729d73a7509f85e6969749c656a1f0e5cc448ea0e9e1ef"
+    },
+    "build-correction": {
+      "path": "scripts/patch_x2t_sln.py",
+      "sha256": "6d8868ea65ff796ab3b31b6ad631396082d31a8b853514ebd19c4fd89f8af813"
+    },
+    "core-staging-baseline": {
+      "path": "ci/baseline.json",
+      "sha256": "1c31fd4bda34ff320dfd2c635f2976e7f765a5ab09f14e0ce809a4de6694e2f9"
+    },
+    "core-overlay": {
+      "path": "overlays/core/Common/copyright.txt",
+      "sha256": "990fedb0c4500aa1919560e6f8e9f4c077e607500be10a61bd3ad10ff1447744"
     }
   }
 }

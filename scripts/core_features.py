@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Source-profile runner for the Core feature POC.
 
-Only the explicitly registered `fixtures` case is available at this stage.
+Only explicitly registered source-level cases are available at this stage.
 Other cases fail closed until their owning cards implement them.
 """
 from __future__ import annotations
@@ -29,6 +29,7 @@ REGISTRY = {
     "contract": (TEST_ROOT / "test_contract.py", "verify_contract"),
     "build-deps-contract": (TEST_ROOT / "test_build_deps_contract.py", "verify_build_deps_contract"),
     "build-deps-io": (TEST_ROOT / "test_build_deps_io.py", "verify_build_deps_io"),
+    "patch-staging": (TEST_ROOT / "test_patch_staging.py", "verify_patch_staging"),
 }
 SECRET_PATTERNS = [
     (re.compile(r"(?i)(password|passwd|token|secret|authorization)(\s*[=:]\s*)([^\s,;]+)"), r"\1\2[REDACTED]"),
@@ -87,12 +88,22 @@ def validate_profile(profile_path: Path, case: str) -> tuple[dict[str, Any], Pat
         raise RunnerError("profile Core ref does not match ci/baseline.json")
     if core.get("treeSha256") != locks.get("core-source", {}).get("treeSha256"):
         raise RunnerError("profile Core tree hash does not match vendor/checksums.json")
+    if case == "patch-staging":
+        source_fingerprint = core.get("sourceInventorySha256")
+        staged_fingerprint = core.get("stagingInventorySha256")
+        locked_source = locks.get("core-source", {}).get("extractedTreeFingerprint")
+        if source_fingerprint != locked_source:
+            raise RunnerError("profile source fingerprint does not match the pinned Core source")
+        if not isinstance(staged_fingerprint, str) or not re.fullmatch(r"[0-9a-f]{64}", staged_fingerprint):
+            raise RunnerError("patch-staging profile must lock core.stagingInventorySha256")
     requirements = {
         "baseline": {"core-source", "baseline-evidence"},
         "fixtures": {"core-source", "fixture-manifest"},
         "contract": {"core-source", "feature-contract", "feature-profile-schema"},
         "build-deps-contract": {"core-source", "build-deps-lock", "build-deps-schema"},
         "build-deps-io": {"core-source", "sdk-manifest-schema"},
+        "patch-staging": {"core-source", "core-staging-baseline", "patch-series", "patch-series-schema",
+                          "build-correction", "core-overlay"},
     }.get(case)
     if requirements is None:
         raise RunnerError(f"case is not registered: {case}")
