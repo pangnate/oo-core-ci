@@ -1,0 +1,208 @@
+{
+  "taskId": "LUNA-CORE-13",
+  "level": "PARTIAL: SOURCE-READY / WAIT-BUILD",
+  "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+  "patches": [
+    {
+      "path": "patches/core/003-word-distributed-jc.patch",
+      "sha256": "b91369a92089b039afd8be38cbadfa4020b9cbe4bed4a42538528cb5c83f1fa9",
+      "purpose": "CORE-03: preserve paragraph distribute as Jc value 4; source-only candidate"
+    },
+    {
+      "path": "patches/core/004-word-character-indents.patch",
+      "sha256": "e327a08858de371456fd1a66472fc2eb7361feb32ac295472da4dae52e7c88e7",
+      "purpose": "CORE-04: preserve four raw character indents in Ind container; source-only candidate",
+      "dependsOn": [
+        "patches/core/003-word-distributed-jc.patch"
+      ]
+    },
+    {
+      "path": "patches/core/005-word-east-asian-booleans.patch",
+      "sha256": "e36ec625fe3ad30de565b6cf41a4604ff5fd68932cb955d19cd405cf6076d09d",
+      "purpose": "CORE-05: preserve six paragraph Boolean properties including false; source-only candidate",
+      "dependsOn": [
+        "patches/core/004-word-character-indents.patch"
+      ]
+    },
+    {
+      "path": "patches/core/007-word-permission-xml-spelling.patch",
+      "sha256": "44dde10b3151759148a48842bbb8dbfeb2e292d10bcd8f88e8c5983b9fe6d23f",
+      "purpose": "CORE-07: standard permission attribute spelling with legacy read alias and order-independent standard precedence; source-only candidate"
+    },
+    {
+      "path": "patches/core/013-graphics-strict-image-errors.patch",
+      "sha256": "d650695cfbde6f0adb78c1d1e154af1c80bab86d94e021c22c2cf774988b5c40",
+      "purpose": "CORE-13: additive versioned graphics image-failure policy and bounded primitive reads; source-only candidate"
+    }
+  ],
+  "scope": "Complete feature candidate series on pristine copies of all touched files; NOT C++ compilation/runtime/UNIT",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\003-word-distributed-jc.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\003-word-distributed-jc.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\004-word-character-indents.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\004-word-character-indents.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\005-word-east-asian-booleans.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\005-word-east-asian-booleans.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\007-word-permission-xml-spelling.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\007-word-permission-xml-spelling.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\013-graphics-strict-image-errors.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/pdf-replay-13-f2929b38",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\013-graphics-strict-image-errors.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    }
+  ],
+  "outputSha256": {
+    "core/DesktopEditor/graphics/MetafileToRendererReader.h": "827e8e5b49b333a596922dacd9e0e6672c36a1d5a2b8e854c9fe256374a56920",
+    "core/PdfFile/PdfFile.h": "2f322bebef034c516058ef79d1de2f0f5e68d2013c6a10116fc4bf0b55985ace",
+    "core/PdfFile/PdfFile.cpp": "cf9389db02ef35accf0cc00fb298f34bdbb73baaf83f62e9d3609353545fca7c",
+    "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp": "b3972821d0e20121cd36165d56bfa727d37bddd5e8ecb341b7d6cd8bb0a8384a",
+    "core/X2tConverter/src/ASCConverters.cpp": "f6eacdf599b86bc19a743effa11227d155cd8f768624c864f5fabb1f0aab9478",
+    "core/X2tConverter/src/cextracttools.h": "21bf43c35a9e18eadb1d18a2eed984c7fe5230656e364d32b234aaf826adbe05",
+    "core/DesktopEditor/graphics/MetafileToRenderer.cpp": "e1a4870f995bdc3e4c974c578de91c1f885f6c69ecf627ef58cb191d99b0ef97",
+    "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp": "b23b59d0cd124bb8aedd4aad7da0f3076c9614e9a1b58b2a40deb8f680706e9c",
+    "core/OOXML/DocxFormat/Logic/Annotations.cpp": "9ea0af4bdac41348e8fffe684f8e8d1796ad5aedfcf31a95ddb5c6ee91b3d968",
+    "core/X2tConverter/src/lib/pdf_image.h": "16e565899a770befffefd1b5aacfe346d1535c043ce95689f85d0b9f1db1e944",
+    "core/PdfFile/OnlineOfficeBinToPdf.cpp": "25a039d401524661f646d5b4ce2d9b3bd8b2e64cb9d88217dcf33f83d0fd8d02",
+    "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h": "9b27ab516cfde027de428853c84d62cd41be244599f3cf48d0e1c03707b46b10",
+    "core/PdfFile/OnlineOfficeBinToPdf.h": "3b4c4498ac17e7ee5c4344aa9f5f12d9e02a3788148299d83896a6c6f5e108e1",
+    "core/DesktopEditor/graphics/MetafileToRenderer.h": "6a0f012d8bc0a80a0ecaf0a47638a2e5e8962523a088dcb2855293aaac5628a8",
+    "core/DesktopEditor/graphics/ConversionPolicyV1.h": "214f757419ff818b1b038aa07dc8d3f9958b8c35894655b56e479c3c2214a6a2"
+  },
+  "comparison": "UTF-8 text including BOM matches development staging after newline normalization",
+  "protectedPocInputsUnchanged": true,
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "cppAssertionsExecuted": 0
+}

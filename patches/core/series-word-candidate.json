@@ -28,6 +28,11 @@
       "path": "patches/core/007-word-permission-xml-spelling.patch",
       "sha256": "44dde10b3151759148a48842bbb8dbfeb2e292d10bcd8f88e8c5983b9fe6d23f",
       "purpose": "CORE-07: standard permission attribute spelling with legacy read alias and order-independent standard precedence; source-only candidate"
+    },
+    {
+      "path": "patches/core/013-graphics-strict-image-errors.patch",
+      "sha256": "d650695cfbde6f0adb78c1d1e154af1c80bab86d94e021c22c2cf774988b5c40",
+      "purpose": "CORE-13: additive versioned graphics image-failure policy and bounded primitive reads; source-only candidate"
     }
   ]
 }
