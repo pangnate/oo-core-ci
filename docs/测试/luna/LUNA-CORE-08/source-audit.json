@@ -1,0 +1,608 @@
+{
+  "taskId": "LUNA-CORE-08",
+  "level": "SOURCE ANCHORS ONLY; semantics require manual review",
+  "cppAssertionsExecuted": 0,
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "staging": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\vendor\\work\\codec-audit-dev-20261019",
+  "entries": [
+    {
+      "path": "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp",
+      "sha256": "c9f9fbfeb076a369b5c1e2ee589d4d8b3c1b3bbf6a173d6b982c6849a9f6c95d",
+      "anchors": [
+        {
+          "anchor": "void BinaryDocumentTableWriter::WritePermission",
+          "lines": [
+            4490,
+            4534
+          ],
+          "excerpts": [
+            {
+              "line": 4490,
+              "text": "void BinaryDocumentTableWriter::WritePermission(unsigned char type, OOX::Logic::CPermStart* pPerm)"
+            },
+            {
+              "line": 4534,
+              "text": "void BinaryDocumentTableWriter::WritePermission(unsigned char type, OOX::Logic::CPermEnd* pPerm)"
+            }
+          ]
+        },
+        {
+          "anchor": "pPerm->m_oEdGrp.IsInit()",
+          "lines": [
+            4526
+          ],
+          "excerpts": [
+            {
+              "line": 4526,
+              "text": "\tif (pPerm->m_oEdGrp.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "pPerm->m_oColFirst.IsInit()",
+          "lines": [
+            4508
+          ],
+          "excerpts": [
+            {
+              "line": 4508,
+              "text": "\tif (pPerm->m_oColFirst.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "void BinarySettingsTableWriter::WriteDocumentProtection",
+          "lines": [
+            9720
+          ],
+          "excerpts": [
+            {
+              "line": 9720,
+              "text": "void BinarySettingsTableWriter::WriteDocumentProtection(const OOX::Settings::CDocProtect& oDocProtect)"
+            }
+          ]
+        },
+        {
+          "anchor": "oDocProtect.m_oEnforcment.IsInit()",
+          "lines": [
+            9736
+          ],
+          "excerpts": [
+            {
+              "line": 9736,
+              "text": "\tif (oDocProtect.m_oEnforcment.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "oDocProtect.m_oFormatting.IsInit()",
+          "lines": [
+            9742
+          ],
+          "excerpts": [
+            {
+              "line": 9742,
+              "text": "\tif (oDocProtect.m_oFormatting.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "oDocProtect.m_oSpinCount.IsInit()",
+          "lines": [
+            9760
+          ],
+          "excerpts": [
+            {
+              "line": 9760,
+              "text": "\tif (oDocProtect.m_oSpinCount.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "pSectPr->m_oFormProt.IsInit()",
+          "lines": [
+            1681
+          ],
+          "excerpts": [
+            {
+              "line": 1681,
+              "text": "\tif (pSectPr->m_oFormProt.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "style.m_oLocked.IsInit()",
+          "lines": [
+            3048
+          ],
+          "excerpts": [
+            {
+              "line": 3048,
+              "text": "\tif (style.m_oLocked.IsInit())"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteSectPrChange",
+          "lines": [
+            1634,
+            1890
+          ],
+          "excerpts": [
+            {
+              "line": 1634,
+              "text": "\t\t\tWriteSectPrChange(pSectPr->m_oSectPrChange.get());"
+            },
+            {
+              "line": 1890,
+              "text": "void Binary_pPrWriter::WriteSectPrChange(const OOX::Logic::CSectPrChange& sectPrChange)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp",
+      "sha256": "200a68a1f930c52a892be7f2a782f0637606e5b55feb0be072ef34a745325dab",
+      "anchors": [
+        {
+          "anchor": "int Binary_DocumentTableReader::ReadPermStart",
+          "lines": [
+            5958
+          ],
+          "excerpts": [
+            {
+              "line": 5958,
+              "text": "int Binary_DocumentTableReader::ReadPermStart(BYTE type, long length, void* poResult)"
+            }
+          ]
+        },
+        {
+          "anchor": "int Binary_DocumentTableReader::ReadPermEnd",
+          "lines": [
+            5997
+          ],
+          "excerpts": [
+            {
+              "line": 5997,
+              "text": "int Binary_DocumentTableReader::ReadPermEnd(BYTE type, long length, void* poResult)"
+            }
+          ]
+        },
+        {
+          "anchor": "int Binary_SettingsTableReader::ReadDocProtect",
+          "lines": [
+            4405
+          ],
+          "excerpts": [
+            {
+              "line": 4405,
+              "text": "int Binary_SettingsTableReader::ReadDocProtect(BYTE type, long length, void* poResult)"
+            }
+          ]
+        },
+        {
+          "anchor": "c_oSerProp_secPrType::formProt == type",
+          "lines": [
+            1725
+          ],
+          "excerpts": [
+            {
+              "line": 1725,
+              "text": "\telse if (c_oSerProp_secPrType::formProt == type)"
+            }
+          ]
+        },
+        {
+          "anchor": "pSectPr->m_oFormProt->m_oVal.FromBool",
+          "lines": [
+            1733
+          ],
+          "excerpts": [
+            {
+              "line": 1733,
+              "text": "\t\tpSectPr->m_oFormProt->m_oVal.FromBool(value != 0);"
+            }
+          ]
+        },
+        {
+          "anchor": "Style_Locked == type",
+          "lines": [
+            3654
+          ],
+          "excerpts": [
+            {
+              "line": 3654,
+              "text": "\telse if (c_oSer_sts::Style_Locked == type)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h",
+      "sha256": "64e616b937c483d4c9028707dcd94bcef05655347c373394c65dddadf27ffe5e",
+      "anchors": [
+        {
+          "anchor": "namespace c_oSerPermission",
+          "lines": [
+            1400
+          ],
+          "excerpts": [
+            {
+              "line": 1400,
+              "text": "\tnamespace c_oSerPermission {enum c_oSerPermission"
+            }
+          ]
+        },
+        {
+          "anchor": "namespace c_oDocProtect",
+          "lines": [
+            1419
+          ],
+          "excerpts": [
+            {
+              "line": 1419,
+              "text": "\tnamespace c_oDocProtect {"
+            }
+          ]
+        },
+        {
+          "anchor": "formProt = 200",
+          "lines": [
+            512
+          ],
+          "excerpts": [
+            {
+              "line": 512,
+              "text": "\t\tformProt = 200"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/DocxFormat/Settings/Settings.cpp",
+      "sha256": "672f52776e95f40c7835e13f37fcdf9da4a8279d451219ba43ca1ee09ba2dda3",
+      "anchors": [
+        {
+          "anchor": "void CDocProtect::fromXML(XmlUtils::CXmlNode&",
+          "lines": [
+            861
+          ],
+          "excerpts": [
+            {
+              "line": 861,
+              "text": "\tvoid CDocProtect::fromXML(XmlUtils::CXmlNode& oNode)"
+            }
+          ]
+        },
+        {
+          "anchor": "XmlMacroReadAttributeBase(oNode, L\"w:enforcement\"",
+          "lines": [
+            865
+          ],
+          "excerpts": [
+            {
+              "line": 865,
+              "text": "\t\tXmlMacroReadAttributeBase(oNode, L\"w:enforcement\", m_oEnforcment);"
+            }
+          ]
+        },
+        {
+          "anchor": "XmlMacroReadAttributeBase(oNode, L\"w:spinCount\"",
+          "lines": [
+            882
+          ],
+          "excerpts": [
+            {
+              "line": 882,
+              "text": "\t\tXmlMacroReadAttributeBase(oNode, L\"w:spinCount\", m_oSpinCount);"
+            }
+          ]
+        },
+        {
+          "anchor": "void CDocProtect::ReadAttributes",
+          "lines": [
+            926
+          ],
+          "excerpts": [
+            {
+              "line": 926,
+              "text": "\tvoid CDocProtect::ReadAttributes(XmlUtils::CXmlLiteReader& oReader)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/DocxFormat/Logic/Annotations.cpp",
+      "sha256": "8d8dabdca2ccf60b0b4b3d468cf427881830243ea5e1f102cdc698d48ea2c424",
+      "anchors": [
+        {
+          "anchor": "CPermStart::toXML()",
+          "lines": [
+            1254
+          ],
+          "excerpts": [
+            {
+              "line": 1254,
+              "text": "\t\tstd::wstring CPermStart::toXML() const"
+            }
+          ]
+        },
+        {
+          "anchor": "CPermEnd::toXML()",
+          "lines": [
+            1185
+          ],
+          "excerpts": [
+            {
+              "line": 1185,
+              "text": "\t\tstd::wstring CPermEnd::toXML() const"
+            }
+          ]
+        },
+        {
+          "anchor": "w:displacedByCustomXml",
+          "lines": [
+            1173,
+            1189,
+            1212,
+            1240,
+            1260,
+            1279
+          ],
+          "excerpts": [
+            {
+              "line": 1173,
+              "text": "\t\t\tif (oNode.GetAttributeIfExist(L\"w:displacedByCustomXml\", sDisplacedByCustomXml) ||"
+            },
+            {
+              "line": 1189,
+              "text": "\t\t\tComplexTypes_WriteAttribute_( L\" w:displacedByCustomXml=\\\"\", m_oDisplacedByCustomXml );"
+            },
+            {
+              "line": 1212,
+              "text": "\t\t\tif (L\"w:displacedByCustomXml\" == wsName)"
+            },
+            {
+              "line": 1240,
+              "text": "\t\t\tif (oNode.GetAttributeIfExist(L\"w:displacedByCustomXml\", sDisplacedByCustomXml) ||"
+            },
+            {
+              "line": 1260,
+              "text": "\t\t\tComplexTypes_WriteAttribute_( L\" w:displacedByCustomXml=\\\"\", m_oDisplacedByCustomXml );"
+            },
+            {
+              "line": 1279,
+              "text": "\t\t\tif (L\"w:displacedByCustomXml\" == wsName)"
+            }
+          ]
+        },
+        {
+          "anchor": "bHasLegacyDisplacedByCustomXml",
+          "lines": [
+            1209,
+            1220,
+            1224,
+            1276,
+            1287,
+            1295
+          ],
+          "excerpts": [
+            {
+              "line": 1209,
+              "text": "\t\t\tbool bHasLegacyDisplacedByCustomXml = false;"
+            },
+            {
+              "line": 1220,
+              "text": "\t\t\t\tbHasLegacyDisplacedByCustomXml = true;"
+            },
+            {
+              "line": 1224,
+              "text": "\t\t\tif (!bHasStandardDisplacedByCustomXml && bHasLegacyDisplacedByCustomXml)"
+            },
+            {
+              "line": 1276,
+              "text": "\t\t\tbool bHasLegacyDisplacedByCustomXml = false;"
+            },
+            {
+              "line": 1287,
+              "text": "\t\t\t\tbHasLegacyDisplacedByCustomXml = true;"
+            },
+            {
+              "line": 1295,
+              "text": "\t\t\tif (!bHasStandardDisplacedByCustomXml && bHasLegacyDisplacedByCustomXml)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/DocxFormat/Logic/SectionProperty.cpp",
+      "sha256": "a8d2cf250b2c99974cc61aa1269f1c92ead0225d2d57b6f158130e493c810d60",
+      "anchors": [
+        {
+          "anchor": "m_oFormProt = oChild",
+          "lines": [
+            1533
+          ],
+          "excerpts": [
+            {
+              "line": 1533,
+              "text": "\t\t\t\t\telse if (L\"w:formProt\" == sName) m_oFormProt = oChild;"
+            }
+          ]
+        },
+        {
+          "anchor": "m_oFormProt = oReader",
+          "lines": [
+            1601
+          ],
+          "excerpts": [
+            {
+              "line": 1601,
+              "text": "\t\t\t\t\tm_oFormProt = oReader;"
+            }
+          ]
+        },
+        {
+          "anchor": "if (m_oFormProt.IsInit())",
+          "lines": [
+            1771
+          ],
+          "excerpts": [
+            {
+              "line": 1771,
+              "text": "\t\t\tif (m_oFormProt.IsInit())"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Common/SimpleTypes_Word.cpp",
+      "sha256": "caa21f63f164a0abfb4c949291f8acc10297da5ff5b51c693c5366ffe0e5855e",
+      "anchors": [
+        {
+          "anchor": "EEdGrp CEdGrp::FromString",
+          "lines": [
+            1187
+          ],
+          "excerpts": [
+            {
+              "line": 1187,
+              "text": "\tEEdGrp CEdGrp::FromString(const std::wstring &sValue)"
+            }
+          ]
+        },
+        {
+          "anchor": "edgrpAdministrators",
+          "lines": [
+            1189,
+            1205
+          ],
+          "excerpts": [
+            {
+              "line": 1189,
+              "text": "\t\tif      ( (L\"administrators\") == sValue ) this->m_eValue = edgrpAdministrators;"
+            },
+            {
+              "line": 1205,
+              "text": "\t\tcase edgrpAdministrators : return (L\"administrators\");"
+            }
+          ]
+        },
+        {
+          "anchor": "edgrpContributors",
+          "lines": [
+            1190,
+            1206
+          ],
+          "excerpts": [
+            {
+              "line": 1190,
+              "text": "\t\telse if ( (L\"contributors\")   == sValue ) this->m_eValue = edgrpContributors;"
+            },
+            {
+              "line": 1206,
+              "text": "\t\tcase edgrpContributors   : return (L\"contributors\");"
+            }
+          ]
+        },
+        {
+          "anchor": "edgrpCurrent",
+          "lines": [
+            1191,
+            1207
+          ],
+          "excerpts": [
+            {
+              "line": 1191,
+              "text": "\t\telse if ( (L\"current\")        == sValue ) this->m_eValue = edgrpCurrent;"
+            },
+            {
+              "line": 1207,
+              "text": "\t\tcase edgrpCurrent        : return (L\"current\");"
+            }
+          ]
+        },
+        {
+          "anchor": "edgrpEditors",
+          "lines": [
+            1192,
+            1208
+          ],
+          "excerpts": [
+            {
+              "line": 1192,
+              "text": "\t\telse if ( (L\"editors\")        == sValue ) this->m_eValue = edgrpEditors;"
+            },
+            {
+              "line": 1208,
+              "text": "\t\tcase edgrpEditors        : return (L\"editors\");"
+            }
+          ]
+        },
+        {
+          "anchor": "edgrpEveryone",
+          "lines": [
+            1193,
+            1196,
+            1209
+          ],
+          "excerpts": [
+            {
+              "line": 1193,
+              "text": "\t\telse if ( (L\"everyone\")       == sValue ) this->m_eValue = edgrpEveryone;"
+            },
+            {
+              "line": 1196,
+              "text": "\t\telse                                       this->m_eValue = edgrpEveryone;"
+            },
+            {
+              "line": 1209,
+              "text": "\t\tcase edgrpEveryone       : return (L\"everyone\");"
+            }
+          ]
+        },
+        {
+          "anchor": "edgrpNone",
+          "lines": [
+            1194,
+            1210
+          ],
+          "excerpts": [
+            {
+              "line": 1194,
+              "text": "\t\telse if ( (L\"none\")           == sValue ) this->m_eValue = edgrpNone;"
+            },
+            {
+              "line": 1210,
+              "text": "\t\tcase edgrpNone           : return (L\"none\");"
+            }
+          ]
+        },
+        {
+          "anchor": "edgrpOwners",
+          "lines": [
+            1195,
+            1211
+          ],
+          "excerpts": [
+            {
+              "line": 1195,
+              "text": "\t\telse if ( (L\"owners\")         == sValue ) this->m_eValue = edgrpOwners;"
+            },
+            {
+              "line": 1211,
+              "text": "\t\tcase edgrpOwners         : return (L\"owners\");"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

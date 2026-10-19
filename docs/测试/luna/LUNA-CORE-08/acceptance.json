@@ -1,0 +1,12 @@
+{
+  "taskId": "LUNA-CORE-08", "case": "permission-binary", "execution": "NOT-RUN", "cppAssertionsExecuted": 0,
+  "routes": ["DOCX -> BIN -> DOCX -> BIN -> DOCX", "actual CDocProtect DOM/stream -> model -> XML"],
+  "markerFields": ["id", "next/prev displacedByCustomXml", "colFirst including0", "colLast", "ed", "edGrp"],
+  "groups": ["administrators", "contributors", "current", "editors", "everyone", "none", "owners"],
+  "markerCases": ["ed and edGrp coexist", "cross-paragraph", "table columns", "unmatched marker retained", "change one of three fields only", "legacy spelling consumed by patch007"],
+  "settings": ["edit mode", "enforcement absent/false/true", "formatting absent/false/true", "algorithmName", "algorithm class/sid/type", "provider/type/extensions", "hash", "salt", "spinCount including0", "style locked absent/false/true"],
+  "sectionCases": ["formProt absent/false/true", "last body section", "paragraph section", "sectPrChange", "formProt record length not1 rejected", "formProt value2 or255 rejected", "unknown section tag skipped without corruption"],
+  "sectionEncoding": {"container": "c_oSerProp_secPrType", "privateTag": 200, "record": "Byte tag + Long length=1 + Bool payload"},
+  "assertions": ["false/zero/presence preserved", "DOM native protection fields no longer silently dropped", "native fields remain native with no Space identity or dynamic overlay", "only targeted field changes", "protection is never temporarily disabled", "new private section field is explicitly unsupported on unverified legacy JS/readers"],
+  "securityBoundary": "No real passwords or hashes in logs; synthetic data only. No new password algorithm or dynamic authorization mechanism. No runtime protection claim."
+}

@@ -49,6 +49,11 @@
       "dependsOn": [
         "patches/core/014-pdffile-strict-error-propagation.patch"
       ]
+    },
+    {
+      "path": "patches/core/016-word-protection-source-omissions.patch",
+      "sha256": "cb29099410c4b20b6eab792c90d97297fcfe1fd8d7280b62ca4f7850e0642038",
+      "purpose": "CORE-08: confirmed codec source omissions; uncompiled candidate"
     }
   ]
 }

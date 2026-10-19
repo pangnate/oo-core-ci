@@ -1,0 +1,81 @@
+diff --git a/core/OOXML/DocxFormat/Settings/Settings.cpp b/core/OOXML/DocxFormat/Settings/Settings.cpp
+--- a/core/OOXML/DocxFormat/Settings/Settings.cpp
++++ b/core/OOXML/DocxFormat/Settings/Settings.cpp
+@@ -860,7 +860,26 @@
+ 	}
+ 	void CDocProtect::fromXML(XmlUtils::CXmlNode& oNode)
+ 	{
+-		// TO DO: Implement CDocProtect::fromXML(XmlUtils::CXmlNode& oNode)
++		// Read the same native fields/aliases as the streaming reader; no identity policy.
++		XmlMacroReadAttributeBase(oNode, L"w:edit", m_oEdit);
++		XmlMacroReadAttributeBase(oNode, L"w:enforcement", m_oEnforcment);
++		XmlMacroReadAttributeBase(oNode, L"w:formatting", m_oFormatting);
++		XmlMacroReadAttributeBase(oNode, L"w:algorithmName", m_oAlgorithmName);
++		XmlMacroReadAttributeBase(oNode, L"w:cryptAlgorithmClass", m_oCryptAlgorithmClass);
++		XmlMacroReadAttributeBase(oNode, L"w:cryptAlgorithmSid", m_oCryptAlgorithmSid);
++		XmlMacroReadAttributeBase(oNode, L"w:cryptAlgorithmType", m_oCryptAlgorithmType);
++		XmlMacroReadAttributeBase(oNode, L"w:cryptProvider", m_oCryptProvider);
++		XmlMacroReadAttributeBase(oNode, L"w:cryptProviderType", m_oCryptProviderType);
++		XmlMacroReadAttributeBase(oNode, L"w:cryptProviderTypeExt", m_oCryptProviderTypeExt);
++		XmlMacroReadAttributeBase(oNode, L"w:cryptProviderTypeExtSource", m_oCryptProviderTypeExtSource);
++		XmlMacroReadAttributeBase(oNode, L"w:algIdExt", m_oAlgIdExt);
++		XmlMacroReadAttributeBase(oNode, L"w:algIdExtSource", m_oAlgIdExtSource);
++		XmlMacroReadAttributeBase(oNode, L"w:hash", m_sHashValue);
++		XmlMacroReadAttributeBase(oNode, L"w:salt", m_sSaltValue);
++		XmlMacroReadAttributeBase(oNode, L"w:cryptSpinCount", m_oSpinCount);
++		XmlMacroReadAttributeBase(oNode, L"w:hashValue", m_sHashValue);
++		XmlMacroReadAttributeBase(oNode, L"w:saltValue", m_sSaltValue);
++		XmlMacroReadAttributeBase(oNode, L"w:spinCount", m_oSpinCount);
+ 	}
+ 	void CDocProtect::fromXML(XmlUtils::CXmlLiteReader& oReader)
+ 	{
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h b/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+--- a/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
++++ b/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+@@ -507,7 +507,9 @@
+ 		rtlGutter = 12,
+ 		lnNumType = 13,
+ 		docGrid = 14,
+-		bidi = 15
++		bidi = 15,
++		// Private section-property extension; not paragraph Bool tag 200.
++		formProt = 200
+ 	};}
+ 	namespace c_oSerProp_secPrSettingsType{enum c_oSerProp_secPrSettingsType
+ 	{
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+--- a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
++++ b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+@@ -1676,6 +1676,12 @@
+ 	{
+ 		nCurPos = m_oBcw.WriteItemStart(c_oSerProp_secPrType::bidi);
+ 		m_oBcw.m_oStream.WriteBOOL(pSectPr->m_oBidi->m_oVal.ToBool());
++		m_oBcw.WriteItemEnd(nCurPos);
++	}
++	if (pSectPr->m_oFormProt.IsInit())
++	{
++		nCurPos = m_oBcw.WriteItemStart(c_oSerProp_secPrType::formProt);
++		m_oBcw.m_oStream.WriteBOOL(pSectPr->m_oFormProt->m_oVal.ToBool());
+ 		m_oBcw.WriteItemEnd(nCurPos);
+ 	}
+ }
+diff --git a/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp b/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
+--- a/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
++++ b/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
+@@ -1722,6 +1722,16 @@
+ 		pSectPr->m_oBidi.Init();
+ 		pSectPr->m_oBidi->m_oVal.FromBool(m_oBufferedStream.GetBool());
+ 	}
++	else if (c_oSerProp_secPrType::formProt == type)
++	{
++		if (length != 1)
++			return c_oSerConstants::ErrorUnknown;
++		BYTE value = m_oBufferedStream.GetUChar();
++		if (value > 1)
++			return c_oSerConstants::ErrorUnknown;
++		pSectPr->m_oFormProt.Init();
++		pSectPr->m_oFormProt->m_oVal.FromBool(value != 0);
++	}
+ 	else
+ 		res = c_oSerConstants::ReadUnknown;
+ 	return res;

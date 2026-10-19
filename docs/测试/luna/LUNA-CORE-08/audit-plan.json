@@ -1,0 +1,12 @@
+{
+  "taskId": "LUNA-CORE-08",
+  "entries": [
+    {"path": "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp", "anchors": ["void BinaryDocumentTableWriter::WritePermission", "pPerm->m_oEdGrp.IsInit()", "pPerm->m_oColFirst.IsInit()", "void BinarySettingsTableWriter::WriteDocumentProtection", "oDocProtect.m_oEnforcment.IsInit()", "oDocProtect.m_oFormatting.IsInit()", "oDocProtect.m_oSpinCount.IsInit()", "pSectPr->m_oFormProt.IsInit()", "style.m_oLocked.IsInit()", "WriteSectPrChange"]},
+    {"path": "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp", "anchors": ["int Binary_DocumentTableReader::ReadPermStart", "int Binary_DocumentTableReader::ReadPermEnd", "int Binary_SettingsTableReader::ReadDocProtect", "c_oSerProp_secPrType::formProt == type", "pSectPr->m_oFormProt->m_oVal.FromBool", "Style_Locked == type"]},
+    {"path": "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h", "anchors": ["namespace c_oSerPermission", "namespace c_oDocProtect", "formProt = 200"]},
+    {"path": "core/OOXML/DocxFormat/Settings/Settings.cpp", "anchors": ["void CDocProtect::fromXML(XmlUtils::CXmlNode&", "XmlMacroReadAttributeBase(oNode, L\"w:enforcement\"", "XmlMacroReadAttributeBase(oNode, L\"w:spinCount\"", "void CDocProtect::ReadAttributes"]},
+    {"path": "core/OOXML/DocxFormat/Logic/Annotations.cpp", "anchors": ["CPermStart::toXML()", "CPermEnd::toXML()", "w:displacedByCustomXml", "bHasLegacyDisplacedByCustomXml"]},
+    {"path": "core/OOXML/DocxFormat/Logic/SectionProperty.cpp", "anchors": ["m_oFormProt = oChild", "m_oFormProt = oReader", "if (m_oFormProt.IsInit())"]},
+    {"path": "core/OOXML/Common/SimpleTypes_Word.cpp", "anchors": ["EEdGrp CEdGrp::FromString", "edgrpAdministrators", "edgrpContributors", "edgrpCurrent", "edgrpEditors", "edgrpEveryone", "edgrpNone", "edgrpOwners"]}
+  ]
+}
