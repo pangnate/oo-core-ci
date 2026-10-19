@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import json
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+from build_v8_windows_sdk import prepare_depot_tools
 
 
 class V8WindowsSdkLockTests(unittest.TestCase):
@@ -39,8 +43,30 @@ class V8WindowsSdkLockTests(unittest.TestCase):
         self.assertIn("v8_monolith", script)
         self.assertIn("V8_PROBE_RESULT=3", script)
         self.assertIn("--revision=v8@", script)
+        self.assertIn("def prepare_depot_tools", script)
+        self.assertIn("# changed by build_tools", script)
         self.assertIn("args.work_root = args.work_root.resolve()", script)
         self.assertIn("args.dist = args.dist.resolve()", script)
+
+    def test_depot_tools_bootstrap_recipe_is_narrow_and_repeatable(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            depot = Path(temporary)
+            (depot / "bootstrap").mkdir()
+            (depot / "bootstrap/manifest.txt").write_text("upstream manifest\n", encoding="utf-8")
+            (depot / "bootstrap/bootstrap.py").write_text(
+                "            raise subprocess.CalledProcessError(proc.returncode, argv, None)\n"
+                "    _win_git_bootstrap_config()\n",
+                encoding="utf-8",
+            )
+            prepare_depot_tools(depot)
+            manifest = (depot / "bootstrap/manifest.txt").read_text(encoding="utf-8")
+            bootstrap = (depot / "bootstrap/bootstrap.py").read_text(encoding="utf-8")
+            self.assertTrue((depot / "bootstrap/manifest.txt.upstream").is_file())
+            self.assertIn("3.11.8.chromium.35", manifest)
+            self.assertIn("# changed by build_tools: skip failed Windows git bootstrap", bootstrap)
+            self.assertIn("#_win_git_bootstrap_config()", bootstrap)
+            prepare_depot_tools(depot)
+            self.assertEqual(bootstrap, (depot / "bootstrap/bootstrap.py").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

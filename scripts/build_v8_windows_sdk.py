@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -92,6 +93,46 @@ int main() {
         raise RuntimeError("V8 linked executable did not produce the expected JS result")
 
 
+def prepare_depot_tools(depot: Path) -> None:
+    """Apply the pinned ONLYOFFICE v8_89 Windows bootstrap compatibility recipe."""
+    manifest = depot / "bootstrap/manifest.txt"
+    bootstrap = depot / "bootstrap/bootstrap.py"
+    if not manifest.is_file() or not bootstrap.is_file():
+        raise RuntimeError("pinned depot_tools checkout lacks expected bootstrap files")
+    original = manifest.read_text(encoding="utf-8")
+    if "# changed by build_tools" not in original:
+        backup = manifest.with_suffix(".txt.upstream")
+        if backup.exists():
+            raise RuntimeError("refusing to overwrite an existing depot_tools manifest backup")
+        shutil.copyfile(manifest, backup)
+        manifest.write_text(
+            "# changed by build_tools\n\n"
+            "$VerifiedPlatform windows-amd64 windows-arm64 linux-amd64 mac-amd64 mac-arm64\n\n"
+            "@Subdir python\n"
+            "infra/3pp/tools/cpython/${platform} version:2@2.7.18.chromium.39\n\n"
+            "@Subdir python3\n"
+            "infra/3pp/tools/cpython3/${platform} version:2@3.11.8.chromium.35\n\n"
+            "@Subdir git\n"
+            "infra/3pp/tools/git/${platform} version:2@2.41.0.chromium.11\n",
+            encoding="utf-8", newline="",
+        )
+    bootstrap_text = bootstrap.read_text(encoding="utf-8")
+    failed_git_bootstrap = re.compile(
+        r"(?m)^([ \t]*)raise subprocess\.CalledProcessError\(proc\.returncode, argv, None\)$"
+    )
+    matches = list(failed_git_bootstrap.finditer(bootstrap_text))
+    if len(matches) == 1:
+        bootstrap_text = failed_git_bootstrap.sub(
+            lambda match: f"{match.group(1)}# changed by build_tools: skip failed Windows git bootstrap\n{match.group(1)}return",
+            bootstrap_text, count=1,
+        )
+        bootstrap.write_text(bootstrap_text, encoding="utf-8", newline="")
+    elif "# changed by build_tools: skip failed Windows git bootstrap" not in bootstrap_text:
+        raise RuntimeError("unexpected depot_tools bootstrap error-handling context")
+    replace_once(bootstrap, "    _win_git_bootstrap_config()", "    #_win_git_bootstrap_config()",
+                 already_ok="    #_win_git_bootstrap_config()")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--work-root", type=Path, default=ROOT / "vendor" / "work")
@@ -121,6 +162,7 @@ def main() -> int:
                      env=os.environ.copy()).strip()
     if depot_head != LOCK["depotTools"]["ref"]:
         raise RuntimeError("depot_tools checkout does not match lock")
+    prepare_depot_tools(depot)
 
     env = os.environ.copy()
     env["PATH"] = str(depot) + os.pathsep + env.get("PATH", "")
@@ -218,6 +260,7 @@ def main() -> int:
     provenance = {"schemaVersion": 1, "sdkId": LOCK["sdkId"], "coreRef": LOCK["coreRef"],
                   "buildToolsRef": LOCK["buildToolsRef"], "v8Ref": head, "depotToolsRef": depot_head,
                   "gnArgs": LOCK["gnArgs"], "abi": LOCK["abi"],
+                  "bootstrapRecipe": "ONLYOFFICE build_tools v8_89 Windows 8.9 bootstrap compatibility edits",
                   "probe": {"source": "1 + 2", "expected": 3, "status": "passed"}}
     (sdk / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")
     archive = args.dist / "v8-windows-x64-sdk.zip"
