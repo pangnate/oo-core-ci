@@ -44,6 +44,7 @@ class V8WindowsSdkLockTests(unittest.TestCase):
         self.assertIn("V8_PROBE_RESULT=3", script)
         self.assertIn("--revision=v8@", script)
         self.assertIn("def prepare_depot_tools", script)
+        self.assertIn("bootstrap/win_tools.bat", script)
         self.assertIn("# changed by build_tools", script)
         self.assertIn("args.work_root = args.work_root.resolve()", script)
         self.assertIn("args.dist = args.dist.resolve()", script)

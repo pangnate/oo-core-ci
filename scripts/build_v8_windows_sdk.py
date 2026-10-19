@@ -176,6 +176,10 @@ def main() -> int:
     env["DEPOT_TOOLS_UPDATE"] = "0"
     env["GYP_MSVS_VERSION"] = "2019"
     env["GCLIENT_SUPPRESS_GIT_VERSION_WARNING"] = "1"
+    run(["cmd", "/c", str(depot / "bootstrap/win_tools.bat")], cwd=build, env=env, timeout=900)
+    python_pointer = depot / "python3_bin_reldir.txt"
+    if not python_pointer.is_file():
+        raise RuntimeError("pinned depot_tools Windows bootstrap did not write python3_bin_reldir.txt")
     run(["cmd", "/c", str(depot / "fetch.bat"), "--nohooks", "v8"], cwd=build, env=env, timeout=1800)
 
     v8 = build / "v8"
