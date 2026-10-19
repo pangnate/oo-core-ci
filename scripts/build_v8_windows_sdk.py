@@ -129,8 +129,13 @@ def prepare_depot_tools(depot: Path) -> None:
         bootstrap.write_text(bootstrap_text, encoding="utf-8", newline="")
     elif "# changed by build_tools: skip failed Windows git bootstrap" not in bootstrap_text:
         raise RuntimeError("unexpected depot_tools bootstrap error-handling context")
-    replace_once(bootstrap, "    _win_git_bootstrap_config()", "    #_win_git_bootstrap_config()",
-                 already_ok="    #_win_git_bootstrap_config()")
+    bootstrap_text = bootstrap.read_text(encoding="utf-8")
+    git_bootstrap_call = "    _win_git_bootstrap_config()"
+    if git_bootstrap_call in bootstrap_text:
+        replace_once(bootstrap, git_bootstrap_call, "    #_win_git_bootstrap_config()",
+                     already_ok="    #_win_git_bootstrap_config()")
+    elif "_win_git_bootstrap_config" in bootstrap_text:
+        raise RuntimeError("unexpected depot_tools Windows git bootstrap call context")
 
 
 def main() -> int:

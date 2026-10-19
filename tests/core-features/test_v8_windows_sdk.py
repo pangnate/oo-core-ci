@@ -68,6 +68,20 @@ class V8WindowsSdkLockTests(unittest.TestCase):
             prepare_depot_tools(depot)
             self.assertEqual(bootstrap, (depot / "bootstrap/bootstrap.py").read_text(encoding="utf-8"))
 
+    def test_depot_tools_revision_without_legacy_git_bootstrap_is_supported(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            depot = Path(temporary)
+            (depot / "bootstrap").mkdir()
+            (depot / "bootstrap/manifest.txt").write_text("upstream manifest\n", encoding="utf-8")
+            (depot / "bootstrap/bootstrap.py").write_text(
+                "            raise subprocess.CalledProcessError(proc.returncode, argv, None)\n",
+                encoding="utf-8",
+            )
+            prepare_depot_tools(depot)
+            bootstrap = (depot / "bootstrap/bootstrap.py").read_text(encoding="utf-8")
+            self.assertIn("# changed by build_tools: skip failed Windows git bootstrap", bootstrap)
+            self.assertNotIn("_win_git_bootstrap_config", bootstrap)
+
 
 if __name__ == "__main__":
     unittest.main()
