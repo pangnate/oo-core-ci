@@ -122,11 +122,60 @@ def patch_core() -> None:
     subprocess.run([sys.executable, str(script)], check=True)
 
 
+def apply_core_overlays() -> tuple[list[str], list[str]]:
+    """Apply project-owned Core patches and file overlays over official Core."""
+    import subprocess
+
+    patches_dir = ROOT / "patches" / "core"
+    patch_files = sorted(patches_dir.glob("*.patch")) if patches_dir.exists() else []
+    applied_patches: list[str] = []
+    for patch_file in patch_files:
+        relative_patch = patch_file.relative_to(ROOT).as_posix()
+        check = subprocess.run(
+            ["git", "apply", "--check", relative_patch], cwd=ROOT,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        if check.returncode == 0:
+            subprocess.run(["git", "apply", relative_patch], cwd=ROOT, check=True)
+            print(f"[patch] applied {relative_patch}")
+        else:
+            # download.py can reuse an already-synced tree. Avoid applying the
+            # same project patch twice, but fail if it matches neither state.
+            reverse = subprocess.run(
+                ["git", "apply", "--reverse", "--check", relative_patch], cwd=ROOT,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            if reverse.returncode != 0:
+                raise RuntimeError(
+                    f"Cannot apply Core patch {relative_patch}:\n{check.stderr.strip()}"
+                )
+            print(f"[patch] already applied {relative_patch}")
+        applied_patches.append(relative_patch)
+
+    overlay_root = ROOT / "overlays" / "core"
+    overlay_files = sorted(path for path in overlay_root.rglob("*") if path.is_file()) if overlay_root.exists() else []
+    for source in overlay_files:
+        relative = source.relative_to(overlay_root)
+        destination = ROOT / "core" / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
+        print(f"[overlay] {relative.as_posix()}")
+
+    return applied_patches, [path.relative_to(overlay_root).as_posix() for path in overlay_files]
+
+
 def write_baseline(core_ref: str, build_tools_ref: str) -> None:
+    patches_dir = ROOT / "patches" / "core"
+    patches = sorted(path.relative_to(ROOT).as_posix() for path in patches_dir.glob("*.patch")) if patches_dir.exists() else []
+    overlay_root = ROOT / "overlays" / "core"
+    overlays = sorted(path.relative_to(overlay_root).as_posix() for path in overlay_root.rglob("*") if path.is_file()) if overlay_root.exists() else []
     data = {
         "coreRef": core_ref,
         "buildToolsRef": build_tools_ref,
-        "note": "Keep local runtime SO/DLL files from the same ONLYOFFICE core baseline as coreRef."
+        "corePatches": patches,
+        "coreOverlays": overlays,
+        "coreBuildPatches": ["scripts/patch_x2t_sln.py"],
+        "note": "Core source is fetched from the pinned ONLYOFFICE/core ref; project patches and overlays are maintained separately. Runtime libraries must match this baseline."
     }
     (ROOT / "ci").mkdir(exist_ok=True)
     (ROOT / "ci" / "baseline.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
@@ -213,12 +262,53 @@ def main() -> int:
         description="Download/pin ONLYOFFICE core build inputs for offline-ish GitHub Actions builds."
     )
     parser.add_argument("--core-ref", required=True, help="Exact ONLYOFFICE/core commit/tag/branch. Commit SHA is recommended.")
-    parser.add_argument("--build-tools-ref", default="master", help="Exact ONLYOFFICE/build_tools commit/tag/branch. Commit SHA is recommended.")
+    parser.add_argument(
+        "--build-tools-ref",
+        default="a9f9895b172b09595abcafe85d56fab163f9ecb7",
+        help="Exact ONLYOFFICE/build_tools commit (defaults to this repository's pinned baseline).",
+    )
     parser.add_argument("--linux-amd64-libs", type=Path)
     parser.add_argument("--linux-arm64-libs", type=Path)
     parser.add_argument("--windows-amd64-dlls", type=Path)
+    parser.add_argument(
+        "--runtime-config",
+        type=Path,
+        default=ROOT / "local-input" / "runtime-sources.json",
+        help="Local JSON mapping for runtime bin directories (default: local-input/runtime-sources.json).",
+    )
     parser.add_argument("--force-source", action="store_true")
     args = parser.parse_args()
+
+    runtime_sources = {}
+    if args.runtime_config.exists():
+        runtime_sources = json.loads(args.runtime_config.read_text(encoding="utf-8"))
+        if not isinstance(runtime_sources, dict):
+            raise SystemExit(f"Runtime config must be a JSON object: {args.runtime_config}")
+        print(f"[runtime config] {args.runtime_config}")
+
+    runtime_paths = {
+        "linux-amd64": args.linux_amd64_libs or runtime_sources.get("linux-amd64"),
+        "linux-arm64": args.linux_arm64_libs or runtime_sources.get("linux-arm64"),
+        "windows-amd64": args.windows_amd64_dlls or runtime_sources.get("windows-amd64"),
+    }
+    missing_runtime_sources = [name for name, path in runtime_paths.items() if not path]
+    if missing_runtime_sources:
+        missing = ", ".join(missing_runtime_sources)
+        raise SystemExit(
+            f"Provide all three runtime bin directories via {args.runtime_config} "
+            f"or CLI options; missing: {missing}"
+        )
+    for name, value in runtime_paths.items():
+        if value:
+            path = Path(value).expanduser().resolve()
+            if not path.is_dir():
+                raise SystemExit(f"Runtime bin directory for {name} does not exist: {path}")
+            runtime_paths[name] = path
+    runtime_source_labels = {
+        "linux-amd64": "--linux-amd64-libs" if args.linux_amd64_libs else f"{args.runtime_config.name}:linux-amd64",
+        "linux-arm64": "--linux-arm64-libs" if args.linux_arm64_libs else f"{args.runtime_config.name}:linux-arm64",
+        "windows-amd64": "--windows-amd64-dlls" if args.windows_amd64_dlls else f"{args.runtime_config.name}:windows-amd64",
+    }
 
     ARCHIVES.mkdir(parents=True, exist_ok=True)
     RUNTIME.mkdir(parents=True, exist_ok=True)
@@ -278,26 +368,34 @@ def main() -> int:
         digest = download(item["url"], path, item.get("sha256"))
         lock[key] = {"sha256": digest, "url": item["url"], "file": path.relative_to(ROOT).as_posix()}
 
-    if args.linux_amd64_libs:
-        d = pack_linux_runtime(args.linux_amd64_libs.resolve(), RUNTIME / "linux-amd64-runtime.tar.gz")
-        lock["runtime-linux-amd64"] = {"sha256": d, "source": str(args.linux_amd64_libs.resolve()), "file": "vendor/runtime/linux-amd64-runtime.tar.gz"}
-    if args.linux_arm64_libs:
-        d = pack_linux_runtime(args.linux_arm64_libs.resolve(), RUNTIME / "linux-arm64-runtime.tar.gz")
-        lock["runtime-linux-arm64"] = {"sha256": d, "source": str(args.linux_arm64_libs.resolve()), "file": "vendor/runtime/linux-arm64-runtime.tar.gz"}
-    if args.windows_amd64_dlls:
-        d = pack_windows_runtime(args.windows_amd64_dlls.resolve(), RUNTIME / "windows-amd64-runtime.zip")
-        lock["runtime-windows-amd64"] = {"sha256": d, "source": str(args.windows_amd64_dlls.resolve()), "file": "vendor/runtime/windows-amd64-runtime.zip"}
+    for platform, source, filename, pack in [
+        ("linux-amd64", runtime_paths["linux-amd64"], "linux-amd64-runtime.tar.gz", pack_linux_runtime),
+        ("linux-arm64", runtime_paths["linux-arm64"], "linux-arm64-runtime.tar.gz", pack_linux_runtime),
+        ("windows-amd64", runtime_paths["windows-amd64"], "windows-amd64-runtime.zip", pack_windows_runtime),
+    ]:
+        if source:
+            archive = RUNTIME / filename
+            digest = pack(source, archive)
+            lock[f"runtime-{platform}"] = {
+                "sha256": digest,
+                "source": runtime_source_labels[platform],
+                "file": archive.relative_to(ROOT).as_posix(),
+            }
 
     LOCK_FILE.write_text(json.dumps(lock, indent=2, ensure_ascii=False), encoding="utf-8")
-    write_baseline(args.core_ref, args.build_tools_ref)
     patch_core()
+    applied_patches, applied_overlays = apply_core_overlays()
+    write_baseline(args.core_ref, args.build_tools_ref)
     core_tar.unlink(missing_ok=True)
     build_tar.unlink(missing_ok=True)
 
     print("\nBootstrap download complete.")
+    print(f"Core source: ONLYOFFICE/core@{args.core_ref}")
+    print(f"Applied project Core patches: {len(applied_patches)}")
+    print(f"Applied project Core file overlays: {len(applied_overlays)}")
     print("Next:")
-    print("  1) On Windows, run scripts/download_windows_qt.ps1")
-    print("  2) git lfs install")
+    print("  1) On Windows, run scripts/download_windows_qt.ps1 if the Qt archive is missing")
+    print("  2) Review vendor/checksums.json and ci/baseline.json")
     print("  3) git add . && git commit && git push")
     return 0
 

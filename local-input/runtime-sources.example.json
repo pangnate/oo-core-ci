@@ -1,0 +1,5 @@
+{
+  "linux-amd64": "D:/path/to/linux-amd64/bin",
+  "linux-arm64": "D:/path/to/linux-arm64/bin",
+  "windows-amd64": "D:/path/to/windows-amd64/bin"
+}

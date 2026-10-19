@@ -1,7 +1,13 @@
 {
   "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
   "buildToolsRef": "a9f9895b172b09595abcafe85d56fab163f9ecb7",
-  "note": "Local Core snapshot with preserved company branding and X2T CI patches. New baseline requires three-platform CI and conversion validation.",
-  "coreSource": "D:\\workspace\\only9-master\\core",
-  "coreDescribe": "v10.0.0.169-2-ged63e94de8"
+  "coreDescribe": "v10.0.0.169-2-ged63e94de8",
+  "corePatches": [],
+  "coreOverlays": [
+    "Common/copyright.txt"
+  ],
+  "coreBuildPatches": [
+    "scripts/patch_x2t_sln.py"
+  ],
+  "note": "Core source is pinned to the official ONLYOFFICE/core commit; project patches and overlays are maintained separately. Three-platform CI is pending for this baseline."
 }

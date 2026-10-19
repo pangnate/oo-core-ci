@@ -2,6 +2,8 @@
 
 这个仓库用于**只编译 X2T 及其必要静态格式库**，产出 Linux amd64、Linux arm64、Windows amd64 三个平台的 `x2t`，不构建 ONLYOFFICE Server / SDKJS / Web Apps / 完整 Core runtime。当前已同步 10.0 源码和三平台 runtime；新基线尚待重新编译验证。
 
+Word、Sheet、Slide的Core功能改造已有[45张Luna执行卡及2个汇总项](./docs/Core三端功能改造_Luna开发任务卡_2026-10-19.md)，唯一领取/状态入口为[执行总表](./docs/Core三端功能改造_执行总表_2026-10-19.md)。当前按用户本地Windows环境完成Core产物POC，不等待Linux或产品新SDKJS；后续新JS集成、Linux发布分阶段保留。任务补齐Windows开发构建、SDK/V8、缓存、指标与单平台容量，已知大卡已拆子卡。这些仍是待实施计划，本轮未启动开发。
+
 ## 你需要准备
 
 你已经有的同版本运行库：
@@ -13,6 +15,8 @@
 **这些运行库必须和你选择的 Core 基线一致。**
 
 ## 第一步：本地下载全部源码/第三方包
+
+先复制 `local-input/runtime-sources.example.json` 为 `local-input/runtime-sources.json`，填写本机三个平台 runtime 的 `bin` 目录。脚本会自动提取共享库；目录配置不会提交到仓库。
 
 Python 3：
 
@@ -135,19 +139,28 @@ UnicodeConverter
 
 ## Windows DLL -> import LIB 的说明
 
-CI 对缺少 import library 的 DLL 使用 `dumpbin /exports` 生成 `.def`，再用 `lib.exe` 生成 import library；该流程已通过当前基线的 Windows 编译验证。如果未来 DLL 存在必须标记为 `DATA` 的导出、ordinal-only 导出或其他特殊 PE 导出，自动生成可能无法覆盖，届时应提供该 DLL 对应的原始 `.lib`。这不会影响 Linux 路线。
+CI 对缺少 import library 的 DLL 使用 `dumpbin /exports` 生成 `.def`，再用 `lib.exe` 生成 import library；该流程曾在旧基线上通过 Windows 编译验证，10.0 基线仍待重跑。如果未来 DLL 存在必须标记为 `DATA` 的导出、ordinal-only 导出或其他特殊 PE 导出，自动生成可能无法覆盖，届时应提供该 DLL 对应的原始 `.lib`。这不会影响 Linux 路线。
 
 ## 编译验证与功能验证的边界
 
 旧基线三平台编译已通过；升级至 10.0 后，需要重新验证 Core/build_tools、第三方依赖和预编译 runtime 能否完成链接。当前 workflow 的自动检查覆盖产物架构和动态依赖；它没有执行文档转换 fixture 或 `distribute` round-trip。因此，功能改动仍需通过实际转换输入/输出验证，不能仅凭编译成功判断格式行为正确。
 
-## 10.0 本地输入同步（2026-10-17）
+## 从官方同步 Core 并提取本地 runtime
+
+先将 `local-input/runtime-sources.example.json` 复制为被忽略的 `local-input/runtime-sources.json`，填写本机三个运行环境的 `bin` 路径。当前机器上的配置已指向两个 Docker 工具目录和 Windows runtime 目录。之后用官方 Core 的固定 commit 运行：
 
 ```powershell
-python scripts/sync_local_inputs.py --core D:\workspace\only9-master\core --linux-amd64 D:\workspace\only9-merge\docker-tools\amd64\bin --linux-arm64 D:\workspace\only9-merge\docker-tools\arm64\bin --windows-amd64 D:\docservice\idp-all\idp-office\native\runtime\win-x64\bin
+python scripts/download.py `
+  --core-ref ed63e94de814ff1d4ea28cddfaba6939bc9df9ed `
+  --build-tools-ref a9f9895b172b09595abcafe85d56fab163f9ecb7 `
+  --force-source
 python scripts/verify_vendor.py --platform all
 ```
 
-Core 来自干净的 `v10.0.0.169-2-ged63e94de8` 工作区；保留本仓库公司名，重新应用 CryptoPP 和 Linux rpath-link 补丁。build_tools 沿用现有固定提交，尚未验证与新 Core 的构建兼容性。Windows 输入元数据版本为 `10.0.0.169`；Linux 使用指定 docker-tools 的两种架构 bin。
+`--force-source` 会重新从 `ONLYOFFICE/core` 和 `ONLYOFFICE/build_tools` 按固定 commit 下载源码，即使本地已有相同 ref 也会重置源码快照。脚本按 Core 版本检测第三方依赖，直接从配置的三个 `bin` 目录提取 `*.so*` / `*.dll` 到 `vendor/runtime/`，并更新 SHA256。当前 Core commit 为 `ed63e94de814ff1d4ea28cddfaba6939bc9df9ed`（`v10.0.0.169-2`）；build_tools 固定在 `a9f9895b172b09595abcafe85d56fab163f9ecb7`。
 
-同步脚本仅将构建需要的 SO/DLL 打入 vendor runtime，保持现有 CI 输入布局；不将来源中的 x2t、字体缓存或其他应用资源打进链接 SDK。生成的可执行文件需部署至对应版本的完整运行环境。来源、Core 树摘要及 runtime SHA256 记录在 `ci/baseline.json` 和 `vendor/checksums.json`。
+按当前用户要求，功能代码只维护在 `patches/core/*.patch`，不提交已打功能补丁的 `core/` 快照。`core/`是官方来源输入；构建/测试在隔离staging先应用CI构建修正，再按顺序重放功能patch，最后应用明确的品牌overlay。上游同步保留固定来源并检查patch冲突，功能代码不靠整文件overlay替换官方文件。
+
+当前 `download.py` 和workflow仍有在输入树应用/构建快照的旧行为，须由任务 `LUNA-CORE-BLD-01-FIX02` 改成隔离源流程；这不代表脚本已完成改造。改造前不要在用户当前源码执行上述force-source命令来测试功能patch，也不要通过重置Core清理历史构建/品牌或用户改动。
+
+runtime 同步只打包动态库，不会把来源中的 `x2t`、字体缓存或其他应用资源混进链接依赖。runtime 来源仍需与所选 Core 基线匹配；生成的 `x2t` 也要部署到对应版本的完整运行环境。Core 官方 commit、项目 overlays/patch 列表和 runtime SHA256 记录在 `ci/baseline.json` 与 `vendor/checksums.json`。
