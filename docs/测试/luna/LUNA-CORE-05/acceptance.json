@@ -1,0 +1,23 @@
+{
+  "taskId": "LUNA-CORE-05",
+  "case": "word-east-asian",
+  "execution": "NOT-RUN",
+  "fields": [
+    {"xml": "kinsoku", "tag": 200},
+    {"xml": "wordWrap", "tag": 201},
+    {"xml": "overflowPunct", "tag": 202},
+    {"xml": "topLinePunct", "tag": 203},
+    {"xml": "autoSpaceDE", "tag": 204},
+    {"xml": "autoSpaceDN", "tag": 205}
+  ],
+  "states": ["absent", false, true],
+  "cartesianCombinations": 729,
+  "lengthType": 1,
+  "payload": {"false": 0, "true": 1, "absent": "no record"},
+  "containers": ["direct pPr", "docDefaults", "style pPr", "numbering level pPr", "pPrChange"],
+  "routes": ["DOCX -> BIN -> DOCX -> BIN -> DOCX"],
+  "xmlBoolForms": ["missing child", "empty element means true", "val=0", "val=false", "val=1", "val=true"],
+  "negativeCases": ["new Bool payload length not 1: reader error", "new Bool byte 2 or 255: reader error", "unknown pPr tag followed by a known property: skip without misalignment"],
+  "assertions": ["explicit false never becomes absent", "inherited true overridden by initialized false", "mixed character-unit indents retained", "pPrChange old snapshot remains independent", "unrelated existing pPr and rPr values unchanged"],
+  "runtimeAssertionsExecuted": 0
+}
