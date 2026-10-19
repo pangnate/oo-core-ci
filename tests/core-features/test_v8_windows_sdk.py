@@ -85,6 +85,11 @@ class V8WindowsSdkLockTests(unittest.TestCase):
             self.assertIn("# changed by build_tools: skip failed Windows git bootstrap", bootstrap)
             self.assertNotIn("_win_git_bootstrap_config", bootstrap)
 
+    def test_build_tool_lookup_supports_depot_tools_ninja_fallback(self):
+        script = (ROOT / "scripts/build_v8_windows_sdk.py").read_text(encoding="utf-8")
+        self.assertIn('ninja_candidates = (v8 / "third_party/ninja/ninja.exe", depot / "ninja.exe")', script)
+        self.assertIn('gn_candidates = (v8 / "buildtools/win/gn.exe", depot / "gn.exe")', script)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -196,10 +196,17 @@ def main() -> int:
     if head != LOCK["v8"]["ref"]:
         raise RuntimeError(f"V8 checkout mismatch: {head}")
 
-    gn = v8 / "buildtools/win/gn.exe"
-    ninja = v8 / "third_party/ninja/ninja.exe"
-    if not gn.is_file() or not ninja.is_file():
-        raise RuntimeError("pinned V8 checkout did not provide its GN and Ninja binaries")
+    gn_candidates = (v8 / "buildtools/win/gn.exe", depot / "gn.exe")
+    ninja_candidates = (v8 / "third_party/ninja/ninja.exe", depot / "ninja.exe")
+    gn = next((path for path in gn_candidates if path.is_file()), None)
+    ninja = next((path for path in ninja_candidates if path.is_file()), None)
+    if gn is None or ninja is None:
+        missing = []
+        if gn is None:
+            missing.append("GN: " + ", ".join(str(path) for path in gn_candidates))
+        if ninja is None:
+            missing.append("Ninja: " + ", ".join(str(path) for path in ninja_candidates))
+        raise RuntimeError("pinned build checkout did not provide required binaries (" + "; ".join(missing) + ")")
 
     replace_once(v8 / "build/config/win/BUILD.gn", ":static_crt", ":dynamic_crt")
     replace_once(v8 / "build/vs_toolchain.py",
