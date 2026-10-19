@@ -33,6 +33,14 @@
       "path": "patches/core/013-graphics-strict-image-errors.patch",
       "sha256": "d650695cfbde6f0adb78c1d1e154af1c80bab86d94e021c22c2cf774988b5c40",
       "purpose": "CORE-13: additive versioned graphics image-failure policy and bounded primitive reads; source-only candidate"
+    },
+    {
+      "path": "patches/core/014-pdffile-strict-error-propagation.patch",
+      "sha256": "bb77692c407ea0aab60b45c850f56ace224d59ca7cbfebb79eb5da5a8ed7543c",
+      "purpose": "CORE-14: additive strict PdfFile entries, conversion-result propagation and owned atomic PDF candidate publication; source-only candidate",
+      "dependsOn": [
+        "patches/core/013-graphics-strict-image-errors.patch"
+      ]
     }
   ]
 }
