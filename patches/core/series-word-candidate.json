@@ -54,6 +54,11 @@
       "path": "patches/core/016-word-protection-source-omissions.patch",
       "sha256": "cb29099410c4b20b6eab792c90d97297fcfe1fd8d7280b62ca4f7850e0642038",
       "purpose": "CORE-08: confirmed codec source omissions; uncompiled candidate"
+    },
+    {
+      "path": "patches/core/017-slide-paragraph-stream-bools.patch",
+      "sha256": "d16bbb0db32fd3700f6c27b74de0ddf3b1e28e6fba1f559b4df073a4aff3ef69",
+      "purpose": "CORE-09: confirmed codec source omissions; uncompiled candidate"
     }
   ]
 }

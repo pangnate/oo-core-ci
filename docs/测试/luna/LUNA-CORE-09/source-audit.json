@@ -1,0 +1,549 @@
+{
+  "taskId": "LUNA-CORE-09",
+  "level": "SOURCE ANCHORS ONLY; semantics require manual review",
+  "cppAssertionsExecuted": 0,
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "staging": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\vendor\\work\\codec-audit-dev-20261019",
+  "entries": [
+    {
+      "path": "core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp",
+      "sha256": "dd4c9480039776301c688ca5da393a960fe737aa234d9bcc0c91e0cde894aea3",
+      "anchors": [
+        {
+          "anchor": "void TextParagraphPr::ReadAttributes",
+          "lines": [
+            183
+          ],
+          "excerpts": [
+            {
+              "line": 183,
+              "text": "\t\tvoid TextParagraphPr::ReadAttributes(XmlUtils::CXmlLiteReader& oReader)"
+            }
+          ]
+        },
+        {
+          "anchor": "_T(\"eaLnBrk\"), eaLnBrk",
+          "lines": [
+            194,
+            211
+          ],
+          "excerpts": [
+            {
+              "line": 194,
+              "text": "\t\t\t\tWritingElement_ReadAttributes_Read_else_if( oReader, _T(\"eaLnBrk\"), eaLnBrk)"
+            },
+            {
+              "line": 211,
+              "text": "\t\t\tpWriter->WriteAttribute(_T(\"eaLnBrk\"), eaLnBrk);"
+            }
+          ]
+        },
+        {
+          "anchor": "_T(\"latinLnBrk\"), latinLnBrk",
+          "lines": [
+            195,
+            213
+          ],
+          "excerpts": [
+            {
+              "line": 195,
+              "text": "\t\t\t\tWritingElement_ReadAttributes_Read_else_if( oReader, _T(\"latinLnBrk\"), latinLnBrk)"
+            },
+            {
+              "line": 213,
+              "text": "\t\t\tpWriter->WriteAttribute(_T(\"latinLnBrk\"), latinLnBrk);"
+            }
+          ]
+        },
+        {
+          "anchor": "_T(\"hangingPunct\"), hangingPunct",
+          "lines": [
+            196,
+            214
+          ],
+          "excerpts": [
+            {
+              "line": 196,
+              "text": "\t\t\t\tWritingElement_ReadAttributes_Read_else_if( oReader, _T(\"hangingPunct\"), hangingPunct)"
+            },
+            {
+              "line": 214,
+              "text": "\t\t\tpWriter->WriteAttribute(_T(\"hangingPunct\"), hangingPunct);"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteBool2(2, eaLnBrk)",
+          "lines": [
+            280
+          ],
+          "excerpts": [
+            {
+              "line": 280,
+              "text": "\t\t\tpWriter->WriteBool2(2, eaLnBrk);"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteBool2(4, hangingPunct)",
+          "lines": [
+            282
+          ],
+          "excerpts": [
+            {
+              "line": 282,
+              "text": "\t\t\tpWriter->WriteBool2(4, hangingPunct);"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteBool2(6, latinLnBrk)",
+          "lines": [
+            284
+          ],
+          "excerpts": [
+            {
+              "line": 284,
+              "text": "\t\t\tpWriter->WriteBool2(6, latinLnBrk);"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteBool2(10, rtl)",
+          "lines": [
+            288
+          ],
+          "excerpts": [
+            {
+              "line": 288,
+              "text": "\t\t\tpWriter->WriteBool2(10, rtl);"
+            }
+          ]
+        },
+        {
+          "anchor": "eaLnBrk = pReader->GetBool()",
+          "lines": [
+            330
+          ],
+          "excerpts": [
+            {
+              "line": 330,
+              "text": "\t\t\t\t\t\teaLnBrk = pReader->GetBool();"
+            }
+          ]
+        },
+        {
+          "anchor": "hangingPunct = pReader->GetBool()",
+          "lines": [
+            340
+          ],
+          "excerpts": [
+            {
+              "line": 340,
+              "text": "\t\t\t\t\t\thangingPunct = pReader->GetBool();"
+            }
+          ]
+        },
+        {
+          "anchor": "latinLnBrk = pReader->GetBool()",
+          "lines": [
+            350
+          ],
+          "excerpts": [
+            {
+              "line": 350,
+              "text": "\t\t\t\t\t\tlatinLnBrk = pReader->GetBool();"
+            }
+          ]
+        },
+        {
+          "anchor": "props->hangingPunct = *hangingPunct",
+          "lines": [
+            267
+          ],
+          "excerpts": [
+            {
+              "line": 267,
+              "text": "\t\t\tif(hangingPunct.is_init())\tprops->hangingPunct = *hangingPunct;"
+            }
+          ]
+        },
+        {
+          "anchor": "void TextParagraphPr::Normalize",
+          "lines": [
+            497
+          ],
+          "excerpts": [
+            {
+              "line": 497,
+              "text": "\t\tvoid TextParagraphPr::Normalize()"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/PPTXFormat/Logic/TextSpacing.cpp",
+      "sha256": "22cc0400ab700fbc08ae7a965ebead9aa0dc0c95859f7ee1fe91a4c6ac1e95a6",
+      "anchors": [
+        {
+          "anchor": "WriteInt2(0, spcPct)",
+          "lines": [
+            116
+          ],
+          "excerpts": [
+            {
+              "line": 116,
+              "text": "\t\t\tpWriter->WriteInt2(0, spcPct);"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteInt2(1, spcPts)",
+          "lines": [
+            117
+          ],
+          "excerpts": [
+            {
+              "line": 117,
+              "text": "\t\t\tpWriter->WriteInt2(1, spcPts);"
+            }
+          ]
+        },
+        {
+          "anchor": "spcPct = pReader->GetLong()",
+          "lines": [
+            136
+          ],
+          "excerpts": [
+            {
+              "line": 136,
+              "text": "\t\t\t\t\t\tspcPct = pReader->GetLong();"
+            }
+          ]
+        },
+        {
+          "anchor": "spcPts = pReader->GetLong()",
+          "lines": [
+            141
+          ],
+          "excerpts": [
+            {
+              "line": 141,
+              "text": "\t\t\t\t\t\tspcPts = pReader->GetLong();"
+            }
+          ]
+        },
+        {
+          "anchor": "void TextSpacing::Normalize",
+          "lines": [
+            159
+          ],
+          "excerpts": [
+            {
+              "line": 159,
+              "text": "\t\tvoid TextSpacing::Normalize()"
+            }
+          ]
+        },
+        {
+          "anchor": "spcPts.normalize(0, 158400)",
+          "lines": [
+            161
+          ],
+          "excerpts": [
+            {
+              "line": 161,
+              "text": "\t\t\tspcPts.normalize(0, 158400);"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/PPTXFormat/Limit/TextAlign.cpp",
+      "sha256": "029e41f1d7541908bdb449d1e1f390988ab73e0e4902f26378942cb6c453c0ad",
+      "anchors": [
+        {
+          "anchor": "TextAlign::GetBYTECode",
+          "lines": [
+            59
+          ],
+          "excerpts": [
+            {
+              "line": 59,
+              "text": "\t\tunsigned char TextAlign::GetBYTECode() const"
+            }
+          ]
+        },
+        {
+          "anchor": "TextAlign::SetBYTECode",
+          "lines": [
+            77
+          ],
+          "excerpts": [
+            {
+              "line": 77,
+              "text": "\t\tvoid TextAlign::SetBYTECode(const unsigned char& val)"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"dist\"",
+          "lines": [
+            49,
+            63,
+            85
+          ],
+          "excerpts": [
+            {
+              "line": 49,
+              "text": "\t\t\t\t(L\"dist\" == strValue) ||"
+            },
+            {
+              "line": 63,
+              "text": "\t\t\tif (L\"dist\" == m_strValue)"
+            },
+            {
+              "line": 85,
+              "text": "\t\t\t\tm_strValue = L\"dist\";"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"thaiDist\"",
+          "lines": [
+            54,
+            73,
+            100
+          ],
+          "excerpts": [
+            {
+              "line": 54,
+              "text": "\t\t\t\t(L\"thaiDist\" == strValue))"
+            },
+            {
+              "line": 73,
+              "text": "\t\t\tif (L\"thaiDist\" == m_strValue)"
+            },
+            {
+              "line": 100,
+              "text": "\t\t\t\tm_strValue = L\"thaiDist\";"
+            }
+          ]
+        },
+        {
+          "anchor": "L\"justLow\"",
+          "lines": [
+            51,
+            67,
+            91
+          ],
+          "excerpts": [
+            {
+              "line": 51,
+              "text": "\t\t\t\t(L\"justLow\" == strValue) ||"
+            },
+            {
+              "line": 67,
+              "text": "\t\t\tif (L\"justLow\" == m_strValue)"
+            },
+            {
+              "line": 91,
+              "text": "\t\t\t\tm_strValue = L\"justLow\";"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/PPTXFormat/Logic/Paragraph.cpp",
+      "sha256": "62f9736907c98cb10b39c3eca4f9c7be9c379ab449b409e6aa4995403c1862d5",
+      "anchors": [
+        {
+          "anchor": "pPr = oReader",
+          "lines": [
+            126
+          ],
+          "excerpts": [
+            {
+              "line": 126,
+              "text": "\t\t\t\t\tpPr = oReader;"
+            }
+          ]
+        },
+        {
+          "anchor": "pPr = oNode",
+          "lines": [
+            75
+          ],
+          "excerpts": [
+            {
+              "line": 75,
+              "text": "\t\t\t\t\t\tpPr = oNode;"
+            }
+          ]
+        },
+        {
+          "anchor": "WriteRecord2(0, pPr)",
+          "lines": [
+            194
+          ],
+          "excerpts": [
+            {
+              "line": 194,
+              "text": "\t\t\tpWriter->WriteRecord2(0, pPr);"
+            }
+          ]
+        },
+        {
+          "anchor": "pPr->fromPPTY",
+          "lines": [
+            210,
+            307
+          ],
+          "excerpts": [
+            {
+              "line": 210,
+              "text": "\t\t\t\t\t\tpPr->fromPPTY(pReader);"
+            },
+            {
+              "line": 307,
+              "text": "\t\t\t\t\t\t\t\t\t\t\tpRun->pPr->fromPPTY(pReader);"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/PPTXFormat/Logic/TextListStyle.cpp",
+      "sha256": "38626f81865aecf38e557e2a76dde5c868dfbdecc8393874cedf843ef06993d0",
+      "anchors": [
+        {
+          "anchor": "void TextListStyle::fromXML(XmlUtils::CXmlLiteReader&",
+          "lines": [
+            67
+          ],
+          "excerpts": [
+            {
+              "line": 67,
+              "text": "\t\tvoid TextListStyle::fromXML(XmlUtils::CXmlLiteReader& oReader)"
+            }
+          ]
+        },
+        {
+          "anchor": "levels[0] = oReader",
+          "lines": [
+            82
+          ],
+          "excerpts": [
+            {
+              "line": 82,
+              "text": "\t\t\t\t\tlevels[0] = oReader;"
+            }
+          ]
+        },
+        {
+          "anchor": "levels[9] = oReader",
+          "lines": [
+            80
+          ],
+          "excerpts": [
+            {
+              "line": 80,
+              "text": "\t\t\t\t\tlevels[9] = oReader;"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "path": "core/OOXML/Binary/Presentation/BinaryFileReaderWriter.cpp",
+      "sha256": "02e2dd5d2ee749581d81767b286408c0986023c751f64c69b318aa18bfedf2b5",
+      "anchors": [
+        {
+          "anchor": "void CBinaryFileWriter::WriteBool2",
+          "lines": [
+            1194
+          ],
+          "excerpts": [
+            {
+              "line": 1194,
+              "text": "\tvoid CBinaryFileWriter::WriteBool2(int type, const NSCommon::nullable_bool& val)"
+            }
+          ]
+        },
+        {
+          "anchor": "void CBinaryFileWriter::WriteInt2",
+          "lines": [
+            1211
+          ],
+          "excerpts": [
+            {
+              "line": 1211,
+              "text": "\tvoid CBinaryFileWriter::WriteInt2(int type, const NSCommon::nullable_int& val)"
+            }
+          ]
+        },
+        {
+          "anchor": "if (val.is_init())",
+          "lines": [
+            1143,
+            1148,
+            1158,
+            1172,
+            1196,
+            1213,
+            1224,
+            1246,
+            1257,
+            1269
+          ],
+          "excerpts": [
+            {
+              "line": 1143,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1148,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1158,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1172,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1196,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1213,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1224,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1246,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1257,
+              "text": "\t\tif (val.is_init())"
+            },
+            {
+              "line": 1269,
+              "text": "\t\tif (val.is_init())"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

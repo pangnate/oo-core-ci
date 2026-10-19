@@ -1,0 +1,11 @@
+{
+  "taskId": "LUNA-CORE-09",
+  "entries": [
+    {"path": "core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp", "anchors": ["void TextParagraphPr::ReadAttributes", "_T(\"eaLnBrk\"), eaLnBrk", "_T(\"latinLnBrk\"), latinLnBrk", "_T(\"hangingPunct\"), hangingPunct", "WriteBool2(2, eaLnBrk)", "WriteBool2(4, hangingPunct)", "WriteBool2(6, latinLnBrk)", "WriteBool2(10, rtl)", "eaLnBrk = pReader->GetBool()", "hangingPunct = pReader->GetBool()", "latinLnBrk = pReader->GetBool()", "props->hangingPunct = *hangingPunct", "void TextParagraphPr::Normalize"]},
+    {"path": "core/OOXML/PPTXFormat/Logic/TextSpacing.cpp", "anchors": ["WriteInt2(0, spcPct)", "WriteInt2(1, spcPts)", "spcPct = pReader->GetLong()", "spcPts = pReader->GetLong()", "void TextSpacing::Normalize", "spcPts.normalize(0, 158400)"]},
+    {"path": "core/OOXML/PPTXFormat/Limit/TextAlign.cpp", "anchors": ["TextAlign::GetBYTECode", "TextAlign::SetBYTECode", "L\"dist\"", "L\"thaiDist\"", "L\"justLow\""]},
+    {"path": "core/OOXML/PPTXFormat/Logic/Paragraph.cpp", "anchors": ["pPr = oReader", "pPr = oNode", "WriteRecord2(0, pPr)", "pPr->fromPPTY"]},
+    {"path": "core/OOXML/PPTXFormat/Logic/TextListStyle.cpp", "anchors": ["void TextListStyle::fromXML(XmlUtils::CXmlLiteReader&", "levels[0] = oReader", "levels[9] = oReader"]},
+    {"path": "core/OOXML/Binary/Presentation/BinaryFileReaderWriter.cpp", "anchors": ["void CBinaryFileWriter::WriteBool2", "void CBinaryFileWriter::WriteInt2", "if (val.is_init())"]}
+  ]
+}

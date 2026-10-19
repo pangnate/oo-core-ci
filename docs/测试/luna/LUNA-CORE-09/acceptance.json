@@ -1,0 +1,13 @@
+{
+  "taskId": "LUNA-CORE-09", "case": "slide-ppty", "execution": "NOT-RUN", "cppAssertionsExecuted": 0,
+  "directCounterexample": "<a:pPr xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" eaLnBrk=\"0\" latinLnBrk=\"1\" hangingPunct=\"0\"/>",
+  "parsers": ["real C++ DOM", "real C++ streaming"],
+  "alignments": {"ctr": 0, "dist": 1, "just": 2, "justLow": 3, "l": 4, "r": 5, "thaiDist": 6},
+  "bools": {"eaLnBrk": 2, "hangingPunct": 4, "latinLnBrk": 6}, "boolStates": [null, false, true], "combinations": 27,
+  "rtlRegression": {"tag": 10, "states": [null, false, true], "meaning": "existing separate fourth Bool; not hangingPunct"},
+  "spacing": [{"kind": "Pct", "tag": 0, "values": [0, 50000, 100000, 200000]}, {"kind": "Pts", "tag": 1, "values": [0, 100, 1200]}],
+  "containers": ["body direct pPr", "text list style", "master", "layout", "notes", "table text paragraphs"],
+  "routes": ["XML -> model -> PPTY -> model -> XML", "PPTX -> BIN -> PPTX -> BIN -> PPTX"],
+  "assertions": ["both parsers initialize all three fields including false", "absent remains absent", "all three Bool records stay native2/4/6", "inherited true overridden by false", "dist does not become just", "Pct does not become Pts", "raw0 retained", "no Word-specific tags introduced", "RTL and unrelated paragraph properties unchanged"],
+  "unsupportedInputBoundary": "dual Pct/Pts, invalid enums and out-of-range inputs require explicit follow-up validation; not claimed repaired or accepted by this source-only card"
+}
