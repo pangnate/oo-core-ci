@@ -1,0 +1,54 @@
+{
+  "taskId": "LUNA-CORE-03",
+  "completionLevel": "SOURCE-READY / WAIT-BUILD",
+  "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+  "patches": [
+    {
+      "path": "patches/core/003-word-distributed-jc.patch",
+      "sha256": "b91369a92089b039afd8be38cbadfa4020b9cbe4bed4a42538528cb5c83f1fa9",
+      "purpose": "CORE-03: preserve paragraph distribute as Jc value 4; source-only candidate"
+    }
+  ],
+  "replayScope": "Four touched Core files copied from locked pristine source; complete candidate feature set applied in order. Not a C++ test or build. Full official inventory/staging receipt is recorded separately.",
+  "comparison": "UTF-8 text including BOM equal after CRLF/LF normalization; scoped replay pins core.eol=lf; full staging follows repository attributes. Output SHA256 binds actual replay bytes.",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--check",
+        "--directory",
+        "vendor/work/word-replay-03-bc202982",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\003-word-distributed-jc.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--directory",
+        "vendor/work/word-replay-03-bc202982",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\003-word-distributed-jc.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    }
+  ],
+  "outputFileSha256": {
+    "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp": "1b69f05277f62d748136ebdb3dbb191b85db915fa06f32b46853389571a75cfa",
+    "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp": "480fb5471b55f93e46917bdec22f4aa2bd921164c43053042b0a92a86863beed",
+    "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h": "f1842e2b5c317cd3262cc74e8b7a8204cb02d4e9850836ef5e5580d5e3d34a7e",
+    "core/OOXML/DocxFormat/Logic/Annotations.cpp": "2351884b5562c96d47f56a6b3a8df71e20d553059fe9f647f52b076ddc1d77a9"
+  },
+  "sourceImplementation": "SOURCE-READY",
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "protectedPocInputsUnchanged": true,
+  "implementationCommit": "Resolve with git log -1 -- patches/core/003-word-distributed-jc.patch"
+}

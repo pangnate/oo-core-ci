@@ -1,0 +1,19 @@
+{
+  "taskId": "LUNA-CORE-03",
+  "case": "word-jc",
+  "execution": "NOT-RUN",
+  "requiredProfile": "dev: matched Core 10 x2t and DLLs; candidate patch hashes",
+  "routes": ["DOCX -> BIN -> DOCX -> BIN -> DOCX"],
+  "containers": ["direct pPr", "docDefaults", "style pPr", "numbering level pPr", "pPrChange"],
+  "alignmentCases": [
+    {"xml": "right", "binaryHex": "05 01 00"},
+    {"xml": "left", "binaryHex": "05 01 01"},
+    {"xml": "center", "binaryHex": "05 01 02"},
+    {"xml": "both", "binaryHex": "05 01 03"},
+    {"xml": "distribute", "binaryHex": "05 01 04"},
+    {"xml": "thaiDistribute", "binaryHex": "05 01 03", "expectedXml": "both", "boundary": "existing lossy behavior retained; not new distribute support"}
+  ],
+  "negativeCases": ["Jc value 5 or 255: reader error, no alignment coercion", "Jc payload length other than 1: reader error"],
+  "assertions": ["old four encoded values unchanged", "distribute retained in both saved generations", "absent direct property remains absent and inherits style", "unrelated paragraph properties unchanged"],
+  "runtimeAssertionsExecuted": 0
+}

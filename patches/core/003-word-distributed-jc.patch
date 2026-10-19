@@ -1,0 +1,48 @@
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h b/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+--- a/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
++++ b/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+@@ -42,6 +42,7 @@
+ const int align_Left    = 1;
+ const int align_Center  = 2;
+ const int align_Justify = 3;
++const int align_Distribute = 4;
+ 
+ const int vertalignjc_Top    = 0x00;
+ const int vertalignjc_Center = 0x01;
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+--- a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
++++ b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+@@ -1156,8 +1156,8 @@
+ 			case SimpleTypes::jcEnd:
+ 			case SimpleTypes::jcRight: m_oBcw.m_oStream.WriteBYTE(align_Right);break;
+ 			case SimpleTypes::jcBoth:
+-			case SimpleTypes::jcThaiDistribute:
+-			case SimpleTypes::jcDistribute: m_oBcw.m_oStream.WriteBYTE(align_Justify);break;
++			case SimpleTypes::jcThaiDistribute: m_oBcw.m_oStream.WriteBYTE(align_Justify);break;
++			case SimpleTypes::jcDistribute: m_oBcw.m_oStream.WriteBYTE(align_Distribute);break;
+ 			default: m_oBcw.m_oStream.WriteBYTE(align_Left);break;
+ 			}
+ 		}
+diff --git a/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp b/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
+--- a/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
++++ b/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
+@@ -1002,7 +1002,11 @@
+ 	}break;
+ 	case c_oSerProp_pPrType::Jc:
+ 	{
++		if (length != 1)
++			return c_oSerConstants::ErrorUnknown;
+ 		BYTE jc = m_oBufferedStream.GetUChar();
++		if (jc > align_Distribute)
++			return c_oSerConstants::ErrorUnknown;
+ 
+ 		pPPr->m_oJc.Init();
+ 		pPPr->m_oJc->m_oVal.Init();
+@@ -1013,6 +1017,7 @@
+ 			case align_Left: pPPr->m_oJc->m_oVal->SetValueFromByte(8); break;
+ 			case align_Center: pPPr->m_oJc->m_oVal->SetValueFromByte(1); break;
+ 			case align_Justify: pPPr->m_oJc->m_oVal->SetValueFromByte(0); break;
++			case align_Distribute: pPPr->m_oJc->m_oVal->SetValue(SimpleTypes::jcDistribute); break;
+ 		}
+ 	}break;
+ 	case c_oSerProp_pPrType::KeepLines:
