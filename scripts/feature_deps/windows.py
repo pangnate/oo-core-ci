@@ -177,7 +177,7 @@ include($$CORE_ROOT/DesktopEditor/graphics/pro/freetype.pri)
 include($$CORE_ROOT/Common/3dParty/brotli/brotli.pri)
 include($$CORE_ROOT/Common/3dParty/harfbuzz/harfbuzz.pri)
 
-SOURCES += $$files($$CORE_ROOT/DesktopEditor/graphics/cximage/png/*.c, false)
+SOURCES += $$files($$CORE_ROOT/DesktopEditor/cximage/png/*.c, false)
 SOURCES += $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/crc32.c \\
     $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/adler32.c \\
     $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/deflate.c \\
