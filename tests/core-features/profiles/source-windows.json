@@ -12,7 +12,7 @@
   "inputs": {
     "core-source": {
       "path": "vendor/checksums.json",
-      "sha256": "8bb077359cbafed862bf4530f1d3b9d6d5cf172b709ba95d1535165775920b2c"
+      "sha256": "4d94e661092536f48657dd5e5d53f52c546802f1e3f78abd203c7323e7ff069a"
     },
     "fixture-manifest": {
       "path": "tests/core-features/fixtures/manifest.json",
@@ -32,7 +32,7 @@
     },
     "build-deps-lock": {
       "path": "config/feature-runtime-deps.lock.json",
-      "sha256": "9deee698229898e7b9fadf457a08a101e43708a0fd9150ff16d9173ad713b13e"
+      "sha256": "00391290278fd85fd57a49ca8812e7cc4661f7002f635c6514cdbbd5b177e82b"
     },
     "build-deps-schema": {
       "path": "config/feature-runtime-deps.schema.json",

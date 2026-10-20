@@ -1,0 +1,60 @@
+name: Build Windows Core feature dependency SDK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-core-feature-sdk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-feature-sdk:
+    runs-on: windows-2022
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate locked source and dependency inputs
+        shell: pwsh
+        run: |
+          python scripts/verify_vendor.py --platform windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/download.py --core-ref ed63e94de814ff1d4ea28cddfaba6939bc9df9ed --build-tools-ref a9f9895b172b09595abcafe85d56fab163f9ecb7
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Restore fixed V8 SDK release
+        id: v8
+        uses: ./.github/actions/restore-v8-windows-sdk
+        with:
+          token: ${{ github.token }}
+          destination: ${{ runner.temp }}/v8-windows-sdk
+
+      - name: Assemble and natively probe Core font and image dependencies
+        shell: pwsh
+        env:
+          V8_ROOT: ${{ steps.v8.outputs.sdk-root }}
+        run: |
+          python scripts/feature_deps/windows.py --v8-root "$env:V8_ROOT"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-core-feature-sdk
+          path: |
+            dist/windows-feature-sdk.zip
+            dist/windows-feature-sdk.zip.sha256
+            dist/windows-feature-sdk/*
+          if-no-files-found: error
+          retention-days: 30

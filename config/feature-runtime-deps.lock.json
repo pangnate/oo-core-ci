@@ -21,11 +21,11 @@
       {"id": "freetype-2.10.4", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/DesktopEditor/graphics/pro/freetype.pri", "core/PdfFile/PdfFile.pro"], "validation": "vendored source within pinned Core tree; target library not yet built"},
       {"id": "harfbuzz", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/DesktopEditor/graphics/pro/fontengine.pri", "core/Common/3dParty/harfbuzz/harfbuzz.pri"], "validation": "vendored source within pinned Core tree; enabled by qmake feature flag and target library not yet built"},
       {"id": "openjpeg", "kind": "core-source", "status": "verified", "sourceRef": "core-source", "evidence": ["core/PdfFile/PdfFile.pro", "core/DesktopEditor/raster/Jp2/openjpeg/openjpeg.pri"], "validation": "vendored source within pinned Core tree; target library not yet built"},
-      {"id": "v8-windows-sdk", "kind": "development-sdk", "status": "unavailable", "version": "V8 8.9 a2d8eca22ad478a95ca67bb2421a9a2535113925", "source": "config/v8-windows.lock.json; scripts/manage_v8_windows_sdk.py; fixed GitHub Release SDK", "reason": "Revisions, ABI and GN arguments are pinned; the SDK Release publication, download verification and hosted reuse probe are still pending. Restore never falls back to rebuilding V8; a successful matching workflow artifact can be promoted without another cold build."}
+      {"id": "v8-windows-sdk", "kind": "development-sdk", "status": "verified", "version": "V8 8.9 a2d8eca22ad478a95ca67bb2421a9a2535113925", "sourceRef": "fixed-release:v8-windows-x64-91ba9c93b3018185679b37223a2506c255361b670ca3f4a3bc9b8706c286b75a", "evidence": ["sdk-key=91ba9c93b3018185679b37223a2506c255361b670ca3f4a3bc9b8706c286b75a", "archive-sha256=2f1a5749584de600bdbb75d2e26c87e0cd1c9dead4c5d9c8d5b1c51c5d095d4a", "GitHub Actions run 39275013238 published the fixed Release", "GitHub Actions run 39354653013 restored and passed the native reuse probe"], "validation": "fixed release bytes and SDK lock verified by the successful BLD-V8-01 hosted runs; Windows dependency SDK still requires its own native build probe"}
     ],
     "blockers": [
-      "Publish the first verified matching V8 SDK (or promote a successful same-lock run), then verify fixed Release download and native reuse probe on Windows Actions.",
-      "Run an actual clean Windows build to discover all Qt/compiler/linker/system SDK inputs and lock resulting DLL closure."
+      "Build and run the Windows Core font, PNG and JPEG2000 dependency probes against the locked MSVC v142/Qt inputs on Windows Actions.",
+      "Run an actual clean Windows X2T build to discover all linker/system SDK inputs and lock the resulting DLL closure."
     ]
   },
   "deferred": {

@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "sdkId": "onlyoffice-core10-windows-amd64-feature-sdk-v1",
+  "platform": "windows-amd64",
+  "abi": {
+    "id": "windows-amd64-msvc142-dynamic-qt5152",
+    "architecture": "x64",
+    "compiler": "MSVC v142 14.29",
+    "crt": "/MD",
+    "qt": "5.15.2-msvc2019_64"
+  },
+  "core": {
+    "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+    "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34"
+  },
+  "buildTools": {
+    "ref": "a9f9895b172b09595abcafe85d56fab163f9ecb7",
+    "treeSha256": "fbbcde972ecb8b63efb202e3c7045e5d1fffa9c2b5e15d761fc7f5fe076a1d3d"
+  },
+  "qt": {
+    "archive": "vendor/archives/qt_5.15.2_msvc2019_64.7z",
+    "sha256": "e64a657c36383c90624d606866a926402c0ab595f6fd311fa5a20fa90227b608"
+  },
+  "v8": {
+    "lockSha256": "91ba9c93b3018185679b37223a2506c255361b670ca3f4a3bc9b8706c286b75a",
+    "releaseTag": "v8-windows-x64-91ba9c93b3018185679b37223a2506c255361b670ca3f4a3bc9b8706c286b75a",
+    "archiveSha256": "2f1a5749584de600bdbb75d2e26c87e0cd1c9dead4c5d9c8d5b1c51c5d095d4a"
+  },
+  "coreSources": [
+    {
+      "id": "freetype-2.10.4",
+      "version": "2.10.4",
+      "recipe": "core/DesktopEditor/graphics/pro/freetype.pri",
+      "anchors": ["core/DesktopEditor/graphics/pro/freetype.pri", "core/DesktopEditor/freetype-2.10.4/include/ft2build.h"]
+    },
+    {
+      "id": "harfbuzz",
+      "version": "894a1f72ee93a1fd8dc1d9218cb3fd8f048be29a",
+      "recipe": "core/Common/3dParty/harfbuzz/make.py",
+      "anchors": ["core/Common/3dParty/harfbuzz/make.py", "core/Common/3dParty/harfbuzz/patch/hb-ft.cc.patch"]
+    },
+    {
+      "id": "brotli",
+      "version": "a47d7475063eb223c87632eed806c0070e70da29",
+      "archive": "vendor/archives/brotli-a47d7475063eb223c87632eed806c0070e70da29.tar.gz",
+      "sha256": "49b657a4321cb00e388863dec8d0558b94ec47100d619b837d570a58bba71379",
+      "recipe": "core/Common/3dParty/brotli/brotli.pri",
+      "anchors": ["core/Common/3dParty/brotli/brotli.pri", "core/OfficeUtils/src/zlib-1.2.11/zlib.h"]
+    },
+    {
+      "id": "png-zlib",
+      "version": "libpng Core vendored source; zlib 1.2.11",
+      "recipe": "core/DesktopEditor/graphics/pro/raster.pri",
+      "anchors": ["core/DesktopEditor/graphics/pro/raster.pri", "core/DesktopEditor/graphics/cximage/png/png.h", "core/OfficeUtils/src/zlib-1.2.11/zlib.h"]
+    },
+    {
+      "id": "openjpeg-2.4.0",
+      "version": "2.4.0",
+      "recipe": "core/DesktopEditor/raster/Jp2/openjpeg/openjpeg.pri",
+      "anchors": ["core/DesktopEditor/raster/Jp2/openjpeg/openjpeg.pri", "core/DesktopEditor/raster/Jp2/openjpeg/openjpeg-2.4.0/src/lib/openjp2/openjpeg.h"]
+    }
+  ],
+  "probes": ["freetype-harfbuzz-shaping", "png-encode-decode", "openjpeg-jp2-encode-decode"],
+  "build": {
+    "crt": "dynamic",
+    "configuration": "release",
+    "generator": "Qt qmake + nmake",
+    "timeoutSeconds": 5400
+  }
+}
