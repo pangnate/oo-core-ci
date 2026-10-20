@@ -2,12 +2,23 @@
   "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
   "buildToolsRef": "a9f9895b172b09595abcafe85d56fab163f9ecb7",
   "coreDescribe": "v10.0.0.169-2-ged63e94de8",
-  "corePatches": [],
+  "corePatches": [
+    "patches/core/003-word-distributed-jc.patch",
+    "patches/core/004-word-character-indents.patch",
+    "patches/core/005-word-east-asian-booleans.patch",
+    "patches/core/007-word-permission-xml-spelling.patch",
+    "patches/core/013-graphics-strict-image-errors.patch",
+    "patches/core/014-pdffile-strict-error-propagation.patch",
+    "patches/core/015-x2t-strict-image-policy.patch",
+    "patches/core/016-word-protection-source-omissions.patch",
+    "patches/core/017-slide-paragraph-stream-bools.patch",
+    "patches/core/018-vml-ideographic-text-direction.patch"
+  ],
   "coreOverlays": [
     "Common/copyright.txt"
   ],
   "coreBuildPatches": [
     "scripts/patch_x2t_sln.py"
   ],
-  "note": "Core source is pinned to the official ONLYOFFICE/core commit; project patches and overlays are maintained separately. Three-platform CI is pending for this baseline."
+  "note": "Pinned official Core checkout with hash-locked feature patches applied in CI; Windows rebuilds patched Core DLLs."
 }

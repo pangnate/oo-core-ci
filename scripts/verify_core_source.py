@@ -21,8 +21,8 @@ def main() -> int:
     if baseline.get("coreRef") != lock.get("ref") or series.get("coreRef") != lock.get("ref"):
         raise SystemExit("Core refs in baseline, source lock and patch series disagree")
     validate_patch_series(series, lock)
-    if series["patches"]:
-        raise SystemExit("The direct checkout build cannot omit active Core feature patches")
+    if baseline.get("corePatches") != [entry["path"] for entry in series["patches"]]:
+        raise SystemExit("Baseline Core patches disagree with the active patch series")
 
     count, fingerprint = inventory_fingerprint(ROOT / "core")
     if count != lock.get("files") or fingerprint != lock.get("extractedTreeFingerprint"):
@@ -44,7 +44,8 @@ def main() -> int:
         "coreTreeSha256": lock["treeSha256"],
         "sourceFileCount": count,
         "sourceInventorySha256": fingerprint,
-        "featurePatches": [],
+        "featurePatches": [{"path": entry["path"], "sha256": entry["sha256"]}
+                           for entry in series["patches"]],
         "buildCorrections": baseline.get("coreBuildPatches", []),
         "overlays": baseline.get("coreOverlays", []),
     }

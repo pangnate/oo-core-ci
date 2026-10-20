@@ -2,5 +2,68 @@
   "schemaVersion": 1,
   "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
   "coreTreeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
-  "patches": []
+  "patches": [
+    {
+      "path": "patches/core/003-word-distributed-jc.patch",
+      "sha256": "b91369a92089b039afd8be38cbadfa4020b9cbe4bed4a42538528cb5c83f1fa9",
+      "purpose": "CORE-03: preserve paragraph distribute as Jc value 4; source-only candidate"
+    },
+    {
+      "path": "patches/core/004-word-character-indents.patch",
+      "sha256": "e327a08858de371456fd1a66472fc2eb7361feb32ac295472da4dae52e7c88e7",
+      "purpose": "CORE-04: preserve four raw character indents in Ind container; source-only candidate",
+      "dependsOn": [
+        "patches/core/003-word-distributed-jc.patch"
+      ]
+    },
+    {
+      "path": "patches/core/005-word-east-asian-booleans.patch",
+      "sha256": "e36ec625fe3ad30de565b6cf41a4604ff5fd68932cb955d19cd405cf6076d09d",
+      "purpose": "CORE-05: preserve six paragraph Boolean properties including false; source-only candidate",
+      "dependsOn": [
+        "patches/core/004-word-character-indents.patch"
+      ]
+    },
+    {
+      "path": "patches/core/007-word-permission-xml-spelling.patch",
+      "sha256": "44dde10b3151759148a48842bbb8dbfeb2e292d10bcd8f88e8c5983b9fe6d23f",
+      "purpose": "CORE-07: standard permission attribute spelling with legacy read alias and order-independent standard precedence; source-only candidate"
+    },
+    {
+      "path": "patches/core/013-graphics-strict-image-errors.patch",
+      "sha256": "d650695cfbde6f0adb78c1d1e154af1c80bab86d94e021c22c2cf774988b5c40",
+      "purpose": "CORE-13: additive versioned graphics image-failure policy and bounded primitive reads; source-only candidate"
+    },
+    {
+      "path": "patches/core/014-pdffile-strict-error-propagation.patch",
+      "sha256": "bb77692c407ea0aab60b45c850f56ace224d59ca7cbfebb79eb5da5a8ed7543c",
+      "purpose": "CORE-14: additive strict PdfFile entries, conversion-result propagation and owned atomic PDF candidate publication; source-only candidate",
+      "dependsOn": [
+        "patches/core/013-graphics-strict-image-errors.patch"
+      ]
+    },
+    {
+      "path": "patches/core/015-x2t-strict-image-policy.patch",
+      "sha256": "87d88f782d500e79e91d4642488b7a545fdd1546df4f1a4a817eca7fbfa36448",
+      "purpose": "CORE-15: opt-in strict image TaskQueue XML parameter, PdfFile V1 dispatch and conversion error exit; source-only candidate",
+      "dependsOn": [
+        "patches/core/014-pdffile-strict-error-propagation.patch"
+      ]
+    },
+    {
+      "path": "patches/core/016-word-protection-source-omissions.patch",
+      "sha256": "cb29099410c4b20b6eab792c90d97297fcfe1fd8d7280b62ca4f7850e0642038",
+      "purpose": "CORE-08: confirmed codec source omissions; uncompiled candidate"
+    },
+    {
+      "path": "patches/core/017-slide-paragraph-stream-bools.patch",
+      "sha256": "d16bbb0db32fd3700f6c27b74de0ddf3b1e28e6fba1f559b4df073a4aff3ef69",
+      "purpose": "CORE-09: confirmed codec source omissions; uncompiled candidate"
+    },
+    {
+      "path": "patches/core/018-vml-ideographic-text-direction.patch",
+      "sha256": "97947aa1d1ca6c7fe922a009e7392b94a7be3061a7626581484186aef8ec5b54",
+      "purpose": "CORE-10: confirmed codec source omissions; uncompiled candidate"
+    }
+  ]
 }

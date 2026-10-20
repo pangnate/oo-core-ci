@@ -46,8 +46,17 @@ jobs:
       - name: Verify vendor files
         run: python3 scripts/verify_vendor.py --platform linux
 
+      - name: Verify and patch the locked Core checkout
+        run: |
+          python3 scripts/verify_core_source.py
+          python3 scripts/apply_core_patches.py
+          python3 scripts/apply_core_overlays.py
+
       - name: Prepare offline sources, Qt, sysroots and runtime SOs
         run: python3 scripts/prepare.py --platform linux
+
+      - name: Apply qmake build corrections
+        run: python3 scripts/patch_x2t_sln.py --core-root core
 
       - name: Configure build_tools for ${{ matrix.target }}
         env:
@@ -152,9 +161,11 @@ jobs:
           cp \
             "core/build/bin/${X2T_TARGET}/x2t" \
             "dist/x2t-linux-${X2T_ARCH}"
+          cp config/branding.json "dist/x2t-linux-${X2T_ARCH}-branding.json"
 
           sha256sum \
             "dist/x2t-linux-${X2T_ARCH}" \
+            "dist/x2t-linux-${X2T_ARCH}-branding.json" \
             > "dist/SHA256SUMS-linux-${X2T_ARCH}"
 
           ls -lh dist/
@@ -165,6 +176,7 @@ jobs:
           name: x2t-linux-${{ matrix.arch }}
           path: |
             dist/x2t-linux-${{ matrix.arch }}
+            dist/x2t-linux-${{ matrix.arch }}-branding.json
             dist/SHA256SUMS-linux-${{ matrix.arch }}
           if-no-files-found: error
           retention-days: 30
@@ -190,6 +202,12 @@ jobs:
         shell: pwsh
         run: |
           python scripts/verify_core_source.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Apply hash-locked Core feature patches to checkout
+        shell: pwsh
+        run: |
+          python scripts/apply_core_patches.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Apply declared Core overlays to the checkout
@@ -220,6 +238,26 @@ jobs:
       - name: Build Windows X2T
         shell: cmd
         run: scripts\windows_build.cmd
+
+      - name: Report Windows executable size and linker contributors
+        shell: pwsh
+        run: |
+          python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Upload Windows build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x2t-windows-build-diagnostics
+          path: |
+            core/build/bin/win_64/x2t.map
+            dist/windows-size-report.json
+            vendor/work/x2t-core-source-verification.json
+            vendor/work/x2t-core-patch-receipt.json
+            vendor/work/x2t-core-overlay-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
 
       - name: Verify PE and dependencies
         shell: cmd
@@ -252,12 +290,15 @@ jobs:
           Copy-Item vendor\work\x2t-baseline-smoke\fonts $packageRoot\fonts -Recurse -Force
           Copy-Item runtime\native-window-shim.js $packageRoot\native-window-shim.js -Force
           Copy-Item runtime\README.md $packageRoot\NATIVE-SDKJS-README.md -Force
+          Copy-Item config\branding.json $packageRoot\branding.json -Force
           Copy-Item scripts\configure_native_runtime.py $packageRoot\configure_native_runtime.py -Force
           Copy-Item vendor\work\x2t-baseline-smoke-receipt.json dist\runtime-baseline-receipt.json -Force
+          python scripts\brand_windows_runtime.py --runtime-bin $packageRoot --receipt dist\windows-branding-receipt.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
           Compress-Archive -Path (Join-Path $packageRoot '*') -DestinationPath dist\core10-windows-baseline.zip -CompressionLevel Optimal
 
           Copy-Item `
-            core\build\bin\win_64\x2t.exe `
+            (Join-Path $packageRoot 'x2t.exe') `
             dist\x2t-windows-amd64.exe
 
           $hash = (
@@ -284,5 +325,7 @@ jobs:
             dist/SHA256SUMS-windows-amd64
             dist/core10-windows-baseline.zip
             dist/runtime-baseline-receipt.json
+            dist/windows-branding-receipt.json
+            dist/windows-size-report.json
           if-no-files-found: error
           retention-days: 30

@@ -1,37 +1,51 @@
 #!/usr/bin/env python3
+"""Adapt the pinned Core qmake graph for CI."""
 import argparse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
-parser.add_argument('--core-root', type=Path, default=ROOT / 'core')
+parser.add_argument("--core-root", type=Path, default=ROOT / "core")
 args = parser.parse_args()
-CORE = args.core_root.resolve()
-pri = CORE / 'X2tConverter' / 'build' / 'Qt' / 'X2tSLN.pri'
-pro = CORE / 'X2tConverter' / 'build' / 'Qt' / 'X2tConverter.pro'
+core = args.core_root.resolve()
+pri = core / "X2tConverter/build/Qt/X2tSLN.pri"
+pro = core / "X2tConverter/build/Qt/X2tConverter.pro"
+if not pri.exists() or not pro.exists():
+    raise SystemExit("Missing X2T qmake project in Core source")
 
-if not pri.exists():
-    raise SystemExit(f'Missing {pri}; run scripts/download.py first')
-text = pri.read_text(encoding='utf-8')
-if 'CryptoPPLib \\\n' not in text.split('XlsbFormatLib')[0]:
-    text = text.replace('SUBDIRS = \\\n', 'SUBDIRS = \\\n    CryptoPPLib \\\n', 1)
-if 'CryptoPPLib.file' not in text:
-    marker = 'XlsbFormatLib.file ='
-    idx = text.find(marker)
-    if idx < 0:
-        raise SystemExit('Unexpected X2tSLN.pri layout: XlsbFormatLib.file not found')
-    line = 'CryptoPPLib.file =\t../../../Common/3dParty/cryptopp/project/cryptopp.pro\n'
-    text = text[:idx] + line + text[idx:]
-if 'X2tConverter.depends = \\\n    CryptoPPLib \\\n' not in text:
-    text = text.replace('X2tConverter.depends = \\\n', 'X2tConverter.depends = \\\n    CryptoPPLib \\\n', 1)
-pri.write_text(text, encoding='utf-8', newline='\n')
+text = pri.read_text(encoding="utf-8")
+if "CryptoPPLib.file" not in text:
+    text = text.replace("SUBDIRS = \\\n", "SUBDIRS = \\\n    CryptoPPLib \\\n", 1)
+    marker = "XlsbFormatLib.file ="
+    if marker not in text:
+        raise SystemExit("Unexpected X2tSLN.pri: XlsbFormatLib.file missing")
+    text = text.replace(marker,
+                        "CryptoPPLib.file = ../../../Common/3dParty/cryptopp/project/cryptopp.pro\n" + marker,
+                        1)
+if "X2tConverter.depends = \\\n    CryptoPPLib \\\n" not in text:
+    text = text.replace("X2tConverter.depends = \\\n",
+                        "X2tConverter.depends = \\\n    CryptoPPLib \\\n", 1)
+if "PdfFile.file" not in text:
+    text += ("\n# Build patched Core libraries before linking X2T.\n"
+             "graphics.file = ../../../DesktopEditor/graphics/pro/graphics.pro\n"
+             "PdfFile.file = ../../../PdfFile/PdfFile.pro\n"
+             "PdfFile.depends = graphics\n"
+             "SUBDIRS -= X2tConverter\n"
+             "SUBDIRS += graphics PdfFile X2tConverter\n"
+             "X2tConverter.depends += PdfFile\n")
+pri.write_text(text, encoding="utf-8", newline="\n")
 
-# Make indirect DSO lookup deterministic on Linux when linking against a prebuilt runtime.
-if pro.exists():
-    ptext = pro.read_text(encoding='utf-8')
-    block = "\n# BASEMETAS_X2T_CI_BEGIN\ncore_linux {\n    QMAKE_LFLAGS += -Wl,-rpath-link,$$CORE_BUILDS_LIBRARIES_PATH\n    QMAKE_LFLAGS += -Wl,-rpath-link,$$CORE_BUILDS_LIBRARIES_PATH/system\n}\n# BASEMETAS_X2T_CI_END\n"
-    if '# BASEMETAS_X2T_CI_BEGIN' not in ptext:
-        ptext += block
-        pro.write_text(ptext, encoding='utf-8', newline='\n')
-print(f'Patched {pri}: CryptoPPLib is part of the solution')
-print(f'Patched {pro}: Linux rpath-link points to core/build/lib/<platform>')
+ptext = pro.read_text(encoding="utf-8")
+block = ("\n# BASEMETAS_X2T_CI_BEGIN\n"
+         "core_linux {\n"
+         "    QMAKE_LFLAGS += -Wl,-rpath-link,$$CORE_BUILDS_LIBRARIES_PATH\n"
+         "    QMAKE_LFLAGS += -Wl,-rpath-link,$$CORE_BUILDS_LIBRARIES_PATH/system\n"
+         "}\n"
+         "core_windows:core_release {\n"
+         "    QMAKE_LFLAGS_RELEASE += /MAP:$$CORE_BUILDS_BINARY_PATH/x2t.map /MAPINFO:EXPORTS /OPT:REF /OPT:ICF /VERBOSE:LIB\n"
+         "}\n"
+         "# BASEMETAS_X2T_CI_END\n")
+if "# BASEMETAS_X2T_CI_BEGIN" not in ptext:
+    pro.write_text(ptext + block, encoding="utf-8", newline="\n")
+print(f"Patched {pri}: CryptoPPLib, graphics and PdfFile in qmake graph")
+print(f"Patched {pro}: Linux rpath-link and Windows size diagnostics")
