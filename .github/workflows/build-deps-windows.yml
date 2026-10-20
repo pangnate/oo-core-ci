@@ -1,6 +1,9 @@
 name: Build Windows Core feature dependency SDK
 
 on:
+  push:
+    branches:
+      - codex/v8-probe-icu-path
   workflow_dispatch:
 
 permissions:
