@@ -231,6 +231,9 @@ def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, en
     if not make_script.is_file():
         raise InputError("pinned Core HarfBuzz recipe is missing")
     recipe_env = env.copy()
+    recipe_env["GIT_CONFIG_COUNT"] = "1"
+    recipe_env["GIT_CONFIG_KEY_0"] = "core.longpaths"
+    recipe_env["GIT_CONFIG_VALUE_0"] = "true"
     build_tools_scripts = str((ROOT / "build_tools/scripts").resolve())
     existing_pythonpath = recipe_env.get("PYTHONPATH")
     recipe_env["PYTHONPATH"] = (build_tools_scripts + (os.pathsep + existing_pythonpath if existing_pythonpath else ""))
