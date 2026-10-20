@@ -61,7 +61,9 @@ def verify_build_deps_contract(profile: dict[str, Any]) -> int:
     detected = json.loads((ROOT / "vendor" / "detected-deps.json").read_text(encoding="utf-8"))
     assert detected["boost"]["version"] == third["boost-archive-1.72"]["version"] == "1.72.0"
     assert third["boost-archive-1.72"]["status"] == "verified"
-    assert third["v8-windows-sdk"]["status"] == "unavailable"
+    assert third["v8-windows-sdk"]["status"] == "verified"
+    assert third["v8-windows-sdk"]["sourceRef"].startswith("fixed-release:")
+    assert third["v8-windows-sdk"]["evidence"]
     v8_root = ROOT / "core" / "Common" / "3dParty" / "v8_89"
     assert sorted(path.name for path in v8_root.iterdir()) == [".gitignore"]
     assert lock["windowsAmd64"]["blockers"]
