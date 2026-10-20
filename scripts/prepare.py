@@ -78,6 +78,12 @@ def prepare_linux():
         d=sroot/f'ubuntu16-{arch}-sysroot'
         if d.exists(): shutil.rmtree(d)
         with tarfile.open(A/fn,'r:gz') as tf: tf.extractall(sroot)
+    # build_tools ignores this required amd64 HEIF toolchain file (*sysroot*).
+    # Keep its source tracked by this repository and materialize it for clean CI checkouts.
+    toolchain_template=ROOT/'ci/toolchains/linux-amd64-custom-sysroot.toolchain.cmake'
+    toolchain_target=sroot/'custom-sysroot.toolchain.cmake'
+    if not toolchain_template.is_file(): raise RuntimeError(f'Missing tracked sysroot toolchain template: {toolchain_template}')
+    shutil.copyfile(toolchain_template,toolchain_target)
     fetch=load_sysroot_fetch(); fetch.patch_linker_scripts(str(sroot/'ubuntu16-amd64-sysroot'),'amd64'); fetch.patch_linker_scripts(str(sroot/'ubuntu16-arm64-sysroot'),'arm64')
     for target,fn in [('linux_64','linux-amd64-runtime.tar.gz'),('linux_arm64','linux-arm64-runtime.tar.gz')]:
         out=CORE/'build/lib'/target; reset_dir(out)
