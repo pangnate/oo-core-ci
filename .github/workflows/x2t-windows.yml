@@ -14,6 +14,9 @@ jobs:
   deps:
     runs-on: windows-2022
     timeout-minutes: 300
+    outputs:
+      deps-id: ${{ env.X2T_DEPS_ID }}
+      compiler-version: ${{ env.X2T_COMPILER_VERSION }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -70,6 +73,7 @@ jobs:
       core-id: ${{ steps.core-inputs.outputs.core-id }}
       cache-hit: ${{ steps.core-cache.outputs.cache-hit }}
     env:
+      X2T_DEPS_ID: ${{ needs.deps.outputs.deps-id }}
       X2T_CLEAN: '0'
       SCCACHE_GHA_ENABLED: 'true'
       SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
@@ -95,8 +99,14 @@ jobs:
       - name: Locate VS2022 and v142
         shell: pwsh
         run: ./scripts/ci_vs_env.ps1
-      - name: Identify locked dependency inputs
-        run: python scripts/ci_deps_key.py --platform win_64
+      - name: Check dependency compiler compatibility
+        shell: pwsh
+        env:
+          DEPS_COMPILER_VERSION: ${{ needs.deps.outputs.compiler-version }}
+        run: |
+          if ($env:X2T_COMPILER_VERSION -ne $env:DEPS_COMPILER_VERSION) {
+            throw "Dependency compiler $env:DEPS_COMPILER_VERSION differs from Core compiler $env:X2T_COMPILER_VERSION"
+          }
       - name: Identify Core compilation inputs
         id: core-inputs
         run: python scripts/ci_core_cache.py key --platform win_64

@@ -17,6 +17,8 @@ jobs:
   deps:
     runs-on: ubuntu-24.04
     timeout-minutes: 300
+    outputs:
+      deps-id: ${{ env.X2T_DEPS_ID }}
     env:
       X2T_TARGET: ${{ inputs.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
     steps:
@@ -81,6 +83,7 @@ jobs:
       core-id: ${{ steps.core-inputs.outputs.core-id }}
       cache-hit: ${{ steps.core-cache.outputs.cache-hit }}
     env:
+      X2T_DEPS_ID: ${{ needs.deps.outputs.deps-id }}
       X2T_TARGET: ${{ inputs.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
       SCCACHE_GHA_ENABLED: 'true'
       SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
@@ -89,8 +92,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - name: Identify locked dependency inputs
-        run: python3 scripts/ci_deps_key.py --platform "$X2T_TARGET"
       - name: Identify Core compilation inputs
         id: core-inputs
         run: python3 scripts/ci_core_cache.py key --platform "$X2T_TARGET"

@@ -18,6 +18,18 @@ BT = ROOT / "build_tools"
 CORE = ROOT / "core"
 
 
+def qmake_arguments(qt: Path, project: Path, configuration: list[str], *, windows: bool, cache: bool) -> list[str]:
+    params = ["-r", "-nocache", str(project), *configuration, "CONFIG+=x2t_inputs"]
+    if not windows:
+        qtconf = qt / "onlyoffice_qt.conf"
+        if not qtconf.is_file():
+            raise FileNotFoundError(f"Missing prepared qmake relocation config: {qtconf}")
+        params += ["-qtconf", str(qtconf)]
+    if cache:
+        params.append("CONFIG+=x2t_cache")
+    return params
+
+
 def main() -> None:
     organization, _, parts = load_branding()
     os.environ.update(PUBLISHER_NAME=organization, PRODUCT_VERSION=".".join(map(str, parts[:3])),
@@ -54,9 +66,7 @@ def main() -> None:
     qt = Path(base.qt_setup(target))
     windows = target == "win_64"
     qmake_app = qt / "bin" / ("qmake.exe" if windows else "qmake")
-    params = ["-r", "-nocache", str(project), *base.qt_config_as_param(base.qt_config(target)), "CONFIG+=x2t_inputs"]
-    if cache:
-        params.append("CONFIG+=x2t_cache")
+    params = qmake_arguments(qt, project, base.qt_config_as_param(base.qt_config(target)), windows=windows, cache=bool(cache))
     if windows:
         jom = os.environ.get("X2T_JOM", "")
         if cache and not jom:

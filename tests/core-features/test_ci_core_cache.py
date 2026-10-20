@@ -21,6 +21,7 @@ import ci_core_cache as cache
 import ci_handoff
 import prepare
 import build_metrics
+import build_x2t
 
 
 class CoreReuseTests(unittest.TestCase):
@@ -154,6 +155,31 @@ class ParallelismTests(unittest.TestCase):
 
 
 class LinuxSysrootTests(unittest.TestCase):
+    def test_linux_qmake_receives_prepared_relocation_config(self):
+        with tempfile.TemporaryDirectory() as directory:
+            qt = Path(directory)
+            project = qt / "project.pro"
+            with self.assertRaisesRegex(FileNotFoundError, "relocation config"):
+                build_x2t.qmake_arguments(qt, project, ["CONFIG+=release"], windows=False, cache=True)
+            conf = qt / "onlyoffice_qt.conf"
+            conf.write_text("Prefix = " + qt.as_posix())
+            args = build_x2t.qmake_arguments(qt, project, ["CONFIG+=release"], windows=False, cache=True)
+            self.assertEqual(args[args.index("-qtconf") + 1], str(conf))
+            self.assertIn("-r", args)
+            self.assertIn("CONFIG+=x2t_cache", args)
+            self.assertIn("CONFIG+=x2t_inputs", args)
+
+    def test_dependency_identity_is_exported_from_producer_to_consumer(self):
+        for target in ("linux", "windows"):
+            text = (REPO / f".github/workflows/x2t-{target}.yml").read_text(encoding="utf-8")
+            producer, consumer = text.split("\n  build:", 1)
+            consumer = consumer.split("\n  verify:", 1)[0]
+            self.assertIn("deps-id: ${{ env.X2T_DEPS_ID }}", producer)
+            self.assertIn("X2T_DEPS_ID: ${{ needs.deps.outputs.deps-id }}", consumer)
+            self.assertNotIn("scripts/ci_deps_key.py", consumer)
+            if target == "windows":
+                self.assertIn("needs.deps.outputs.compiler-version", consumer)
+
     def test_amd64_needs_no_arm_sysroot_and_missing_inputs_never_download(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
