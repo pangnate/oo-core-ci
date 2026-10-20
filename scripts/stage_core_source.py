@@ -24,6 +24,8 @@ def file_sha256(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
+            if path.suffix == ".patch":
+                block = block.replace(b"\r\n", b"\n")
             h.update(block)
     return h.hexdigest()
 
