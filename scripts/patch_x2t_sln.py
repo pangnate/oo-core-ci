@@ -49,3 +49,18 @@ if "# BASEMETAS_X2T_CI_BEGIN" not in ptext:
     pro.write_text(ptext + block, encoding="utf-8", newline="\n")
 print(f"Patched {pri}: CryptoPPLib, graphics and PdfFile in qmake graph")
 print(f"Patched {pro}: Linux rpath-link and Windows size diagnostics")
+
+# The pinned build_tools HEIF builder checks out x265 into x265_git, while the
+# upstream qmake file still links against the old x265 directory.
+heif_pri = core / "Common/3dParty/heif/heif.pri"
+if not heif_pri.is_file():
+    raise SystemExit(f"Missing HEIF qmake file: {heif_pri}")
+heif_text = heif_pri.read_text(encoding="utf-8")
+if "$$PWD/x265_git/build/" not in heif_text:
+    if "$$PWD/x265/build/" not in heif_text:
+        raise SystemExit("Unexpected heif.pri: x265 library path missing")
+    heif_pri.write_text(
+        heif_text.replace("$$PWD/x265/build/", "$$PWD/x265_git/build/"),
+        encoding="utf-8", newline="\n",
+    )
+print(f"Patched {heif_pri}: use x265_git output from build_tools")

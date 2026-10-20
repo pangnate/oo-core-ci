@@ -1,0 +1,245 @@
+name: X2T Windows stages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  deps:
+    runs-on: windows-2022
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify locked inputs
+        shell: pwsh
+        run: |
+          python scripts/verify_vendor.py --platform windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/verify_core_source.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Locate VS2022 and v142
+        shell: pwsh
+        run: ./scripts/ci_vs_env.ps1
+      - name: Identify locked dependency inputs
+        run: python scripts/ci_deps_key.py --platform win_64
+      - uses: actions/cache@v4
+        id: deps-cache
+        with:
+          path: dist/deps-win_64.tar*
+          key: x2t-deps-windows-v1-${{ env.X2T_DEPS_ID }}
+      - name: Build Boost and ICU
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        shell: cmd
+        run: scripts\windows_build.cmd deps
+      - name: Archive dependencies
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py create --archive dist/deps-win_64.tar --stage deps --platform win_64 --source-sha $env:X2T_DEPS_ID --path core/Common/3dParty/boost/build/win_64 --path core/Common/3dParty/icu/win_64/build --path core/Common/3dParty/heif/libheif/libheif/api --path core/Common/3dParty/heif/libheif/build/win_64 --path core/Common/3dParty/heif/x265_git/build/win_64 --path core/Common/3dParty/heif/libde265/build/win_64
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check cached dependency archive
+        if: steps.deps-cache.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py restore --archive dist/deps-win_64.tar --stage deps --platform win_64 --source-sha $env:X2T_DEPS_ID
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2t-deps-windows-amd64
+          path: dist/deps-win_64.tar*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  build:
+    needs: deps
+    runs-on: windows-2022
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify and patch locked Core
+        shell: pwsh
+        run: |
+          python scripts/verify_vendor.py --platform windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/verify_core_source.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/apply_core_patches.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/apply_core_overlays.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Locate VS2022 and v142
+        shell: pwsh
+        run: ./scripts/ci_vs_env.ps1
+      - name: Identify locked dependency inputs
+        run: python scripts/ci_deps_key.py --platform win_64
+      - name: Prepare Core toolchain
+        shell: cmd
+        run: scripts\windows_build.cmd prepare
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-deps-windows-amd64
+          path: dist/incoming-deps
+      - name: Restore dependency handoff
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py restore --archive dist/incoming-deps/deps-win_64.tar --stage deps --platform win_64 --source-sha $env:X2T_DEPS_ID
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Build X2T
+        shell: cmd
+        run: scripts\windows_build.cmd core
+      - name: Report executable size
+        shell: pwsh
+        run: |
+          python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Archive Core handoff
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py create --archive dist/build-win_64.tar --stage build --platform win_64 --path core/build/bin/win_64 --path core/Common/3dParty/icu/win_64/build --path vendor/work/x2t-core-source-verification.json --path vendor/work/x2t-core-overlay-receipt.json --path dist/windows-size-report.json --optional vendor/work/x2t-core-patch-receipt.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2t-build-windows-amd64
+          path: dist/build-win_64.tar*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x2t-windows-build-diagnostics
+          path: |
+            core/build/bin/win_64/x2t.map
+            dist/windows-size-report.json
+            vendor/work/x2t-core-source-verification.json
+            vendor/work/x2t-core-patch-receipt.json
+            vendor/work/x2t-core-overlay-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  verify:
+    needs: build
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prepare locked runtime and Qt
+        shell: pwsh
+        run: |
+          python scripts/verify_vendor.py --platform windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/prepare.py --platform windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-build-windows-amd64
+          path: dist/incoming-build
+      - name: Restore Core handoff
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py restore --archive dist/incoming-build/build-win_64.tar --stage build --platform win_64
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Locate VS2022 and v142
+        shell: pwsh
+        run: ./scripts/ci_vs_env.ps1
+      - name: Verify PE and dependencies
+        shell: cmd
+        run: |
+          call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
+          dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
+          dumpbin /dependents core\build\bin\win_64\x2t.exe
+      - name: Add locked Qt to runtime search path
+        shell: pwsh
+        run: |
+          $qtBin = Join-Path $env:GITHUB_WORKSPACE 'vendor/work/qt-win/Qt-5.15.2/msvc2019_64/bin'
+          if (!(Test-Path -LiteralPath (Join-Path $qtBin 'Qt5Core.dll'))) { throw "Locked Qt runtime is missing: $qtBin" }
+          $qtBin | Out-File $env:GITHUB_PATH -Append -Encoding utf8
+      - name: DOCX and PPTX editor-BIN round trip
+        shell: pwsh
+        run: |
+          python scripts/smoke_x2t_runtime.py --x2t core/build/bin/win_64/x2t.exe --fixture-root tests/core-features/fixtures --work-root vendor/work/x2t-baseline-smoke
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Archive verification handoff
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py create --archive dist/verify-win_64.tar --stage verify --platform win_64 --path vendor/work/x2t-baseline-smoke/fonts --path vendor/work/x2t-baseline-smoke-receipt.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2t-verified-windows-amd64
+          path: dist/verify-win_64.tar*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x2t-windows-smoke-diagnostics
+          path: vendor/work/x2t-baseline-smoke-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  package:
+    needs: verify
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+            config
+            runtime
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-build-windows-amd64
+          path: dist/incoming-build
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-verified-windows-amd64
+          path: dist/incoming-verified
+      - name: Restore verified inputs
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py restore --archive dist/incoming-build/build-win_64.tar --stage build --platform win_64
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/ci_handoff.py restore --archive dist/incoming-verified/verify-win_64.tar --stage verify --platform win_64
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Brand and package Windows runtime
+        shell: pwsh
+        run: ./scripts/package_windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2t-windows-amd64
+          path: |
+            dist/x2t-windows-amd64.exe
+            dist/SHA256SUMS-windows-amd64
+            dist/core10-windows-*-build-*.zip
+            dist/runtime-baseline-receipt.json
+            dist/windows-branding-receipt.json
+            dist/windows-size-report.json
+          if-no-files-found: error
+          retention-days: 30

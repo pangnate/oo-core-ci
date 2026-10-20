@@ -1,0 +1,226 @@
+name: X2T Linux stages
+
+on:
+  workflow_call:
+    inputs:
+      arch:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deps:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      X2T_TARGET: ${{ inputs.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Identify locked dependency inputs
+        run: python3 scripts/ci_deps_key.py --platform "$X2T_TARGET"
+      - uses: actions/cache@v4
+        id: deps-cache
+        with:
+          path: dist/deps-${{ env.X2T_TARGET }}.tar*
+          key: x2t-deps-linux-v1-${{ env.X2T_DEPS_ID }}
+      - name: Host packages
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential ca-certificates python3 perl pkg-config file binutils \
+            rsync p7zip-full zstd xz-utils patchelf
+      - name: Prepare dependency inputs
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 scripts/verify_vendor.py --platform linux
+          python3 scripts/verify_core_source.py
+          python3 scripts/prepare.py --platform linux
+          python3 scripts/patch_x2t_sln.py --core-root core
+          python3 scripts/configure_build.py --platform linux --target "$X2T_TARGET"
+      - name: Build Boost and ICU
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: python3 scripts/make_minimal_deps.py
+      - name: Archive dependencies
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 scripts/ci_handoff.py create \
+            --archive "dist/deps-$X2T_TARGET.tar" --stage deps --platform "$X2T_TARGET" --source-sha "$X2T_DEPS_ID" \
+            --path "core/Common/3dParty/boost/build/$X2T_TARGET" \
+            --path core/Common/3dParty/icu/linux_64/build \
+            --path "core/Common/3dParty/icu/$X2T_TARGET/build" \
+            --path core/Common/3dParty/heif/libheif/libheif/api \
+            --path "core/Common/3dParty/heif/libheif/build/$X2T_TARGET" \
+            --path "core/Common/3dParty/heif/x265_git/build/$X2T_TARGET" \
+            --path "core/Common/3dParty/heif/libde265/build/$X2T_TARGET"
+      - name: Check cached dependency archive
+        if: steps.deps-cache.outputs.cache-hit == 'true'
+        run: |
+          python3 scripts/ci_handoff.py restore \
+            --archive "dist/deps-$X2T_TARGET.tar" --stage deps --platform "$X2T_TARGET" --source-sha "$X2T_DEPS_ID"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2t-deps-linux-${{ inputs.arch }}
+          path: dist/deps-${{ env.X2T_TARGET }}.tar*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  build:
+    needs: deps
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      X2T_TARGET: ${{ inputs.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Identify locked dependency inputs
+        run: python3 scripts/ci_deps_key.py --platform "$X2T_TARGET"
+      - name: Host packages
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential ca-certificates python3 perl pkg-config file binutils \
+            rsync p7zip-full zstd xz-utils patchelf
+      - name: Prepare patched Core and toolchain
+        run: |
+          python3 scripts/verify_vendor.py --platform linux
+          python3 scripts/verify_core_source.py
+          python3 scripts/apply_core_patches.py
+          python3 scripts/apply_core_overlays.py
+          python3 scripts/prepare.py --platform linux
+          python3 scripts/patch_x2t_sln.py --core-root core
+          python3 scripts/configure_build.py --platform linux --target "$X2T_TARGET"
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-deps-linux-${{ inputs.arch }}
+          path: dist/incoming-deps
+      - name: Restore dependency handoff
+        run: |
+          python3 scripts/ci_handoff.py restore \
+            --archive "dist/incoming-deps/deps-$X2T_TARGET.tar" \
+            --stage deps --platform "$X2T_TARGET" --source-sha "$X2T_DEPS_ID"
+      - name: Build X2T
+        run: python3 scripts/build_x2t.py
+      - name: Archive Core handoff
+        run: |
+          python3 scripts/ci_handoff.py create \
+            --archive "dist/build-$X2T_TARGET.tar" --stage build --platform "$X2T_TARGET" \
+            --path "core/build/bin/$X2T_TARGET/x2t" \
+            --path "core/build/lib/$X2T_TARGET" \
+            --path "core/Common/3dParty/icu/$X2T_TARGET/build" \
+            --path config/branding.json \
+            --path vendor/work/x2t-core-source-verification.json \
+            --path vendor/work/x2t-core-overlay-receipt.json \
+            --optional vendor/work/x2t-core-patch-receipt.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2t-build-linux-${{ inputs.arch }}
+          path: dist/build-${{ env.X2T_TARGET }}.tar*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: x2t-linux-${{ inputs.arch }}-diagnostics
+          path: |
+            vendor/work/x2t-core-source-verification.json
+            vendor/work/x2t-core-patch-receipt.json
+            vendor/work/x2t-core-overlay-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  verify:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      X2T_TARGET: ${{ inputs.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - name: ELF inspection tools
+        run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y file binutils
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-build-linux-${{ inputs.arch }}
+          path: dist/incoming-build
+      - name: Restore Core binary
+        run: |
+          python3 scripts/ci_handoff.py restore \
+            --archive "dist/incoming-build/build-$X2T_TARGET.tar" \
+            --stage build --platform "$X2T_TARGET"
+      - name: Check ELF and runtime dependencies
+        run: |
+          set -euo pipefail
+          X2T="core/build/bin/$X2T_TARGET/x2t"
+          test -x "$X2T"
+          file "$X2T"
+          readelf -h "$X2T"
+          if [ "${{ inputs.arch }}" = amd64 ]; then
+            file "$X2T" | grep -Ei 'x86-64|x86_64'
+            readelf -h "$X2T" | grep -E 'Machine:.*X86-64'
+            LD_LIBRARY_PATH="$PWD/core/build/lib/linux_64:$PWD/core/build/lib/linux_64/system:$PWD/core/Common/3dParty/icu/linux_64/build" \
+              ldd "$X2T" | tee dist/linux-amd64-ldd.txt
+            ! grep -q 'not found' dist/linux-amd64-ldd.txt
+          else
+            file "$X2T" | grep -Ei 'aarch64|ARM'
+            readelf -h "$X2T" | grep -E 'Machine:.*AArch64'
+            readelf -d "$X2T" | grep NEEDED || true
+          fi
+          python3 scripts/linux_verify_receipt.py --target "$X2T_TARGET" \
+            --binary "$X2T" --output dist/linux-verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2t-verified-linux-${{ inputs.arch }}
+          path: dist/linux-verification.json
+          if-no-files-found: error
+          retention-days: 30
+
+  package:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      X2T_TARGET: ${{ inputs.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+            config
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-build-linux-${{ inputs.arch }}
+          path: dist/incoming-build
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-verified-linux-${{ inputs.arch }}
+          path: dist/incoming-verified
+      - name: Restore and package verified binary
+        run: |
+          python3 scripts/ci_handoff.py restore \
+            --archive "dist/incoming-build/build-$X2T_TARGET.tar" \
+            --stage build --platform "$X2T_TARGET"
+          python3 scripts/package_linux.py --arch "${{ inputs.arch }}" \
+            --binary "core/build/bin/$X2T_TARGET/x2t" \
+            --verification dist/incoming-verified/linux-verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: x2t-linux-${{ inputs.arch }}
+          path: |
+            dist/x2t-linux-${{ inputs.arch }}
+            dist/x2t-linux-${{ inputs.arch }}-branding.json
+            dist/SHA256SUMS-linux-${{ inputs.arch }}
+            dist/core10-linux-${{ inputs.arch }}-*-build-*.zip
+          if-no-files-found: error
+          retention-days: 30
