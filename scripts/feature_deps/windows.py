@@ -66,7 +66,7 @@ def find_7zip(explicit: Path | None) -> Path:
     raise InputError("7-Zip is required to extract the locked Qt archive")
 
 
-def developer_environment(vcvarsall: Path, work: Path) -> dict[str, str]:
+def developer_environment(vcvarsall: Path, work: Path) -> tuple[dict[str, str], str]:
     if os.name != "nt":
         raise InputError("Windows dependency SDK assembly requires a Windows runner")
     batch_file = work / "capture-msvc-environment.cmd"
@@ -88,9 +88,11 @@ def developer_environment(vcvarsall: Path, work: Path) -> dict[str, str]:
             key, value = line.split("=", 1)
             if key and not key.startswith("="):
                 env[key.upper()] = value
-    if not shutil.which("cl", path=env.get("PATH")) or not shutil.which("nmake", path=env.get("PATH")):
+    cl_path = shutil.which("cl", path=env.get("PATH"))
+    nmake_path = shutil.which("nmake", path=env.get("PATH"))
+    if not cl_path or not nmake_path:
         raise InputError("MSVC v142 developer environment did not expose cl.exe and nmake.exe")
-    return env
+    return env, str(Path(nmake_path).resolve())
 
 
 def verify_locked_inputs(core_root: Path, qt_archive: Path, v8_root: Path) -> tuple[dict, dict, dict, dict]:
@@ -224,8 +226,8 @@ def source_manifest(sdk_lock: dict[str, Any], staged_core: Path, baseline: dict[
     }
 
 
-def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, env: dict[str, str],
-                    font: Path, work: Path) -> dict[str, Any]:
+def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, nmake: str,
+                    env: dict[str, str], font: Path, work: Path) -> dict[str, Any]:
     print("[windows-sdk] prepare HarfBuzz sources", flush=True)
     harfbuzz_dir = staged_core / "Common/3dParty/harfbuzz"
     make_script = harfbuzz_dir / "make.py"
@@ -269,7 +271,7 @@ def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, en
     if configure["exitCode"] or configure["timedOut"]:
         raise InputError(f"qmake failed: {configure['output'][-4000:]}")
     print("[windows-sdk] compile and link native probe", flush=True)
-    compile_result = run_recipe(["nmake", "/NOLOGO"], cwd=project.parent,
+    compile_result = run_recipe([nmake, "/NOLOGO"], cwd=project.parent,
                                 timeout=sdk_lock["build"]["timeoutSeconds"], env=env)
     if compile_result["exitCode"] or compile_result["timedOut"]:
         raise InputError(f"Windows dependency probe compilation/link failed: {compile_result['output'][-6000:]}")
@@ -379,7 +381,7 @@ def assemble(args: argparse.Namespace) -> None:
     env_report = probe_windows_toolchain(qmake=qmake)
     if not env_report["available"]:
         raise InputError("required Windows toolchain is unavailable: " + ", ".join(env_report["missing"]))
-    env = developer_environment(Path(env_report["vcvarsall"]), work)
+    env, nmake = developer_environment(Path(env_report["vcvarsall"]), work)
     print("[windows-sdk] stage pristine Core sources", flush=True)
 
     staging = work / "core-staging"
@@ -388,7 +390,7 @@ def assemble(args: argparse.Namespace) -> None:
         brotli_info = install_brotli_archive(sdk_lock, staging / "core", Path(temp_name))
     print("[windows-sdk] record source closure", flush=True)
     source_info = source_manifest(sdk_lock, staging / "core", baseline, checksums, brotli_info)
-    probe_info = build_and_probe(sdk_lock, staging / "core", qmake, env, font, work)
+    probe_info = build_and_probe(sdk_lock, staging / "core", qmake, nmake, env, font, work)
 
     sdk_key = canonical_sha256(sdk_lock)
     output.mkdir(parents=True)
