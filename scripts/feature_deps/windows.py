@@ -177,21 +177,28 @@ include($$CORE_ROOT/DesktopEditor/graphics/pro/freetype.pri)
 include($$CORE_ROOT/Common/3dParty/brotli/brotli.pri)
 include($$CORE_ROOT/Common/3dParty/harfbuzz/harfbuzz.pri)
 
-SOURCES += $$files($$CORE_ROOT/DesktopEditor/cximage/png/*.c, false)
-SOURCES += $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/crc32.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/adler32.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/deflate.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/inffast.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/inflate.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/inftrees.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/trees.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/zutil.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/uncompr.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11/compress.c \\
-    $$CORE_ROOT/OfficeUtils/src/zlib_addon.c
+SOURCES += \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/png.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngerror.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngget.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngmem.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngpread.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngread.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngrio.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngrtran.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngrutil.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngset.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngtrans.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngwio.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngwrite.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngwtran.c \\
+    $$CORE_ROOT/DesktopEditor/cximage/png/pngwutil.c
 
 OPENJPEG_ROOT = $$CORE_ROOT/DesktopEditor/raster/Jp2/openjpeg/openjpeg-2.4.0/src/lib/openjp2
 SOURCES += $$files($$OPENJPEG_ROOT/*.c, false)
+SOURCES -= $$files($$OPENJPEG_ROOT/bench_*, false)
+SOURCES -= $$files($$OPENJPEG_ROOT/test_*, false)
+SOURCES -= $$files($$OPENJPEG_ROOT/*_generate_*, false)
 '''
     project.write_text(content, encoding="utf-8", newline="\n")
 
