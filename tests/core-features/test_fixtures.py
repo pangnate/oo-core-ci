@@ -118,6 +118,49 @@ def verify_fixtures(directory: Path, profile: dict) -> int:
     checks.that(scales == {"80", "100", "120"}, "Word TextScale values incomplete")
     checks.that(len(word.findall(f".//{q(W, 'permStart')}")) == 2 and len(word.findall(f".//{q(W, 'permEnd')}")) == 2, "Word protection marker fixtures incomplete")
 
+    permission_cases = check_zip(directory / "word-permission-spellings.docx", {"word/document.xml"}, checks)
+    permission_doc = ET.fromstring(permission_cases.read("word/document.xml"))
+    permission_values = [
+        (node.get(q(W, "displacedByCustomXml")), node.get(q(W, "displacedbyCustomXml")))
+        for node in permission_doc.findall(f".//{q(W, 'permStart')}")
+    ]
+    checks.that(permission_values == [
+        (None, "legacy-only"),
+        ("standard-only", None),
+        ("standard-wins", "legacy-loses"),
+        ("standard-wins", "legacy-loses"),
+    ], "permission spelling/precedence cases incomplete")
+
+    protected_docx = check_zip(directory / "word-protection-roundtrip.docx", {"word/document.xml", "word/settings.xml"}, checks)
+    protection_doc = ET.fromstring(protected_docx.read("word/document.xml"))
+    protection_settings = ET.fromstring(protected_docx.read("word/settings.xml"))
+    protection_attrs = protection_settings.find(q(W, "documentProtection"))
+    expected_protection_attrs = {
+        "edit", "enforcement", "formatting", "algorithmName", "cryptAlgorithmClass",
+        "cryptAlgorithmSid", "cryptAlgorithmType", "cryptProvider", "cryptProviderType",
+        "cryptProviderTypeExt", "cryptProviderTypeExtSource", "algIdExt", "algIdExtSource",
+        "hash", "salt", "cryptSpinCount", "hashValue", "saltValue", "spinCount",
+    }
+    checks.that(protection_attrs is not None, "Word documentProtection settings missing")
+    checks.that(
+        protection_attrs is not None and {name.rsplit("}", 1)[-1] for name in protection_attrs.attrib} == expected_protection_attrs,
+        "Word documentProtection attribute matrix incomplete",
+    )
+    checks.that(protection_doc.find(f".//{q(W, 'formProt')}").get(q(W, "val")) == "1", "Word section formProt sample missing")
+
+    vml_docx = check_zip(directory / "word-vml-ideographic.docx", {"word/document.xml"}, checks)
+    vml_doc = ET.fromstring(vml_docx.read("word/document.xml"))
+    vml_shapes = vml_doc.findall(".//{urn:schemas-microsoft-com:vml}shape")
+    checks.that(len(vml_shapes) == 1 and "layout-flow:vertical-ideographic" in vml_shapes[0].get("style", ""), "VML ideographic direction sample missing")
+
+    broken_image = check_zip(directory / "word-broken-image.docx", {"word/document.xml", "word/media/bad.png", "word/_rels/document.xml.rels"}, checks)
+    broken_doc = ET.fromstring(broken_image.read("word/document.xml"))
+    broken_rels = ET.fromstring(broken_image.read("word/_rels/document.xml.rels"))
+    image_rel = next((rel for rel in broken_rels.findall(f"{{{PKG_REL}}}Relationship") if rel.get("Id") == "rIdPatchImage"), None)
+    checks.that(broken_doc.find(f".//{q(A, 'blip')}").get(q(R, "embed")) == "rIdPatchImage", "broken-image drawing reference missing")
+    checks.that(image_rel is not None and image_rel.get("Target") == "media/bad.png", "broken-image package relationship missing")
+    checks.that(broken_image.read("word/media/bad.png") == (directory / "bad.png").read_bytes(), "broken-image payload changed")
+
     pptx = check_zip(directory / "slide-core-features.pptx", {"[Content_Types].xml", "ppt/presentation.xml", "ppt/slides/slide1.xml"}, checks)
     slide = ET.fromstring(pptx.read("ppt/slides/slide1.xml"))
     ppr = slide.findall(f".//{q(A, 'pPr')}")

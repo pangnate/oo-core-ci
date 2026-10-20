@@ -14,6 +14,8 @@ from copy import deepcopy
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+from patch_fixture_cases import generate_patch_fixtures
+
 ROOT = Path(__file__).resolve().parents[2]
 DEST = ROOT / "tests" / "core-features" / "fixtures"
 NS_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -244,6 +246,7 @@ def main() -> None:
     make_word()
     make_slide()
     make_sheet()
+    patch_cases = generate_patch_fixtures(DEST)
     files = sorted(p for p in DEST.iterdir() if p.is_file() and p.name != "manifest.json")
     manifest = {"schemaVersion": 1, "sourceRoot": "D:/docservice/idp-all/idp-example/public/templates",
                 "sourceTemplates": {name: hashlib.sha256((DEST / f"source-{name}").read_bytes()).hexdigest()
@@ -255,7 +258,8 @@ def main() -> None:
                                  "slideBoolCombinations": 8, "lineSpacingUnits": ["pct", "pts"],
                                  "textDirections": ["horz", "vert", "vert270", "eaVert"],
                                  "sheetFeatures": ["shared-background", "filled-cells", "no-gridlines", "multi-page", "repeated-titles"],
-                                 "imageFixtures": ["valid-png", "invalid-png"]},
+                                 "imageFixtures": ["valid-png", "invalid-png"],
+                                 "patchCases": patch_cases},
                 "files": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files}}
     (DEST / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"generated {len(files)} files; manifest sha256={hashlib.sha256((DEST / 'manifest.json').read_bytes()).hexdigest()}")

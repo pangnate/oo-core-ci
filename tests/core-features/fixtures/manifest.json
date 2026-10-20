@@ -55,6 +55,12 @@
     "imageFixtures": [
       "valid-png",
       "invalid-png"
+    ],
+    "patchCases": [
+      "word-permission-spellings.docx",
+      "word-protection-roundtrip.docx",
+      "word-vml-ideographic.docx",
+      "word-broken-image.docx"
     ]
   },
   "files": {
@@ -65,6 +71,10 @@
     "source-blank.docx": "2b4868b3e8db1881649308630e53728cbb9d202c91986e2ace07cf0d8ea9da6a",
     "source-blank.pptx": "6f96985775fbb26d3b93c530fd8c99b801fecc0c0b1a59f92dee67740042c1d6",
     "source-blank.xlsx": "c5787773d17f00aad75b271162f5a371b70e68083270b62b176bc559089f3825",
-    "word-core-features.docx": "6afe4670e6f93283d03522fcfc77d1aada239ca13059b19f4e36d3e3636f2339"
+    "word-broken-image.docx": "a62fc8b133ec729ba17215a3d306880f40e4c9f46597a160ab90bd860614a003",
+    "word-core-features.docx": "6afe4670e6f93283d03522fcfc77d1aada239ca13059b19f4e36d3e3636f2339",
+    "word-permission-spellings.docx": "01ba67cee52d11d2bf184cc1346a7fd665687145b152a536c7ac16f918fb45e7",
+    "word-protection-roundtrip.docx": "977bd54274a45cb07ec11fcdd89030658224e145e7637307038ace688e92ff2b",
+    "word-vml-ideographic.docx": "558be68e94fb0f2675d160416c86395b29aa4a3a512a387e9bc1541418e760ed"
   }
 }
