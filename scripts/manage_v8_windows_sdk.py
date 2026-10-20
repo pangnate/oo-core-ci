@@ -148,10 +148,21 @@ def unpack(directory: Path, destination: Path, lock: dict) -> Path:
 def validate_release_bundle(directory: Path, lock: dict, repo: str) -> dict:
     digest = archive_hash(directory)
     receipt = json.loads((directory / RECEIPT).read_text(encoding="utf-8"))
-    expected = {"schemaVersion": 1, "repository": repo, "releaseTag": identity(lock)["release-tag"],
+    expected = {"schemaVersion": 1, "releaseTag": identity(lock)["release-tag"],
                 "sdkLockSha256": identity(lock)["sdk-key"], "archive": ARCHIVE, "archiveSha256": digest}
     if any(receipt.get(key) != value for key, value in expected.items()):
         raise InputError("fixed SDK release receipt does not match repository/lock/archive")
+    original_repo = validate_repo(receipt.get("repository", ""))
+    if original_repo.lower() != repo.lower():
+        # Repository names change; GitHub redirects the old name. Require the
+        # immutable ID from both authenticated lookups to match. A reused old
+        # name or an SDK copied from another repository must still fail.
+        original = api(f"repos/{original_repo}")
+        current = api(f"repos/{repo}")
+        repository_id = current.get("id") if current else None
+        if (not isinstance(repository_id, int) or repository_id <= 0
+                or not original or original.get("id") != repository_id):
+            raise InputError("fixed SDK release receipt belongs to a different repository")
     return receipt
 
 

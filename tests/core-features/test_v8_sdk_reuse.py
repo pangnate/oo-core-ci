@@ -133,6 +133,33 @@ class V8SdkReuseTests(unittest.TestCase):
             self.assertFalse((directory / "cache").exists())
             self.assertFalse((directory / "out").exists())
 
+    def test_repository_rename_requires_matching_immutable_id(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            lock, _ = package_fixture(directory)
+            renamed = "owner/renamed-native-deps"
+            original_receipt = (directory / sdk.RECEIPT).read_bytes()
+            with patch.object(sdk, "api", return_value={"id": 123, "full_name": renamed}) as remote:
+                sdk.validate_release_bundle(directory, lock, renamed)
+                self.assertEqual(remote.call_args_list[0].args, (f"repos/{REPO}",))
+                self.assertEqual(remote.call_args_list[1].args, (f"repos/{renamed}",))
+            self.assertEqual(original_receipt, (directory / sdk.RECEIPT).read_bytes())
+            for responses in (({"id": 124}, {"id": 123}), ({}, {}), (None, {"id": 123})):
+                with self.subTest(responses=responses), patch.object(sdk, "api", side_effect=responses):
+                    with self.assertRaisesRegex(sdk.InputError, "different repository"):
+                        sdk.validate_release_bundle(directory, lock, renamed)
+
+    def test_rename_does_not_bypass_lock_or_archive_validation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            lock, _ = package_fixture(directory)
+            receipt = json.loads((directory / sdk.RECEIPT).read_text())
+            receipt["sdkLockSha256"] = "0" * 64
+            (directory / sdk.RECEIPT).write_text(json.dumps(receipt))
+            with patch.object(sdk, "api") as remote, self.assertRaisesRegex(sdk.InputError, "lock/archive"):
+                sdk.validate_release_bundle(directory, lock, "owner/renamed-native-deps")
+            remote.assert_not_called()
+
     def test_network_or_auth_errors_are_not_reported_as_missing_sdk(self):
         for message in ("HTTP 403", "HTTP 500", "connection timed out"):
             with self.subTest(message=message), patch.object(sdk, "gh", side_effect=sdk.InputError(message)):
