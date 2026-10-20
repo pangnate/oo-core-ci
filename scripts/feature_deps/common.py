@@ -225,7 +225,10 @@ def run_recipe(command: list[str], *, cwd: Path, timeout: float, env: dict[str, 
     else:
         kwargs["start_new_session"] = True
     started = time.monotonic()
-    process = subprocess.Popen(command, **kwargs)
+    try:
+        process = subprocess.Popen(command, **kwargs)
+    except OSError as exc:
+        raise InputError(f"cannot start command {command[0]!r} in {cwd}: {exc}") from exc
     timed_out = False
     try:
         output, _ = process.communicate(timeout=timeout)

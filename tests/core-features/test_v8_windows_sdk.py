@@ -104,6 +104,10 @@ class V8WindowsSdkLockTests(unittest.TestCase):
             compile_command = run.call_args_list[0].args[0]
             self.assertIn(f"/I{root / 'v8'}", compile_command)
             self.assertIn(f"/I{root / 'v8/include'}", compile_command)
+            source = (work / "v8_probe.cc").read_text(encoding="utf-8")
+            self.assertIn("InitializeICUDefaultLocation(argv[0])", source)
+            self.assertIn("InitializeExternalStartupData(argv[0])", source)
+            self.assertNotIn("InitializeICUDefaultLocation(nullptr)", source)
 
 
 if __name__ == "__main__":

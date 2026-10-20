@@ -58,9 +58,12 @@ def probe(v8: Path, library: Path, work: Path, env: dict[str, str]) -> None:
 #include "include/libplatform/libplatform.h"
 #include "include/v8.h"
 
-int main() {
-  v8::V8::InitializeICUDefaultLocation(nullptr);
-  v8::V8::InitializeExternalStartupData(nullptr);
+int main(int argc, char** argv) {
+  if (argc < 1 || argv == nullptr || argv[0] == nullptr) return 12;
+  // Match Core's embedder initialization: V8 expects the executable path to
+  // locate icudtl.dat (and any external startup data), not a null directory.
+  v8::V8::InitializeICUDefaultLocation(argv[0]);
+  v8::V8::InitializeExternalStartupData(argv[0]);
   auto platform = v8::platform::NewDefaultPlatform();
   v8::V8::InitializePlatform(platform.get());
   if (!v8::V8::Initialize()) return 10;
