@@ -23,7 +23,7 @@ INPUTS = (
     "config/build-acceleration.json", "vendor/checksums.json", "vendor/detected-deps.json",
     "scripts/prepare.py", "scripts/native_sources.py", "config/native-sources.lock.json",
     "scripts/configure_build.py", "scripts/patch_x2t_sln.py",
-    "scripts/build_x2t.py", "scripts/build_metrics.py", "scripts/branding.py", "scripts/windows_build.cmd",
+    "scripts/build_x2t.py", "scripts/audit_source_paths.py", "scripts/build_metrics.py", "scripts/branding.py", "scripts/windows_build.cmd",
     "scripts/generate_import_libs.ps1", "scripts/ci_vs_env.ps1", "scripts/qmake",
     "scripts/setup_build_acceleration.py", "scripts/ci_core_cache.py", "scripts/ci_handoff.py",
     "scripts/verify_vendor.py", "scripts/verify_core_source.py", "scripts/stage_core_source.py",

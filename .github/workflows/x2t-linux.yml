@@ -182,6 +182,7 @@ jobs:
             dist/core-reuse-${{ env.X2T_TARGET }}.json
             dist/build-metrics-${{ env.X2T_TARGET }}.json
             dist/build-${{ env.X2T_TARGET }}.log
+            dist/source-path-audit-${{ env.X2T_TARGET }}.json
             dist/sccache-stats-${{ env.X2T_TARGET }}.json
             vendor/work/x2t-core-source-verification.json
             vendor/work/x2t-core-patch-receipt.json

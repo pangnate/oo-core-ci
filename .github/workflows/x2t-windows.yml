@@ -182,6 +182,7 @@ jobs:
             dist/core-reuse-win_64.json
             dist/build-metrics-win_64.json
             dist/build-win_64.log
+            dist/source-path-audit-win_64.json
             dist/sccache-stats-win_64.json
             vendor/work/x2t-core-source-verification.json
             vendor/work/x2t-core-patch-receipt.json

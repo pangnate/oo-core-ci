@@ -12,3 +12,4 @@ build_tools/config
 *.part
 __pycache__/
 *.pyc
+.x2t-input-paths.txt

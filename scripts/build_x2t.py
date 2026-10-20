@@ -12,6 +12,7 @@ import time
 from branding import load_branding
 from build_metrics import ResourceMonitor, build_jobs
 from native_sources import verify_for_build
+from audit_source_paths import audit as audit_source_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 BT = ROOT / "build_tools"
@@ -124,6 +125,7 @@ def main() -> None:
                 if not windows:
                     base.set_sysroot_env(target)
                     sysroot_active = True
+            audit_source_paths(CORE, dist / f"source-path-audit-{target}.json")
             run("compile-and-link", [*make, "-f", makefile])
             metrics["exitCode"] = 0
         finally:

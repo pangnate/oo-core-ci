@@ -1,10 +1,17 @@
 # qmake normally warns and continues when an explicit source is missing.
 # Validate every subproject before starting the expensive native build.
 !equals(TEMPLATE, subdirs) {
+    X2T_INPUT_RECORDS =
     for(X2T_INPUT, SOURCES) {
         X2T_INPUT_PATH = $$absolute_path($$X2T_INPUT, $$_PRO_FILE_PWD_)
         !exists($$X2T_INPUT_PATH):error(Missing build source: $$X2T_INPUT_PATH)
+        X2T_INPUT_RECORDS += $$quote(SOURCE|$$X2T_INPUT_PATH)
     }
     # HEADERS also contains obsolete IDE entries in pinned upstream projects.
     # Required supplemental headers are checked by native_sources.py instead.
+    for(X2T_INPUT, HEADERS) {
+        X2T_INPUT_PATH = $$absolute_path($$X2T_INPUT, $$_PRO_FILE_PWD_)
+        X2T_INPUT_RECORDS += $$quote(HEADER|$$X2T_INPUT_PATH)
+    }
+    !write_file($$OUT_PWD/.x2t-input-paths.txt, X2T_INPUT_RECORDS):error(Cannot write source path manifest)
 }

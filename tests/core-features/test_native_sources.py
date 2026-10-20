@@ -150,7 +150,8 @@ class NativeSourceTests(unittest.TestCase):
 
     def test_parallel_graph_declares_pdf_crypto_dependency_and_is_idempotent(self):
         for relative in ("X2tConverter/build/Qt/X2tSLN.pri", "X2tConverter/build/Qt/X2tConverter.pro",
-                         "Common/3dParty/heif/heif.pri"):
+                         "Common/3dParty/heif/heif.pri", "DesktopEditor/graphics/pro/metafile.pri",
+                         "MsBinaryFile/Common/Base/Aggregat.h", "DesktopEditor/raster/heif/heif.h"):
             target = self.core / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((ROOT / "core" / relative).read_bytes())
@@ -163,6 +164,12 @@ class NativeSourceTests(unittest.TestCase):
         self.assertIn(b"PdfFile.depends = graphics CryptoPPLib", before)
         self.assertIn(b"CONFIG -= ordered", before)
         self.assertNotIn(b"CONFIG += ordered", before)
+        metafile = (self.core / "DesktopEditor/graphics/pro/metafile.pri").read_text(encoding="utf-8")
+        self.assertIn("/cwmfinterpretator.cpp", metafile)
+        self.assertIn("/cwmfinterpretator.h", metafile)
+        self.assertNotIn("/CWmfInterpretator.cpp", metafile)
+        self.assertIn(b'"../../../OOXML/Base/SmartPtr.h"', (self.core / "MsBinaryFile/Common/Base/Aggregat.h").read_bytes())
+        self.assertIn(b'"../../../Common/3dParty/heif/', (self.core / "DesktopEditor/raster/heif/heif.h").read_bytes())
 
 
 if __name__ == "__main__":

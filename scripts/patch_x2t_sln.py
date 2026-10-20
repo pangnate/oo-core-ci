@@ -68,3 +68,35 @@ if "$$PWD/x265_git/build/" not in heif_text:
         encoding="utf-8", newline="\n",
     )
 print(f"Patched {heif_pri}: use x265_git output from build_tools")
+
+# The official tree stores these two files in lowercase. Windows hides the
+# mismatch; a case-sensitive Linux checkout cannot compile the qmake paths.
+metafile_pri = core / "DesktopEditor/graphics/pro/metafile.pri"
+metafile_text = metafile_pri.read_text(encoding="utf-8")
+for extension in ("cpp", "h"):
+    old = f"/Wmf/WmfInterpretator/CWmfInterpretator.{extension}"
+    new = f"/Wmf/WmfInterpretator/cwmfinterpretator.{extension}"
+    if old not in metafile_text and new not in metafile_text:
+        raise SystemExit(f"Unexpected metafile.pri: missing WMF {extension} input")
+    metafile_text = metafile_text.replace(old, new)
+metafile_pri.write_text(metafile_text, encoding="utf-8", newline="\n")
+print(f"Patched {metafile_pri}: match case-sensitive WMF filenames")
+
+# Make relative includes resolve from their own directory, rather than relying
+# on unrelated include search directories (or a header never being compiled).
+include_corrections = {
+    "MsBinaryFile/Common/Base/Aggregat.h": [(b'"../../OOXML/Base/SmartPtr.h"', b'"../../../OOXML/Base/SmartPtr.h"')],
+    "DesktopEditor/raster/heif/heif.h": [
+        (b'"../../Common/3dParty/heif/', b'"../../../Common/3dParty/heif/'),
+        (b'"../../UnicodeConverter/UnicodeConverter.h"', b'"../../../UnicodeConverter/UnicodeConverter.h"'),
+    ],
+}
+for relative, replacements in include_corrections.items():
+    header = core / relative
+    content = header.read_bytes()
+    for old, new in replacements:
+        if old not in content and new not in content:
+            raise SystemExit(f"Unexpected relative include in {header}: {old!r}")
+        content = content.replace(old, new)
+    header.write_bytes(content)
+    print(f"Patched {header}: resolve includes relative to the header")

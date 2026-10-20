@@ -6,7 +6,7 @@
   "core": {
     "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
     "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
-    "stagingInventorySha256": "be3c30944a04fc34be0803c361f327cdcc05cc54094ff860a97d03cae6200673",
+    "stagingInventorySha256": "a776e91f8df51dd10fa0b05ce120e3811e95fd88088cef1f968c0b6d89989e3c",
     "sourceInventorySha256": "cc16fb1824a7788140aa76064c6714d803e51deb90205fe8d625664f508ab5f6"
   },
   "inputs": {
@@ -56,7 +56,7 @@
     },
     "build-correction": {
       "path": "scripts/patch_x2t_sln.py",
-      "sha256": "a68d03c8c7acba8dcb392fe36b3fe2ea6ef4ea3f0dee05fe28e4cd768416d3eb"
+      "sha256": "cde2f376a6dd6beff5a1a9465c9618980ef35675b36adbc2ac124ef9e5b96c63"
     },
     "core-staging-baseline": {
       "path": "ci/baseline.json",
