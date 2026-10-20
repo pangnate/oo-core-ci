@@ -20,6 +20,7 @@ on:
       - 'scripts/manage_v8_windows_sdk.py'
       - 'scripts/patch_x2t_sln.py'
       - 'scripts/stage_core_source.py'
+      - 'scripts/verify_core_source.py'
       - 'scripts/build_v8_windows_sdk.py'
       - 'scripts/verify_vendor.py'
       - 'tests/core-features/**'
@@ -56,15 +57,7 @@ jobs:
         run: |
           python scripts/verify_vendor.py --platform windows
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $workspace = [System.IO.Path]::GetFullPath($env:GITHUB_WORKSPACE).TrimEnd('\')
-          foreach ($name in @('core', 'build_tools')) {
-            $target = [System.IO.Path]::GetFullPath((Join-Path $workspace $name))
-            if (!$target.StartsWith($workspace + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
-              throw "Refusing to remove source outside the Actions checkout: $target"
-            }
-            if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
-          }
-          python scripts/download.py --core-ref ed63e94de814ff1d4ea28cddfaba6939bc9df9ed --build-tools-ref a9f9895b172b09595abcafe85d56fab163f9ecb7
+          python scripts/verify_core_source.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Restore fixed V8 SDK release

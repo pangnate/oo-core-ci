@@ -183,13 +183,21 @@ def main() -> int:
 
     baseline = json.loads((ROOT / "ci/baseline.json").read_text(encoding="utf-8"))
     checksums = json.loads((ROOT / "vendor/checksums.json").read_text(encoding="utf-8"))
-    staging_receipt_path = WORK_ROOT / "x2t-baseline-staging" / "core-staging-receipt.json"
-    if not staging_receipt_path.is_file():
-        raise SmokeError("locked Core staging receipt is missing")
-    staging_receipt = json.loads(staging_receipt_path.read_text(encoding="utf-8"))
-    if (staging_receipt.get("coreRef") != baseline["coreRef"]
-            or staging_receipt.get("featurePatches") != []):
-        raise SmokeError("baseline staging must match the pinned Core ref and contain no feature patches")
+    source_receipt_path = WORK_ROOT / "x2t-core-source-verification.json"
+    overlay_receipt_path = WORK_ROOT / "x2t-core-overlay-receipt.json"
+    if not source_receipt_path.is_file() or not overlay_receipt_path.is_file():
+        raise SmokeError("locked Core source or overlay receipt is missing")
+    source_receipt = json.loads(source_receipt_path.read_text(encoding="utf-8"))
+    overlay_receipt = json.loads(overlay_receipt_path.read_text(encoding="utf-8"))
+    if (source_receipt.get("status") != "verified"
+            or source_receipt.get("coreRef") != baseline["coreRef"]
+            or source_receipt.get("sourceInventorySha256") != checksums["core-source"]["extractedTreeFingerprint"]
+            or source_receipt.get("featurePatches") != []):
+        raise SmokeError("X2T build must use the verified pinned Core checkout with no omitted feature patches")
+    if (overlay_receipt.get("status") != "applied"
+            or [entry.get("path") for entry in overlay_receipt.get("overlays", [])]
+            != baseline.get("coreOverlays", [])):
+        raise SmokeError("declared Core overlays were not applied to the build checkout")
     runtime_lock = checksums["runtime-windows-amd64"]
     runtime_archive = (ROOT / runtime_lock["file"].replace("\\", "/")).resolve()
     if sha256(runtime_archive) != runtime_lock["sha256"]:
@@ -242,8 +250,9 @@ def main() -> int:
         "coreRef": baseline["coreRef"],
         "coreTreeSha256": checksums["core-source"]["treeSha256"],
         "buildToolsRef": baseline["buildToolsRef"],
-        "stagingReceiptSha256": sha256(staging_receipt_path),
-        "stagingCoreTreeSha256": staging_receipt["stagedCoreInventorySha256"],
+        "sourceVerificationReceiptSha256": sha256(source_receipt_path),
+        "coreSourceInventorySha256": source_receipt["sourceInventorySha256"],
+        "overlayReceiptSha256": sha256(overlay_receipt_path),
         "runtimeArchive": runtime_lock["file"],
         "runtimeArchiveSha256": runtime_lock["sha256"],
         "runtimeSourceLabel": runtime_lock.get("source"),

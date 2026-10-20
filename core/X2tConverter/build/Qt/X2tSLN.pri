@@ -39,7 +39,6 @@ PWD_ROOT_DIR = $$PWD
 include(../../../Common/base.pri)
 
 SUBDIRS = \
-    CryptoPPLib \
     XlsbFormatLib \
     VbaFormatLib \
     DocxFormatLib \
@@ -54,7 +53,6 @@ SUBDIRS = \
     CompoundFileLib \
     X2tConverter
 
-CryptoPPLib.file =	../../../Common/3dParty/cryptopp/project/cryptopp.pro
 XlsbFormatLib.file =	../../../OOXML/Projects/Linux/XlsbFormatLib/XlsbFormatLib.pro
 DocxFormatLib.file =	../../../OOXML/Projects/Linux/DocxFormatLib/DocxFormatLib.pro
 PPTXFormatLib.file =	../../../OOXML/Projects/Linux/PPTXFormatLib/PPTXFormatLib.pro
@@ -69,7 +67,6 @@ VbaFormatLib.file =	../../../MsBinaryFile/Projects/VbaFormatLib/Linux/VbaFormatL
 CompoundFileLib.file =	../../../Common/cfcpp/cfcpp.pro
 
 X2tConverter.depends = \
-    CryptoPPLib \
     XlsbFormatLib \
     DocxFormatLib \
     PPTXFormatLib \

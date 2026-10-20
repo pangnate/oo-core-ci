@@ -186,24 +186,16 @@ jobs:
       - name: Verify vendor files
         run: python scripts/verify_vendor.py --platform windows
 
-      - name: Fetch pristine locked Core and build_tools sources
+      - name: Verify the locked Core source in the checkout
         shell: pwsh
         run: |
-          $workspace = [System.IO.Path]::GetFullPath($env:GITHUB_WORKSPACE).TrimEnd('\')
-          foreach ($name in @('core', 'build_tools')) {
-            $target = [System.IO.Path]::GetFullPath((Join-Path $workspace $name))
-            if (!$target.StartsWith($workspace + '\', [System.StringComparison]::OrdinalIgnoreCase)) {
-              throw "Refusing to remove source outside the Actions checkout: $target"
-            }
-            if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
-          }
-          python scripts/download.py --core-ref ed63e94de814ff1d4ea28cddfaba6939bc9df9ed --build-tools-ref a9f9895b172b09595abcafe85d56fab163f9ecb7
+          python scripts/verify_core_source.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-      - name: Validate and stage the clean locked Core baseline
+      - name: Apply declared Core overlays to the checkout
         shell: pwsh
         run: |
-          python scripts/stage_core_source.py --destination vendor/work/x2t-baseline-staging
+          python scripts/apply_core_overlays.py
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Locate VS2022 and v142

@@ -73,10 +73,3 @@ include(X2tConverter.pri)
 	HEADERS += ../../src/dylib/x2t.h
 	SOURCES += ../../src/dylib/x2t.cpp
 }
-
-# BASEMETAS_X2T_CI_BEGIN
-core_linux {
-    QMAKE_LFLAGS += -Wl,-rpath-link,$$CORE_BUILDS_LIBRARIES_PATH
-    QMAKE_LFLAGS += -Wl,-rpath-link,$$CORE_BUILDS_LIBRARIES_PATH/system
-}
-# BASEMETAS_X2T_CI_END
