@@ -284,6 +284,13 @@ jobs:
         run: |
           New-Item dist -ItemType Directory -Force | Out-Null
 
+          $branding = Get-Content config\branding.json -Raw | ConvertFrom-Json
+          $versionParts = $branding.version.Split('.')
+          if ($versionParts.Length -ne 4) { throw 'branding.version must have four components' }
+          $productVersion = $versionParts[0..2] -join '.'
+          $buildNumber = $versionParts[3]
+          $zipName = "core10-windows-$productVersion-build-$buildNumber.zip"
+
           $packageRoot = Join-Path $env:RUNNER_TEMP 'core10-windows-baseline'
           New-Item $packageRoot -ItemType Directory -Force | Out-Null
           Copy-Item core\build\bin\win_64\* $packageRoot -Recurse -Force
@@ -295,7 +302,8 @@ jobs:
           Copy-Item vendor\work\x2t-baseline-smoke-receipt.json dist\runtime-baseline-receipt.json -Force
           python scripts\brand_windows_runtime.py --runtime-bin $packageRoot --receipt dist\windows-branding-receipt.json
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          Compress-Archive -Path (Join-Path $packageRoot '*') -DestinationPath dist\core10-windows-baseline.zip -CompressionLevel Optimal
+          $zipPath = Join-Path dist $zipName
+          Compress-Archive -Path (Join-Path $packageRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal
 
           Copy-Item `
             (Join-Path $packageRoot 'x2t.exe') `
@@ -310,8 +318,8 @@ jobs:
           "$hash  x2t-windows-amd64.exe" |
             Set-Content dist\SHA256SUMS-windows-amd64
 
-          $bundleHash = (Get-FileHash dist\core10-windows-baseline.zip -Algorithm SHA256).Hash.ToLower()
-          "$bundleHash  core10-windows-baseline.zip" |
+          $bundleHash = (Get-FileHash $zipPath -Algorithm SHA256).Hash.ToLower()
+          "$bundleHash  $zipName" |
             Add-Content dist\SHA256SUMS-windows-amd64
 
           Get-ChildItem dist
@@ -323,7 +331,7 @@ jobs:
           path: |
             dist/x2t-windows-amd64.exe
             dist/SHA256SUMS-windows-amd64
-            dist/core10-windows-baseline.zip
+            dist/core10-windows-*-build-*.zip
             dist/runtime-baseline-receipt.json
             dist/windows-branding-receipt.json
             dist/windows-size-report.json
