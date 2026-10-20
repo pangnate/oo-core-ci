@@ -2,7 +2,9 @@
 
 这个仓库原用于**只编译 X2T 及其必要静态格式库**，不构建 ONLYOFFICE Server / SDKJS / Web Apps / 完整 Core runtime。当前已同步 Core 10 源码。`native-bin/windows/bin`是9.4.0.129；vendor Windows runtime来自另一目录，PE版本标记10.0.0.169但同步来源注明metadata-only-reconciliation，必须先完成真实加载/转换验证，不能只凭metadata视为匹配。本轮Windows POC将先验收该候选，必要时再构建完整DLL闭包。
 
-Word、Sheet、Slide的Core功能改造已有[46张Luna执行卡及2个汇总项](./docs/Core三端功能改造_Luna开发任务卡_2026-10-19.md)，唯一领取/状态入口为[执行总表](./docs/Core三端功能改造_执行总表_2026-10-19.md)。当前按用户本地Windows环境完成Core产物POC，不等待Linux或产品新SDKJS；后续新JS集成、Linux发布分阶段保留。任务补齐Windows开发构建、SDK/V8、匹配Core 10的完整基线DLL、缓存、指标与单平台容量，已知大卡已拆子卡。逐卡执行已开始，CORE-00完成。
+Word、Sheet、Slide的Core功能改造已有[46张Luna执行卡及2个汇总项](./Core三端功能改造_Luna开发任务卡_2026-10-19.md)，唯一领取/状态入口为[执行总表](./Core三端功能改造_执行总表_2026-10-19.md)。当前按用户本地Windows环境完成Core产物POC，不等待Linux或产品新SDKJS；后续新JS集成、Linux发布分阶段保留。任务补齐Windows开发构建、SDK/V8、匹配Core 10的完整基线DLL、缓存、指标与单平台容量，已知大卡已拆子卡。逐卡执行已开始，CORE-00完成。
+
+本文所有构建命令从仓库根目录执行。Windows/Linux 构建缓存、按 CPU 核数并行和性能采样的当前实现见[构建流程优化方案](./构建流程优化方案_2026-10-20.md)。
 
 ## 你需要准备
 
@@ -91,6 +93,8 @@ git push -u origin main
 ## 当前构建状态与 GitHub Actions 流程
 
 旧基线的三平台编译曾通过；当前 10.0 基线尚待重新运行 CI。workflow 可通过 `workflow_dispatch` 选择 `all`、`linux` 或 `windows`，各平台分别上传带 SHA256 文件的构建产物。
+
+Windows 和 Linux 两个架构均已接入精确输入的 Core 产物复用、sccache 对象缓存、按实际 CPU 核数并行，以及耗时/CPU/内存/磁盘诊断。Core 缓存仅在验证成功后保存，命中后仍执行本轮验证。手工入口的 `rebuild_core` 可绕过整包复用来检查编译阶段；对象缓存仍启用。此轮改动尚未推送和运行新流水线，性能收益以之后的 Actions 指标为准。
 
 ### Linux
 

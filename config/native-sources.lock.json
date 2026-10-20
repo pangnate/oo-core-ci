@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "gumbo": {
+      "commit": "aa91b27b02c0c80c482e24348a457ed7c3c088e0",
+      "url": "https://codeload.github.com/google/gumbo-parser/tar.gz/aa91b27b02c0c80c482e24348a457ed7c3c088e0",
+      "file": "vendor/archives/gumbo-aa91b27b02c0c80c482e24348a457ed7c3c088e0.tar.gz",
+      "sha256": "f2d899ad9f96da1461710148dc1dc84c8519d9ec342d70bdb7a2c1f61dba3678",
+      "destination": "Common/3dParty/html/gumbo-parser"
+    },
+    "katana": {
+      "commit": "be6df458d4540eee375c513958dcb862a391cdd1",
+      "url": "https://codeload.github.com/jasenhuang/katana-parser/tar.gz/be6df458d4540eee375c513958dcb862a391cdd1",
+      "file": "vendor/archives/katana-be6df458d4540eee375c513958dcb862a391cdd1.tar.gz",
+      "sha256": "3522aa95456f2faa7f43052c5f38c4d5cff8320f9a69fe6aac33eb1dda7b91b5",
+      "destination": "Common/3dParty/html/katana-parser"
+    },
+    "harfbuzz": {
+      "commit": "894a1f72ee93a1fd8dc1d9218cb3fd8f048be29a",
+      "url": "https://codeload.github.com/harfbuzz/harfbuzz/tar.gz/894a1f72ee93a1fd8dc1d9218cb3fd8f048be29a",
+      "file": "vendor/archives/harfbuzz-894a1f72ee93a1fd8dc1d9218cb3fd8f048be29a.tar.gz",
+      "sha256": "17eda8a9861d347a6e95cd2b3112301ce90dcc649b0e96623cc89c6ca4180e66",
+      "destination": "Common/3dParty/harfbuzz/harfbuzz"
+    },
+    "hyphen": {
+      "commit": "c299444629416f90625a2e56fdfc4efdca131ecc",
+      "url": "https://codeload.github.com/hunspell/hyphen/tar.gz/c299444629416f90625a2e56fdfc4efdca131ecc",
+      "file": "vendor/archives/hyphen-c299444629416f90625a2e56fdfc4efdca131ecc.tar.gz",
+      "sha256": "716b78b478b82e66b6c9922e43b1ecb577a20cb2fe79576c69a96cb1030bf605",
+      "destination": "Common/3dParty/hyphen/hyphen"
+    }
+  }
+}

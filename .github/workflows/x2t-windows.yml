@@ -2,6 +2,10 @@ name: X2T Windows stages
 
 on:
   workflow_call:
+    inputs:
+      rebuild_core:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -62,6 +66,14 @@ jobs:
     needs: deps
     runs-on: windows-2022
     timeout-minutes: 180
+    outputs:
+      core-id: ${{ steps.core-inputs.outputs.core-id }}
+      cache-hit: ${{ steps.core-cache.outputs.cache-hit }}
+    env:
+      X2T_CLEAN: '0'
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
+      SCCACHE_GHA_VERSION: x2t-win_64-v1
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,30 +97,60 @@ jobs:
         run: ./scripts/ci_vs_env.ps1
       - name: Identify locked dependency inputs
         run: python scripts/ci_deps_key.py --platform win_64
+      - name: Identify Core compilation inputs
+        id: core-inputs
+        run: python scripts/ci_core_cache.py key --platform win_64
+      - name: Restore verified Core cache
+        if: ${{ !inputs.rebuild_core }}
+        id: core-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: dist/core-cache-win_64.tar*
+          key: x2t-core-win_64-v1-${{ env.X2T_CORE_ID }}
+      - name: Check and unpack cached Core
+        if: steps.core-cache.outputs.cache-hit == 'true'
+        run: python scripts/ci_core_cache.py restore --platform win_64
       - name: Prepare Core toolchain
+        if: steps.core-cache.outputs.cache-hit != 'true'
         shell: cmd
         run: scripts\windows_build.cmd prepare
+      - name: Set up pinned compiler cache
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c # v0.0.11
+        with:
+          version: v0.18.0
+      - name: Configure bounded cached compilation
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python scripts/setup_build_acceleration.py
       - uses: actions/download-artifact@v4
+        if: steps.core-cache.outputs.cache-hit != 'true'
         with:
           name: x2t-deps-windows-amd64
           path: dist/incoming-deps
       - name: Restore dependency handoff
+        if: steps.core-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           python scripts/ci_handoff.py restore --archive dist/incoming-deps/deps-win_64.tar --stage deps --platform win_64 --source-sha $env:X2T_DEPS_ID
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Build X2T
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 170
         shell: cmd
         run: scripts\windows_build.cmd core
       - name: Report executable size
+        if: steps.core-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Record Core producer
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python scripts/ci_core_cache.py record --platform win_64
       - name: Archive Core handoff
         shell: pwsh
         run: |
-          python scripts/ci_handoff.py create --archive dist/build-win_64.tar --stage build --platform win_64 --path core/build/bin/win_64 --path core/Common/3dParty/icu/win_64/build --path vendor/work/x2t-core-source-verification.json --path vendor/work/x2t-core-overlay-receipt.json --path dist/windows-size-report.json --optional vendor/work/x2t-core-patch-receipt.json
+          python scripts/ci_handoff.py create --archive dist/build-win_64.tar --stage build --platform win_64 --path core/build/bin/win_64 --path core/Common/3dParty/icu/win_64/build --path vendor/work/x2t-core-source-verification.json --path vendor/work/x2t-core-overlay-receipt.json --path dist/windows-size-report.json --path dist/core-producer-win_64.json --path dist/core-reuse-win_64.json --path dist/build-metrics-win_64.json --optional vendor/work/x2t-core-patch-receipt.json
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
@@ -125,6 +167,12 @@ jobs:
           path: |
             core/build/bin/win_64/x2t.map
             dist/windows-size-report.json
+            dist/core-inputs-win_64.json
+            dist/core-producer-win_64.json
+            dist/core-reuse-win_64.json
+            dist/build-metrics-win_64.json
+            dist/build-win_64.log
+            dist/sccache-stats-win_64.json
             vendor/work/x2t-core-source-verification.json
             vendor/work/x2t-core-patch-receipt.json
             vendor/work/x2t-core-overlay-receipt.json
@@ -147,7 +195,7 @@ jobs:
         run: |
           python scripts/verify_vendor.py --platform windows
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python scripts/prepare.py --platform windows
+          python scripts/prepare.py --platform windows --runtime-only
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - uses: actions/download-artifact@v4
         with:
@@ -167,6 +215,8 @@ jobs:
           call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
           dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
           dumpbin /dependents core\build\bin\win_64\x2t.exe
+      - name: Check Core compilation identity
+        run: python scripts/ci_core_cache.py check --platform win_64 --core-id "${{ needs.build.outputs.core-id }}"
       - name: Add locked Qt to runtime search path
         shell: pwsh
         run: |
@@ -178,6 +228,15 @@ jobs:
         run: |
           python scripts/smoke_x2t_runtime.py --x2t core/build/bin/win_64/x2t.exe --fixture-root tests/core-features/fixtures --work-root vendor/work/x2t-baseline-smoke
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Archive verified Core cache
+        if: needs.build.outputs.cache-hit != 'true'
+        run: python scripts/ci_core_cache.py pack --platform win_64 --core-id "${{ needs.build.outputs.core-id }}"
+      - name: Save verified Core cache
+        if: needs.build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: dist/core-cache-win_64.tar*
+          key: x2t-core-win_64-v1-${{ needs.build.outputs.core-id }}
       - name: Archive verification handoff
         shell: pwsh
         run: |

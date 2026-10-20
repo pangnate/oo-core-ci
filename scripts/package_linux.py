@@ -57,6 +57,8 @@ def main() -> None:
         package.write(binary, "x2t")
         package.write(branding, "branding.json")
         package.write(args.verification, "verification.json")
+        package.write(ROOT / f"dist/core-producer-{expected_target}.json", "core-producer.json")
+        package.write(ROOT / f"dist/core-reuse-{expected_target}.json", "core-reuse.json")
     sums = output / f"SHA256SUMS-linux-{args.arch}"
     sums.write_text(
         "".join(f"{sha256(path)}  {path.name}\n" for path in (binary, branding, archive)),

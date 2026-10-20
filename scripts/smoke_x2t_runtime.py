@@ -31,6 +31,27 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def validate_patch_receipts(source: dict, applied: dict, baseline: dict, source_lock: dict,
+                            expected: list[dict]) -> None:
+    if (source.get("status") != "verified"
+            or source.get("coreRef") != baseline["coreRef"]
+            or source.get("sourceInventorySha256") != source_lock["extractedTreeFingerprint"]
+            or source.get("featurePatches") != expected
+            or baseline.get("corePatches") != [entry["path"] for entry in expected]
+            or applied.get("coreRef") != baseline["coreRef"]
+            or applied.get("patches") != expected):
+        raise SmokeError("X2T build must use the verified pinned Core checkout and the complete locked patch series")
+
+
+def validate_compiled_modules(producer: dict, executable_hash: str, dll_hashes: dict[str, str]) -> dict[str, str]:
+    modules = producer.get("compiledModules", {})
+    if (set(modules) != {"x2t.exe", "graphics.dll", "pdffile.dll"}
+            or modules["x2t.exe"] != executable_hash
+            or any(dll_hashes.get(name) != digest for name, digest in modules.items() if name != "x2t.exe")):
+        raise SmokeError("source-built Core modules differ from the compilation producer receipt")
+    return modules
+
+
 def inside(path: Path, parent: Path) -> bool:
     try:
         path.resolve().relative_to(parent.resolve())
@@ -189,11 +210,10 @@ def main() -> int:
         raise SmokeError("locked Core source or overlay receipt is missing")
     source_receipt = json.loads(source_receipt_path.read_text(encoding="utf-8"))
     overlay_receipt = json.loads(overlay_receipt_path.read_text(encoding="utf-8"))
-    if (source_receipt.get("status") != "verified"
-            or source_receipt.get("coreRef") != baseline["coreRef"]
-            or source_receipt.get("sourceInventorySha256") != checksums["core-source"]["extractedTreeFingerprint"]
-            or source_receipt.get("featurePatches") != []):
-        raise SmokeError("X2T build must use the verified pinned Core checkout with no omitted feature patches")
+    series = json.loads((ROOT / "patches/core/series.json").read_text(encoding="utf-8"))
+    expected_patches = [{"path": entry["path"], "sha256": entry["sha256"]} for entry in series["patches"]]
+    patch_receipt = json.loads((WORK_ROOT / "x2t-core-patch-receipt.json").read_text(encoding="utf-8"))
+    validate_patch_receipts(source_receipt, patch_receipt, baseline, checksums["core-source"], expected_patches)
     if (overlay_receipt.get("status") != "applied"
             or [entry.get("path") for entry in overlay_receipt.get("overlays", [])]
             != baseline.get("coreOverlays", [])):
@@ -221,6 +241,8 @@ def main() -> int:
     if not dlls:
         raise SmokeError("X2T runtime directory contains no app-local DLLs")
     dll_hashes = {entry["name"].lower(): entry["sha256"] for entry in dlls}
+    producer = json.loads((ROOT / "dist/core-producer-win_64.json").read_text(encoding="utf-8"))
+    source_built_core = validate_compiled_modules(producer, sha256(x2t), dll_hashes)
     loaded_runtime_dlls: dict[str, dict[str, str]] = {}
     for conversion in conversions:
         for name, path in conversion.get("loadedModules", {}).items():
@@ -234,6 +256,9 @@ def main() -> int:
                     raise SmokeError(f"loaded ICU DLL differs from the locked-source build output: {name}")
                 provenance = {"kind": "source-built-icu", "archive": icu_lock["file"],
                               "archiveSha256": icu_lock["sha256"]}
+            elif name in source_built_core:
+                provenance = {"kind": "source-built-core", "coreId": producer["coreId"],
+                              "sourceSha": producer["sourceSha"], "runId": producer["runId"]}
             else:
                 if locked_runtime_dlls.get(name) != dll_hashes[name]:
                     raise SmokeError(f"loaded app-local DLL differs from the locked runtime archive: {name}")
@@ -257,6 +282,8 @@ def main() -> int:
         "runtimeArchiveSha256": runtime_lock["sha256"],
         "runtimeSourceLabel": runtime_lock.get("source"),
         "runtimeProvenance": "operator-manual-upgrade; metadata-only-reconciliation",
+        "sourceBuiltCoreModules": source_built_core,
+        "coreProducer": {key: producer[key] for key in ("coreId", "sourceSha", "runId")},
         "icuSourceArchive": icu_lock["file"],
         "icuSourceArchiveSha256": icu_lock["sha256"],
         "x2t": {"path": str(x2t), "size": x2t.stat().st_size, "sha256": sha256(x2t)},

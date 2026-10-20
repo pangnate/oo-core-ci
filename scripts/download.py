@@ -374,6 +374,12 @@ def main() -> int:
             }
 
     LOCK_FILE.write_text(json.dumps(lock, indent=2, ensure_ascii=False), encoding="utf-8")
+    # Supplemental inputs intentionally remain outside pristine core/. Their
+    # lock is independent of upstream recipes which otherwise clone at runtime.
+    from native_sources import load_lock, verify_archives
+    for item in load_lock(ROOT)["sources"].values():
+        download(item["url"], ROOT / item["file"], item["sha256"])
+    verify_archives(ROOT)
     write_baseline(args.core_ref, args.build_tools_ref)
     core_tar.unlink(missing_ok=True)
     build_tar.unlink(missing_ok=True)

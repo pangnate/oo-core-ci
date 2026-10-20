@@ -10,7 +10,8 @@ if not "%~1"=="" exit /b 2
 :prepare
 python scripts\prepare.py --platform windows || exit /b 1
 python scripts\patch_x2t_sln.py --core-root core || exit /b 1
-python scripts\configure_build.py --platform windows --vs-path "%CD%\ci\vswrap" || exit /b 1
+if "%X2T_CLEAN%"=="" set X2T_CLEAN=1
+python scripts\configure_build.py --platform windows --vs-path "%CD%\ci\vswrap" --clean %X2T_CLEAN% || exit /b 1
 if /I "%~1"=="prepare" exit /b 0
 python scripts\make_minimal_deps.py || exit /b 1
 if /I "%~1"=="deps" exit /b 0

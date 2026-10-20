@@ -1,0 +1,22 @@
+# Loaded after the project, so Core's sysroot compiler selection is preserved.
+X2T_SCCACHE = $$(X2T_SCCACHE)
+!isEmpty(X2T_SCCACHE):!equals(TEMPLATE, subdirs) {
+    X2T_CACHE = $$shell_quote($$shell_path($$X2T_SCCACHE))
+    QMAKE_CC = $$X2T_CACHE $$QMAKE_CC
+    QMAKE_CXX = $$X2T_CACHE $$QMAKE_CXX
+    win32 {
+        # One source per command is required for object caching. jom owns the
+        # concurrency budget; avoid an additional compiler process pool.
+        CONFIG += no_batch
+        QMAKE_CFLAGS -= /MP /Zi /ZI
+        QMAKE_CXXFLAGS -= /MP /Zi /ZI
+        QMAKE_CFLAGS_RELEASE -= /Zi /ZI
+        QMAKE_CXXFLAGS_RELEASE -= /Zi /ZI
+        QMAKE_CFLAGS_DEBUG -= /Zi /ZI
+        QMAKE_CXXFLAGS_DEBUG -= /Zi /ZI
+        core_debug {
+            QMAKE_CFLAGS_DEBUG += /Z7
+            QMAKE_CXXFLAGS_DEBUG += /Z7
+        }
+    }
+}

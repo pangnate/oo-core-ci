@@ -43,6 +43,9 @@ class RunnerError(Exception):
 
 
 def sha256_file(path: Path) -> str:
+    # Profiles lock repository text in LF form across Windows/POSIX checkouts.
+    if path.suffix in {".json", ".md", ".py", ".ps1", ".cmd", ".bat", ".patch"}:
+        return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
     h = hashlib.sha256()
     with path.open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):

@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from native_sources import verify_archives
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / 'vendor/checksums.json'
@@ -35,6 +36,10 @@ def main() -> None:
     detected = json.loads(detected_file.read_text(encoding='utf-8'))
     data = json.loads(LOCK.read_text(encoding='utf-8'))
     bad: list[str] = []
+    try:
+        verify_archives(ROOT)
+    except (ValueError, OSError) as exc:
+        bad.append(str(exc))
 
     common_keys = {'boost', 'icu', 'brotli'}
     linux_keys = {
@@ -56,9 +61,11 @@ def main() -> None:
     for key in selected_keys:
         item = data.get(key)
         if not item:
+            bad.append(f'{key}: missing checksum lock entry')
             continue
         file = item.get('file')
         if not file:
+            bad.append(f'{key}: missing archive path in checksum lock')
             continue
         path = portable_path(file)
         if not path.exists():
@@ -66,7 +73,7 @@ def main() -> None:
             continue
         got = sha(path)
         expected = item.get('sha256')
-        if expected and got.lower() != expected.lower():
+        if not expected or got.lower() != expected.lower():
             bad.append(f'{key}: checksum {got} != {expected}')
 
     boost_minor = detected['boost']['version'].split('.')[1]

@@ -6,6 +6,9 @@ on:
       arch:
         required: true
         type: string
+      rebuild_core:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -39,7 +42,7 @@ jobs:
         run: |
           python3 scripts/verify_vendor.py --platform linux
           python3 scripts/verify_core_source.py
-          python3 scripts/prepare.py --platform linux
+          python3 scripts/prepare.py --platform linux --target "$X2T_TARGET"
           python3 scripts/patch_x2t_sln.py --core-root core
           python3 scripts/configure_build.py --platform linux --target "$X2T_TARGET"
       - name: Build Boost and ICU
@@ -74,40 +77,78 @@ jobs:
     needs: deps
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    outputs:
+      core-id: ${{ steps.core-inputs.outputs.core-id }}
+      cache-hit: ${{ steps.core-cache.outputs.cache-hit }}
     env:
       X2T_TARGET: ${{ inputs.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
+      SCCACHE_GHA_ENABLED: 'true'
+      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
+      SCCACHE_GHA_VERSION: x2t-${{ inputs.arch }}-v1
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
       - name: Identify locked dependency inputs
         run: python3 scripts/ci_deps_key.py --platform "$X2T_TARGET"
-      - name: Host packages
-        run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-            build-essential ca-certificates python3 perl pkg-config file binutils \
-            rsync p7zip-full zstd xz-utils patchelf
-      - name: Prepare patched Core and toolchain
+      - name: Identify Core compilation inputs
+        id: core-inputs
+        run: python3 scripts/ci_core_cache.py key --platform "$X2T_TARGET"
+      - name: Restore verified Core cache
+        if: ${{ !inputs.rebuild_core }}
+        id: core-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: dist/core-cache-${{ env.X2T_TARGET }}.tar*
+          key: x2t-core-${{ env.X2T_TARGET }}-v1-${{ env.X2T_CORE_ID }}
+      - name: Verify and patch locked Core
         run: |
           python3 scripts/verify_vendor.py --platform linux
           python3 scripts/verify_core_source.py
           python3 scripts/apply_core_patches.py
           python3 scripts/apply_core_overlays.py
-          python3 scripts/prepare.py --platform linux
+      - name: Check and unpack cached Core
+        if: steps.core-cache.outputs.cache-hit == 'true'
+        run: python3 scripts/ci_core_cache.py restore --platform "$X2T_TARGET"
+      - name: Host packages
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            build-essential ca-certificates python3 perl pkg-config file binutils \
+            rsync p7zip-full zstd xz-utils patchelf
+      - name: Prepare target Core toolchain
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 scripts/prepare.py --platform linux --target "$X2T_TARGET"
           python3 scripts/patch_x2t_sln.py --core-root core
-          python3 scripts/configure_build.py --platform linux --target "$X2T_TARGET"
+          python3 scripts/configure_build.py --platform linux --target "$X2T_TARGET" --clean 0
+      - name: Set up pinned compiler cache
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c # v0.0.11
+        with:
+          version: v0.18.0
+      - name: Configure bounded cached compilation
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python3 scripts/setup_build_acceleration.py
       - uses: actions/download-artifact@v4
+        if: steps.core-cache.outputs.cache-hit != 'true'
         with:
           name: x2t-deps-linux-${{ inputs.arch }}
           path: dist/incoming-deps
       - name: Restore dependency handoff
+        if: steps.core-cache.outputs.cache-hit != 'true'
         run: |
           python3 scripts/ci_handoff.py restore \
             --archive "dist/incoming-deps/deps-$X2T_TARGET.tar" \
             --stage deps --platform "$X2T_TARGET" --source-sha "$X2T_DEPS_ID"
       - name: Build X2T
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        timeout-minutes: 170
         run: python3 scripts/build_x2t.py
+      - name: Record Core producer
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python3 scripts/ci_core_cache.py record --platform "$X2T_TARGET"
       - name: Archive Core handoff
         run: |
           python3 scripts/ci_handoff.py create \
@@ -116,6 +157,9 @@ jobs:
             --path "core/build/lib/$X2T_TARGET" \
             --path "core/Common/3dParty/icu/$X2T_TARGET/build" \
             --path config/branding.json \
+            --path "dist/core-producer-$X2T_TARGET.json" \
+            --path "dist/core-reuse-$X2T_TARGET.json" \
+            --path "dist/build-metrics-$X2T_TARGET.json" \
             --path vendor/work/x2t-core-source-verification.json \
             --path vendor/work/x2t-core-overlay-receipt.json \
             --optional vendor/work/x2t-core-patch-receipt.json
@@ -132,6 +176,12 @@ jobs:
         with:
           name: x2t-linux-${{ inputs.arch }}-diagnostics
           path: |
+            dist/core-inputs-${{ env.X2T_TARGET }}.json
+            dist/core-producer-${{ env.X2T_TARGET }}.json
+            dist/core-reuse-${{ env.X2T_TARGET }}.json
+            dist/build-metrics-${{ env.X2T_TARGET }}.json
+            dist/build-${{ env.X2T_TARGET }}.log
+            dist/sccache-stats-${{ env.X2T_TARGET }}.json
             vendor/work/x2t-core-source-verification.json
             vendor/work/x2t-core-patch-receipt.json
             vendor/work/x2t-core-overlay-receipt.json
@@ -179,6 +229,17 @@ jobs:
           fi
           python3 scripts/linux_verify_receipt.py --target "$X2T_TARGET" \
             --binary "$X2T" --output dist/linux-verification.json
+      - name: Check Core compilation identity
+        run: python3 scripts/ci_core_cache.py check --platform "$X2T_TARGET" --core-id "${{ needs.build.outputs.core-id }}"
+      - name: Archive verified Core cache
+        if: needs.build.outputs.cache-hit != 'true'
+        run: python3 scripts/ci_core_cache.py pack --platform "$X2T_TARGET" --core-id "${{ needs.build.outputs.core-id }}"
+      - name: Save verified Core cache
+        if: needs.build.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: dist/core-cache-${{ env.X2T_TARGET }}.tar*
+          key: x2t-core-${{ env.X2T_TARGET }}-v1-${{ needs.build.outputs.core-id }}
       - uses: actions/upload-artifact@v4
         with:
           name: x2t-verified-linux-${{ inputs.arch }}

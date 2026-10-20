@@ -26,7 +26,6 @@ def verify_baseline(profile: dict) -> int:
     checks.that(baseline["coreRef"] == profile["core"]["ref"] == core["ref"], "Core ref does not match source profile and vendor lock")
     checks.that(core["treeSha256"] == profile["core"]["treeSha256"], "official Core archive tree hash mismatch")
     checks.that(core["files"] == 21117, "official Core file count changed")
-    checks.that(baseline.get("corePatches") == [], "unexpected functional Core patch declared in baseline")
     checks.that(baseline.get("coreBuildPatches") == ["scripts/patch_x2t_sln.py"], "Core build patch order/source changed")
     checks.that(baseline.get("coreOverlays") == ["Common/copyright.txt"], "Core overlay declaration changed")
     checks.that((ROOT / "scripts" / "patch_x2t_sln.py").is_file(), "declared X2T build patch is missing")
@@ -35,7 +34,14 @@ def verify_baseline(profile: dict) -> int:
     checks.that(series["coreRef"] == core["ref"] and series["coreTreeSha256"] == core["treeSha256"],
                 "active patch series source identity does not match baseline")
     feature_patches = series["patches"]
-    checks.that(not feature_patches, f"CORE-00 baseline unexpectedly enables feature patches: {feature_patches}")
+    checks.that(baseline.get("corePatches") == [entry["path"] for entry in feature_patches],
+                "baseline differs from the active feature patch series")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from stage_core_source import validate_patch_series, file_sha256
+    validate_patch_series(series, core)
+    for entry in feature_patches:
+        checks.that(file_sha256(ROOT / entry["path"]) == entry["sha256"],
+                    f"active feature patch hash mismatch: {entry['path']}")
     core_status = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all", "--", "core"],
                                  cwd=ROOT, capture_output=True, text=True, check=True)
     checks.that(not core_status.stdout.strip(), "official Core worktree contains modified or untracked source")

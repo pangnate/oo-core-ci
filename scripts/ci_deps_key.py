@@ -16,14 +16,14 @@ INPUTS = (
     "config/deps.json",
     "build_tools",
     "core/Common/3dParty",
-    "patches/core",
-    "overlays/core",
     "ci/toolchains",
     "ci/vswrap",
+    "scripts/ci_vs_env.ps1",
     "scripts/prepare.py",
+    "scripts/native_sources.py",
+    "config/native-sources.lock.json",
     "scripts/configure_build.py",
     "scripts/make_minimal_deps.py",
-    "scripts/patch_x2t_sln.py",
     "scripts/ci_deps_key.py",
     "scripts/ci_handoff.py",
     "scripts/windows_build.cmd",
@@ -37,7 +37,7 @@ def main() -> None:
     args = parser.parse_args()
     digest = hashlib.sha256()
     for value in (args.platform, os.environ.get("ImageOS", ""),
-                  os.environ.get("ImageVersion", "")):
+                  os.environ.get("ImageVersion", ""), os.environ.get("X2T_COMPILER_VERSION", "")):
         digest.update(value.encode("utf-8") + b"\0")
     for path in INPUTS:
         result = subprocess.run(

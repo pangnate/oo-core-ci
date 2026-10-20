@@ -20,6 +20,8 @@ Copy-Item vendor\work\x2t-baseline-smoke\fonts $packageRoot\fonts -Recurse -Forc
 Copy-Item runtime\native-window-shim.js $packageRoot\native-window-shim.js -Force
 Copy-Item runtime\README.md $packageRoot\NATIVE-SDKJS-README.md -Force
 Copy-Item config\branding.json $packageRoot\branding.json -Force
+Copy-Item dist\core-producer-win_64.json $packageRoot\core-producer.json -Force
+Copy-Item dist\core-reuse-win_64.json $packageRoot\core-reuse.json -Force
 Copy-Item scripts\configure_native_runtime.py $packageRoot\configure_native_runtime.py -Force
 Copy-Item vendor\work\x2t-baseline-smoke-receipt.json dist\runtime-baseline-receipt.json -Force
 

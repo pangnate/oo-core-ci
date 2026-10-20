@@ -6,7 +6,7 @@
   "core": {
     "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
     "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
-    "stagingInventorySha256": "52c0c24ea72fade14c4e36e3bc1572873dc226906e1032e3aa216237c4afd4d7",
+    "stagingInventorySha256": "be3c30944a04fc34be0803c361f327cdcc05cc54094ff860a97d03cae6200673",
     "sourceInventorySha256": "cc16fb1824a7788140aa76064c6714d803e51deb90205fe8d625664f508ab5f6"
   },
   "inputs": {
@@ -16,7 +16,7 @@
     },
     "fixture-manifest": {
       "path": "tests/core-features/fixtures/manifest.json",
-      "sha256": "272ca7c91544ed95982d6be125da715af958b7f89e3e3bb0aa1666f3d9f71bdf"
+      "sha256": "0861737fecd66c981ca96750b66a118cc408567dbd0da1ef4a4ec839524643b8"
     },
     "baseline-evidence": {
       "path": "docs/测试/luna/LUNA-CORE-00/evidence.md",
@@ -48,7 +48,7 @@
     },
     "patch-series": {
       "path": "patches/core/series.json",
-      "sha256": "9e69d0ec44c46030967c1247d3b72e7daf374b37105cd8503c76d09afd700a77"
+      "sha256": "e1c543624f8fa53a135e5e3ae7789e3d8ce44ff26f409a9c3a33d5eee5dccce3"
     },
     "patch-series-schema": {
       "path": "patches/core/series.schema.json",
@@ -56,11 +56,11 @@
     },
     "build-correction": {
       "path": "scripts/patch_x2t_sln.py",
-      "sha256": "6d8868ea65ff796ab3b31b6ad631396082d31a8b853514ebd19c4fd89f8af813"
+      "sha256": "a68d03c8c7acba8dcb392fe36b3fe2ea6ef4ea3f0dee05fe28e4cd768416d3eb"
     },
     "core-staging-baseline": {
       "path": "ci/baseline.json",
-      "sha256": "1c31fd4bda34ff320dfd2c635f2976e7f765a5ab09f14e0ce809a4de6694e2f9"
+      "sha256": "255fd86d5844397c4688818c2bd23cae6d9ec81ca40f3b74f58f98c41f455ba4"
     },
     "core-overlay": {
       "path": "overlays/core/Common/copyright.txt",

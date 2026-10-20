@@ -12,6 +12,10 @@ on:
           - all
           - linux
           - windows
+      rebuild_core:
+        description: Rebuild Core instead of reusing a verified binary (compiler cache stays enabled)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -26,7 +30,10 @@ jobs:
     uses: ./.github/workflows/x2t-linux.yml
     with:
       arch: ${{ matrix.arch }}
+      rebuild_core: ${{ inputs.rebuild_core }}
 
   windows:
     if: ${{ inputs.platform == 'windows' || inputs.platform == 'all' }}
     uses: ./.github/workflows/x2t-windows.yml
+    with:
+      rebuild_core: ${{ inputs.rebuild_core }}

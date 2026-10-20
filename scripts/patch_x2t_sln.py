@@ -14,6 +14,9 @@ if not pri.exists() or not pro.exists():
     raise SystemExit("Missing X2T qmake project in Core source")
 
 text = pri.read_text(encoding="utf-8")
+# The static archives are independent; the executable and PdfFile declare
+# their prerequisites below. Let make schedule within the CPU-count budget.
+text = text.replace("CONFIG += ordered", "CONFIG -= ordered")
 if "CryptoPPLib.file" not in text:
     text = text.replace("SUBDIRS = \\\n", "SUBDIRS = \\\n    CryptoPPLib \\\n", 1)
     marker = "XlsbFormatLib.file ="
@@ -29,10 +32,11 @@ if "PdfFile.file" not in text:
     text += ("\n# Build patched Core libraries before linking X2T.\n"
              "graphics.file = ../../../DesktopEditor/graphics/pro/graphics.pro\n"
              "PdfFile.file = ../../../PdfFile/PdfFile.pro\n"
-             "PdfFile.depends = graphics\n"
+             "PdfFile.depends = graphics CryptoPPLib\n"
              "SUBDIRS -= X2tConverter\n"
              "SUBDIRS += graphics PdfFile X2tConverter\n"
              "X2tConverter.depends += PdfFile\n")
+text = text.replace("PdfFile.depends = graphics\n", "PdfFile.depends = graphics CryptoPPLib\n")
 pri.write_text(text, encoding="utf-8", newline="\n")
 
 ptext = pro.read_text(encoding="utf-8")
