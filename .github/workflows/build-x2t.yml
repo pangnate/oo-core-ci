@@ -179,8 +179,18 @@ jobs:
         with:
           lfs: true
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Verify vendor files
         run: python scripts/verify_vendor.py --platform windows
+
+      - name: Validate and stage the clean locked Core baseline
+        shell: pwsh
+        run: |
+          python scripts/stage_core_source.py --destination vendor/work/x2t-baseline-staging
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
       - name: Locate VS2022 and v142
         shell: powershell
@@ -212,10 +222,30 @@ jobs:
           dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
           dumpbin /dependents core\build\bin\win_64\x2t.exe
 
+      - name: Add locked Qt runtime to the smoke-test search path
+        shell: pwsh
+        run: |
+          $qtBin = Join-Path $env:GITHUB_WORKSPACE 'vendor/work/qt-win/Qt-5.15.2/msvc2019_64/bin'
+          if (!(Test-Path -LiteralPath (Join-Path $qtBin 'Qt5Core.dll'))) { throw "Locked Qt runtime is missing: $qtBin" }
+          $qtBin | Out-File $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Run DOCX and PPTX editor-BIN round-trip smoke
+        shell: pwsh
+        run: |
+          python scripts/smoke_x2t_runtime.py --x2t core/build/bin/win_64/x2t.exe --fixture-root tests/core-features/fixtures --work-root vendor/work/x2t-baseline-smoke
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
       - name: Package Windows amd64
         shell: powershell
         run: |
           New-Item dist -ItemType Directory -Force | Out-Null
+
+          $packageRoot = Join-Path $env:RUNNER_TEMP 'core10-windows-baseline'
+          New-Item $packageRoot -ItemType Directory -Force | Out-Null
+          Copy-Item core\build\bin\win_64\* $packageRoot -Recurse -Force
+          Copy-Item vendor\work\x2t-baseline-smoke\fonts $packageRoot\fonts -Recurse -Force
+          Copy-Item vendor\work\x2t-baseline-smoke-receipt.json dist\runtime-baseline-receipt.json -Force
+          Compress-Archive -Path (Join-Path $packageRoot '*') -DestinationPath dist\core10-windows-baseline.zip -CompressionLevel Optimal
 
           Copy-Item `
             core\build\bin\win_64\x2t.exe `
@@ -230,6 +260,10 @@ jobs:
           "$hash  x2t-windows-amd64.exe" |
             Set-Content dist\SHA256SUMS-windows-amd64
 
+          $bundleHash = (Get-FileHash dist\core10-windows-baseline.zip -Algorithm SHA256).Hash.ToLower()
+          "$bundleHash  core10-windows-baseline.zip" |
+            Add-Content dist\SHA256SUMS-windows-amd64
+
           Get-ChildItem dist
 
       - name: Upload Windows amd64
@@ -239,5 +273,7 @@ jobs:
           path: |
             dist/x2t-windows-amd64.exe
             dist/SHA256SUMS-windows-amd64
+            dist/core10-windows-baseline.zip
+            dist/runtime-baseline-receipt.json
           if-no-files-found: error
           retention-days: 30
