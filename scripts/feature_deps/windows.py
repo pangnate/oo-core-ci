@@ -160,7 +160,7 @@ def generate_probe_project(project: Path, staged_core: Path, probe_source: Path)
 TARGET = build_deps_windows_probe
 CONFIG += console release c++14 core_windows
 CONFIG -= debug qt app_bundle
-DEFINES += OPJ_STATIC NOMINMAX
+DEFINES += OPJ_STATIC USE_JPIP NOMINMAX
 QMAKE_CFLAGS_RELEASE += /MD
 QMAKE_CXXFLAGS_RELEASE += /MD
 CORE_ROOT = {core}
