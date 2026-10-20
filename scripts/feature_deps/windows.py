@@ -226,6 +226,7 @@ def source_manifest(sdk_lock: dict[str, Any], staged_core: Path, baseline: dict[
 
 def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, env: dict[str, str],
                     font: Path, work: Path) -> dict[str, Any]:
+    print("[windows-sdk] prepare HarfBuzz sources", flush=True)
     harfbuzz_dir = staged_core / "Common/3dParty/harfbuzz"
     make_script = harfbuzz_dir / "make.py"
     if not make_script.is_file():
@@ -253,15 +254,21 @@ def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, en
     project = work / "probe/build_deps_windows_probe.pro"
     project.parent.mkdir(parents=True)
     generate_probe_project(project, staged_core, ROOT / "tests/core-features/cpp/build_deps_windows_probe.cpp")
-    qmake_probe = subprocess.run([str(qmake), "-v"], cwd=project.parent, env=env, capture_output=True,
-                                 text=True, encoding="utf-8", errors="replace", check=False)
+    print("[windows-sdk] verify Qt qmake", flush=True)
+    try:
+        qmake_probe = subprocess.run([str(qmake), "-v"], cwd=project.parent, env=env, capture_output=True,
+                                     text=True, encoding="utf-8", errors="replace", check=False)
+    except OSError as exc:
+        raise InputError(f"cannot start qmake {qmake} in {project.parent}: {exc}") from exc
     qmake_text = (qmake_probe.stdout + qmake_probe.stderr).strip()
     if qmake_probe.returncode or "5.15.2" not in qmake_text:
         raise InputError(f"Qt qmake version probe failed: {qmake_text}")
+    print("[windows-sdk] generate native probe project", flush=True)
     configure = run_recipe([str(qmake), project.name, "-spec", "win32-msvc"], cwd=project.parent,
                            timeout=300, env=env)
     if configure["exitCode"] or configure["timedOut"]:
         raise InputError(f"qmake failed: {configure['output'][-4000:]}")
+    print("[windows-sdk] compile and link native probe", flush=True)
     compile_result = run_recipe(["nmake", "/NOLOGO"], cwd=project.parent,
                                 timeout=sdk_lock["build"]["timeoutSeconds"], env=env)
     if compile_result["exitCode"] or compile_result["timedOut"]:
@@ -270,6 +277,7 @@ def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, en
     if not executable.is_file():
         raise InputError("qmake/nmake succeeded without the expected probe executable")
     jp2 = project.parent / "probe-output.jp2"
+    print("[windows-sdk] run font, PNG and OpenJPEG probes", flush=True)
     probe = run_recipe([str(executable), str(font.resolve()), str(jp2)], cwd=project.parent,
                        timeout=300, env=env)
     if probe["exitCode"] or probe["timedOut"] or not jp2.is_file() or jp2.stat().st_size < 12:
@@ -358,6 +366,7 @@ def assemble(args: argparse.Namespace) -> None:
     sevenzip = find_7zip(args.sevenzip)
     work_root.mkdir(parents=True, exist_ok=True)
     work.mkdir(parents=True)
+    print("[windows-sdk] extract locked Qt archive", flush=True)
     qt_root = work / "qt"
     qt_root.mkdir()
     extract = run_recipe([str(sevenzip), "x", "-y", f"-o{qt_root}", str(qt_archive)], cwd=ROOT,
@@ -371,11 +380,13 @@ def assemble(args: argparse.Namespace) -> None:
     if not env_report["available"]:
         raise InputError("required Windows toolchain is unavailable: " + ", ".join(env_report["missing"]))
     env = developer_environment(Path(env_report["vcvarsall"]), work)
+    print("[windows-sdk] stage pristine Core sources", flush=True)
 
     staging = work / "core-staging"
     stage_receipt = stage_core_source(source_root=ROOT / "core", destination=staging)
     with tempfile.TemporaryDirectory(prefix="brotli-", dir=work) as temp_name:
         brotli_info = install_brotli_archive(sdk_lock, staging / "core", Path(temp_name))
+    print("[windows-sdk] record source closure", flush=True)
     source_info = source_manifest(sdk_lock, staging / "core", baseline, checksums, brotli_info)
     probe_info = build_and_probe(sdk_lock, staging / "core", qmake, env, font, work)
 
