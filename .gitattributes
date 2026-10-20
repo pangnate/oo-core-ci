@@ -47,3 +47,7 @@ core/** -text
 *.so binary
 *.a binary
 *.exe binary
+
+# This rule must remain last: generic extension rules above must not normalize
+# upstream Core files differently on Windows runners (core.autocrlf=true).
+core/** -text
