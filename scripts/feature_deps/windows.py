@@ -69,8 +69,8 @@ def find_7zip(explicit: Path | None) -> Path:
 def developer_environment(vcvarsall: Path) -> dict[str, str]:
     if os.name != "nt":
         raise InputError("Windows dependency SDK assembly requires a Windows runner")
-    command = f'call "{vcvarsall}" x64 -vcvars_ver=14.29 >nul && set'
-    result = subprocess.run(["cmd.exe", "/d", "/s", "/c", command], capture_output=True,
+    command = f'call "{vcvarsall}" x64 -vcvars_ver=14.29 && set'
+    result = subprocess.run(["cmd.exe", "/d", "/c", command], capture_output=True,
                             text=True, encoding="utf-8", errors="replace", check=False)
     if result.returncode:
         raise InputError(f"vcvarsall failed ({result.returncode}): {result.stderr.strip()}")
