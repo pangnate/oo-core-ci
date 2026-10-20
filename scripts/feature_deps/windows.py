@@ -66,12 +66,18 @@ def find_7zip(explicit: Path | None) -> Path:
     raise InputError("7-Zip is required to extract the locked Qt archive")
 
 
-def developer_environment(vcvarsall: Path) -> dict[str, str]:
+def developer_environment(vcvarsall: Path, work: Path) -> dict[str, str]:
     if os.name != "nt":
         raise InputError("Windows dependency SDK assembly requires a Windows runner")
-    command = f'call "{vcvarsall}" x64 -vcvars_ver=14.29 && set'
-    result = subprocess.run(["cmd.exe", "/d", "/c", command], capture_output=True,
-                            text=True, encoding="utf-8", errors="replace", check=False)
+    batch_file = work / "capture-msvc-environment.cmd"
+    batch_file.write_text(
+        f'@echo off\r\ncall "{vcvarsall}" x64 -vcvars_ver=14.29\r\n'
+        'if errorlevel 1 exit /b %errorlevel%\r\nset\r\n', encoding="ascii")
+    try:
+        result = subprocess.run(["cmd.exe", "/d", "/c", str(batch_file)], capture_output=True,
+                                text=True, encoding="utf-8", errors="replace", check=False)
+    finally:
+        batch_file.unlink(missing_ok=True)
     if result.returncode:
         raise InputError(f"vcvarsall failed ({result.returncode}): {result.stderr.strip()}")
     env = os.environ.copy()
@@ -355,7 +361,7 @@ def assemble(args: argparse.Namespace) -> None:
     env_report = probe_windows_toolchain(qmake=qmake)
     if not env_report["available"]:
         raise InputError("required Windows toolchain is unavailable: " + ", ".join(env_report["missing"]))
-    env = developer_environment(Path(env_report["vcvarsall"]))
+    env = developer_environment(Path(env_report["vcvarsall"]), work)
 
     staging = work / "core-staging"
     stage_receipt = stage_core_source(source_root=ROOT / "core", destination=staging)
