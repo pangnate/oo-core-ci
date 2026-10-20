@@ -229,7 +229,11 @@ def run_target(*, target: str, profile: dict[str, Any], sdk_lock: dict[str, Any]
     receipt: dict[str, Any] = {**identity, "status": "running"}
     _write_json(receipt_path, receipt)
     try:
-        qt_archive = sdk_paths["qt-package"]
+        qt_entries = [entry for entry in manifest["entries"]
+                      if entry.get("role") == "qt-package" and entry.get("status") == "verified"]
+        if len(qt_entries) != 1 or qt_entries[0].get("id") not in sdk_paths:
+            raise BuildError("development SDK must contain exactly one verified Qt package")
+        qt_archive = sdk_paths[qt_entries[0]["id"]]
         qt_root = output_root / "qt"
         if not qt_root.exists():
             qt_root.mkdir()
