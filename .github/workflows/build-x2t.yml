@@ -250,6 +250,9 @@ jobs:
           New-Item $packageRoot -ItemType Directory -Force | Out-Null
           Copy-Item core\build\bin\win_64\* $packageRoot -Recurse -Force
           Copy-Item vendor\work\x2t-baseline-smoke\fonts $packageRoot\fonts -Recurse -Force
+          Copy-Item runtime\native-window-shim.js $packageRoot\native-window-shim.js -Force
+          Copy-Item runtime\README.md $packageRoot\NATIVE-SDKJS-README.md -Force
+          Copy-Item scripts\configure_native_runtime.py $packageRoot\configure_native_runtime.py -Force
           Copy-Item vendor\work\x2t-baseline-smoke-receipt.json dist\runtime-baseline-receipt.json -Force
           Compress-Archive -Path (Join-Path $packageRoot '*') -DestinationPath dist\core10-windows-baseline.zip -CompressionLevel Optimal
 
