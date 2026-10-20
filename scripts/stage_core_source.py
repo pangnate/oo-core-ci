@@ -101,8 +101,13 @@ def validate_patch_series(series: dict[str, Any], core_lock: dict[str, Any]) -> 
         raise StageError("patch series official Core identity mismatch")
 
 
-def _run_git_apply(root: Path, destination_rel: str, patch_path: Path, *, reverse: bool = False) -> subprocess.CompletedProcess[str]:
-    command = ["git", "apply", "--check"]
+def _run_git_apply(root: Path, destination_rel: str, patch_path: Path, *, reverse: bool = False,
+                   check: bool = True) -> subprocess.CompletedProcess[str]:
+    # Patch hashes normalize CRLF, and pinned Core contains mixed line endings.
+    # Match the checkout patcher and isolate staging from runner autocrlf rules.
+    command = ["git", "-c", "core.autocrlf=false", "apply", "--ignore-space-change"]
+    if check:
+        command.append("--check")
     if reverse:
         command.append("--reverse")
     command.extend(["--directory", destination_rel, str(patch_path)])
@@ -180,8 +185,7 @@ def stage_core_source(
             check = _run_git_apply(repo_root, destination_rel, patch_path)
             if check.returncode:
                 raise StageError(f"feature patch does not apply: {entry['path']}\n{check.stderr.strip()}")
-            apply = subprocess.run(["git", "apply", "--directory", destination_rel, str(patch_path)],
-                                   cwd=repo_root, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            apply = _run_git_apply(repo_root, destination_rel, patch_path, check=False)
             if apply.returncode:
                 raise StageError(f"feature patch apply failed: {entry['path']}\n{apply.stderr.strip()}")
 

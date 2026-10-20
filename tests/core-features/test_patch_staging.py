@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -200,6 +201,29 @@ def verify_patch_staging(_profile: dict) -> int:
 
 
 class PatchStagingTests(unittest.TestCase):
+    def test_windows_autocrlf_and_patch_line_endings(self) -> None:
+        for autocrlf in ("true", "false"):
+            for source_eol in (b"\n", b"\r\n"):
+                for patch_eol in (b"\n", b"\r\n"):
+                    with self.subTest(autocrlf=autocrlf, source_eol=source_eol, patch_eol=patch_eol), tempfile.TemporaryDirectory() as temp:
+                        repo, source, baseline, checksums, series = _fixture_repo(Path(temp))
+                        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+                        subprocess.run(["git", "-C", str(repo), "config", "core.autocrlf", autocrlf], check=True)
+                        (repo / ".gitattributes").write_text("* text=auto\ncore/** -text !eol\n", newline="\n")
+                        (source / "demo.txt").write_bytes(b"base" + source_eol)
+                        count, fingerprint = stager.inventory_fingerprint(source)
+                        checksums["core-source"].update(files=count, extractedTreeFingerprint=fingerprint)
+                        for entry in series["patches"]:
+                            path = repo / entry["path"]
+                            path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", patch_eol))
+                            entry["sha256"] = stager.file_sha256(path)
+                        receipt = stager.stage_core_source(
+                            repo_root=repo, source_root=source, destination=repo / "vendor/work/staged",
+                            baseline=baseline, checksums=checksums, patch_series=series,
+                            build_patches=[], overlay_files=[])
+                        self.assertEqual((repo / "vendor/work/staged/core/demo.txt").read_text(), "final\n")
+                        self.assertEqual(receipt["sourceInventorySha256Before"], receipt["sourceInventorySha256After"])
+
     def test_baseline_uses_active_series_and_never_discovers_candidates(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             repo, source, baseline, checksums, series = _fixture_repo(Path(temp))
