@@ -51,7 +51,7 @@
       "id": "png-zlib",
       "version": "libpng Core vendored source; zlib 1.2.11",
       "recipe": "core/DesktopEditor/graphics/pro/raster.pri",
-      "anchors": ["core/DesktopEditor/graphics/pro/raster.pri", "core/DesktopEditor/graphics/cximage/png/png.h", "core/OfficeUtils/src/zlib-1.2.11/zlib.h"]
+      "anchors": ["core/DesktopEditor/graphics/pro/raster.pri", "core/DesktopEditor/cximage/png/png.h", "core/OfficeUtils/src/zlib-1.2.11/zlib.h"]
     },
     {
       "id": "openjpeg-2.4.0",

@@ -165,7 +165,7 @@ CORE_ROOT = {core}
 SOURCES += {source}
 
 INCLUDEPATH += \\
-    $$CORE_ROOT/DesktopEditor/graphics/cximage/png \\
+    $$CORE_ROOT/DesktopEditor/cximage/png \\
     $$CORE_ROOT/OfficeUtils/src \\
     $$CORE_ROOT/OfficeUtils/src/zlib-1.2.11 \\
     $$CORE_ROOT/DesktopEditor/raster/Jp2/openjpeg \\
@@ -306,7 +306,7 @@ def bundle_core_feature_sources(staged_core: Path, destination: Path) -> str:
         Path("DesktopEditor/freetype-2.10.4"),
         Path("Common/3dParty/harfbuzz/harfbuzz"),
         Path("Common/3dParty/brotli/brotli"),
-        Path("DesktopEditor/graphics/cximage/png"),
+        Path("DesktopEditor/cximage/png"),
         Path("OfficeUtils/src/zlib-1.2.11"),
         Path("DesktopEditor/raster/Jp2/openjpeg"),
     ]
