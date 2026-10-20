@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - codex/v8-probe-icu-path
-      - codex/windows-dev-build-latest-latest
+      - codex/windows-dev-build-latest
   workflow_dispatch:
 
 permissions:
