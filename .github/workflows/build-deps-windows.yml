@@ -7,26 +7,29 @@ on:
     paths:
       - '.github/actions/restore-v8-windows-sdk/**'
       - '.github/workflows/build-deps-windows.yml'
-      - 'ci/**'
-      - 'config/**'
+      - 'ci/baseline.json'
+      - 'config/windows-feature-sdk.lock.json'
+      - 'config/v8-windows.lock.json'
+      - 'config/windows-dev-build.profile.json'
+      - 'config/feature-runtime-deps.lock.json'
       - 'core/**'
       - 'build_tools/**'
       - 'overlays/core/**'
       - 'patches/core/**'
       - 'scripts/build_core_dev.py'
-      - 'scripts/core_features.py'
       - 'scripts/download.py'
       - 'scripts/feature_deps/**'
       - 'scripts/manage_v8_windows_sdk.py'
       - 'scripts/patch_x2t_sln.py'
       - 'scripts/stage_core_source.py'
       - 'scripts/verify_core_source.py'
-      - 'scripts/build_v8_windows_sdk.py'
       - 'scripts/verify_vendor.py'
-      - 'tests/core-features/**'
-      - 'vendor/archives/**'
+      - 'scripts/ci_feature_sdk_cache.py'
+      - 'scripts/ci_vs_env.ps1'
+      - 'tests/core-features/cpp/build_deps_windows_probe.cpp'
       - 'vendor/checksums.json'
-      - 'vendor/runtime/windows-amd64-runtime.zip'
+      - 'vendor/archives/qt_5.15.2_msvc2019_64.7z'
+      - 'vendor/archives/brotli-a47d7475063eb223c87632eed806c0070e70da29.tar.gz'
   workflow_dispatch:
 
 permissions:
@@ -67,13 +70,58 @@ jobs:
           token: ${{ github.token }}
           destination: ${{ runner.temp }}/v8-windows-sdk
 
+      - name: Identify feature SDK dependency inputs
+        id: sdk-inputs
+        shell: pwsh
+        run: |
+          ./scripts/ci_vs_env.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Compute feature SDK cache key
+        id: sdk-key
+        shell: pwsh
+        run: python scripts/ci_feature_sdk_cache.py key
+
+      - name: Restore verified feature dependency SDK
+        id: sdk-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            dist/windows-feature-sdk
+            dist/windows-feature-sdk.zip
+            dist/windows-feature-sdk.zip.sha256
+            dist/feature-sdk-cache-receipt.json
+          key: windows-feature-sdk-v1-${{ steps.sdk-key.outputs.input-id }}
+
+      - name: Check restored feature SDK
+        if: steps.sdk-cache.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: python scripts/ci_feature_sdk_cache.py verify
+
       - name: Assemble and natively probe Core font and image dependencies
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
         shell: pwsh
         env:
           V8_ROOT: ${{ steps.v8.outputs.sdk-root }}
         run: |
           python scripts/feature_deps/windows.py --v8-root "$env:V8_ROOT"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Record verified feature SDK cache
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: python scripts/ci_feature_sdk_cache.py record
+
+      - name: Save verified feature dependency SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            dist/windows-feature-sdk
+            dist/windows-feature-sdk.zip
+            dist/windows-feature-sdk.zip.sha256
+            dist/feature-sdk-cache-receipt.json
+          key: windows-feature-sdk-v1-${{ steps.sdk-key.outputs.input-id }}
 
       - name: Verify isolated incremental Core dev-build entry
         shell: pwsh
