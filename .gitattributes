@@ -12,8 +12,6 @@ vendor/runtime/*.zip filter=lfs diff=lfs merge=lfs -text
 # ONLYOFFICE upstream core
 # 保持原文件字节，不做 CRLF/LF 转换
 # --------------------------------------------------
-core/** -text
-
 # --------------------------------------------------
 # 我们自己维护的脚本 / 配置统一 LF
 # --------------------------------------------------
@@ -50,4 +48,4 @@ core/** -text
 
 # This rule must remain last: generic extension rules above must not normalize
 # upstream Core files differently on Windows runners (core.autocrlf=true).
-core/** -text
+core/** -text !eol
