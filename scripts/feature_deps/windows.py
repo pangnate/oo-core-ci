@@ -230,7 +230,11 @@ def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, en
     make_script = harfbuzz_dir / "make.py"
     if not make_script.is_file():
         raise InputError("pinned Core HarfBuzz recipe is missing")
-    make_result = run_recipe([sys.executable, str(make_script)], cwd=harfbuzz_dir, timeout=900, env=env)
+    recipe_env = env.copy()
+    build_tools_scripts = str((ROOT / "build_tools/scripts").resolve())
+    existing_pythonpath = recipe_env.get("PYTHONPATH")
+    recipe_env["PYTHONPATH"] = (build_tools_scripts + (os.pathsep + existing_pythonpath if existing_pythonpath else ""))
+    make_result = run_recipe([sys.executable, str(make_script)], cwd=harfbuzz_dir, timeout=900, env=recipe_env)
     if make_result["exitCode"] or make_result["timedOut"]:
         raise InputError(f"HarfBuzz source preparation failed: {make_result['output'][-4000:]}")
     generated_pri = harfbuzz_dir / "harfbuzz.pri"
