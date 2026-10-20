@@ -341,7 +341,9 @@ def bundle_core_feature_sources(staged_core: Path, destination: Path) -> str:
             raise InputError(f"verified dependency source directory is missing: {relative.as_posix()}")
         for path in root.rglob("*"):
             if path.is_symlink():
-                raise InputError(f"dependency source bundle cannot contain symlinks: {path}")
+                target = path.resolve(strict=True)
+                if not target.is_relative_to(root.resolve()) or not target.is_file():
+                    raise InputError(f"dependency source symlink escapes or is not a file: {path}")
             if path.is_file():
                 arcname = (Path("core") / relative / path.relative_to(root)).as_posix()
                 files.append((path, arcname))
