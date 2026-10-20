@@ -1,0 +1,16 @@
+{
+  "taskId": "LUNA-CORE-10", "case": "bodypr", "execution": "NOT-RUN", "cppAssertionsExecuted": 0,
+  "nativeDirections": {"eaVert": 0, "horz": 1, "mongolianVert": 2, "vert": 3, "vert270": 4, "wordArtVert": 5, "wordArtVertRtl": 6},
+  "bodyPrTag": 17,
+  "containers": ["PPTX text shape", "modern Word wps bodyPr", "legacy Word VML textbox", "text list/inherited body properties where applicable"],
+  "routes": ["actual DOM/stream BodyPr -> PPTY -> BodyPr -> XML", "DOCX -> BIN -> DOCX -> BIN -> DOCX", "PPTX -> BIN -> PPTX -> BIN -> PPTX"],
+  "vmlCases": [
+    {"style": "layout-flow:vertical-ideographic", "expectedDirection": "eaVert"},
+    {"style": "layout-flow:vertical", "expectedDirection": "vert"},
+    {"style": "layout-flow:horizontal", "expectedDirection": "existing horz/default behavior"},
+    {"style": "layout-flow:vertical;mso-layout-flow-alt:bottom-to-top", "expectedDirection": "vert270; retain existing override precedence"}
+  ],
+  "propertiesToRetain": ["object extents", "left/right/top/bottom inset including0", "rotation", "anchor", "object and relationship ids", "text content", "unrelated shape properties"],
+  "assertions": ["native direction tokens and existing numeric values retained", "legacy ideographic direction no longer disappears", "converted legacy output may be modern DrawingML but must retain semantic direction", "no paragraph Bidi or table textDirection substitution", "no inferred glyph rotation or changed font bridge", "property presence/default behavior preserved"],
+  "unsupportedBoundary": "This patch does not add horizontal-ideographic semantics or redesign contradictory VML style combinations. Invalid enum handling remains native behavior. Glyph layout/PDF/print is not this file codec gate."
+}

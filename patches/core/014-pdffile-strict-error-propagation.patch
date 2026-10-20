@@ -1,0 +1,310 @@
+diff --git a/core/PdfFile/PdfFile.h b/core/PdfFile/PdfFile.h
+--- a/core/PdfFile/PdfFile.h
++++ b/core/PdfFile/PdfFile.h
+@@ -189,6 +189,10 @@
+ 	HRESULT OnlineWordToPdf          (const std::wstring& wsSrcFile, const std::wstring& wsDstFile, CConvertFromBinParams* pParams = NULL);
+ 	HRESULT OnlineWordToPdfFromBinary(const std::wstring& wsSrcFile, const std::wstring& wsDstFile, CConvertFromBinParams* pParams = NULL);
+ 	HRESULT CommandsToPdfFromBinary(BYTE* pBuffer, unsigned int nLen, CConvertFromBinParams* pParams = NULL);
++	// Additive, nonvirtual V1 entrypoints: existing ABI layouts remain unchanged.
++	HRESULT OnlineWordToPdfV1(const std::wstring& wsSrcFile, const std::wstring& wsDstFile, CConvertFromBinParams* pParams, const NSOnlineOfficeBinToPdf::ConversionPolicyV1* policy, NSOnlineOfficeBinToPdf::ConversionResultV1* result);
++	HRESULT OnlineWordToPdfFromBinaryV1(const std::wstring& wsSrcFile, const std::wstring& wsDstFile, CConvertFromBinParams* pParams, const NSOnlineOfficeBinToPdf::ConversionPolicyV1* policy, NSOnlineOfficeBinToPdf::ConversionResultV1* result);
++	HRESULT CommandsToPdfFromBinaryV1(BYTE* pBuffer, unsigned int nLen, CConvertFromBinParams* pParams, const NSOnlineOfficeBinToPdf::ConversionPolicyV1* policy, NSOnlineOfficeBinToPdf::ConversionResultV1* result);
+ 	HRESULT AddToPdfFromBinary(BYTE* pBuffer, unsigned int nLen, CConvertFromBinParams* pParams = NULL);
+ 	HRESULT DrawImageWith1bppMask(IGrObject* pImage, NSImages::CPixJbig2* pMaskBuffer, const unsigned int& unMaskWidth, const unsigned int& unMaskHeight, const double& dX, const double& dY, const double& dW, const double& dH);
+ 	HRESULT DrawImage1bpp(NSImages::CPixJbig2* pImageBuffer, const unsigned int& unWidth, const unsigned int& unHeight, const double& dX, const double& dY, const double& dW, const double& dH);
+diff --git a/core/PdfFile/PdfFile.cpp b/core/PdfFile/PdfFile.cpp
+--- a/core/PdfFile/PdfFile.cpp
++++ b/core/PdfFile/PdfFile.cpp
+@@ -741,6 +741,39 @@
+ 		return S_FALSE;
+ 	return S_OK;
+ }
++HRESULT CPdfFile::OnlineWordToPdfV1(const std::wstring& wsSrcFile, const std::wstring& wsDstFile, CConvertFromBinParams* pParams, const NSOnlineOfficeBinToPdf::ConversionPolicyV1* policy, NSOnlineOfficeBinToPdf::ConversionResultV1* result)
++{
++	if (!NSOnlineOfficeBinToPdf::PrepareConversionV1(policy, result))
++		return S_FALSE;
++	if (!m_pInternal->pWriter)
++	{
++		NSOnlineOfficeBinToPdf::SetConversionErrorV1(result, NSOnlineOfficeBinToPdf::ConversionStreamFailedV1);
++		return S_FALSE;
++	}
++	return NSOnlineOfficeBinToPdf::ConvertBinToPdfV1(this, wsSrcFile, wsDstFile, false, pParams, policy, result) ? S_OK : S_FALSE;
++}
++HRESULT CPdfFile::OnlineWordToPdfFromBinaryV1(const std::wstring& wsSrcFile, const std::wstring& wsDstFile, CConvertFromBinParams* pParams, const NSOnlineOfficeBinToPdf::ConversionPolicyV1* policy, NSOnlineOfficeBinToPdf::ConversionResultV1* result)
++{
++	if (!NSOnlineOfficeBinToPdf::PrepareConversionV1(policy, result))
++		return S_FALSE;
++	if (!m_pInternal->pWriter)
++	{
++		NSOnlineOfficeBinToPdf::SetConversionErrorV1(result, NSOnlineOfficeBinToPdf::ConversionStreamFailedV1);
++		return S_FALSE;
++	}
++	return NSOnlineOfficeBinToPdf::ConvertBinToPdfV1(this, wsSrcFile, wsDstFile, true, pParams, policy, result) ? S_OK : S_FALSE;
++}
++HRESULT CPdfFile::CommandsToPdfFromBinaryV1(BYTE* pBuffer, unsigned int nLen, CConvertFromBinParams* pParams, const NSOnlineOfficeBinToPdf::ConversionPolicyV1* policy, NSOnlineOfficeBinToPdf::ConversionResultV1* result)
++{
++	if (!NSOnlineOfficeBinToPdf::PrepareConversionV1(policy, result))
++		return S_FALSE;
++	if (!m_pInternal->pWriter || nLen > 0x7fffffffu)
++	{
++		NSOnlineOfficeBinToPdf::SetConversionErrorV1(result, NSOnlineOfficeBinToPdf::ConversionStreamFailedV1);
++		return S_FALSE;
++	}
++	return NSOnlineOfficeBinToPdf::ConvertBufferToPdfV1(this, pBuffer, static_cast<LONG>(nLen), pParams, policy, result) ? S_OK : S_FALSE;
++}
+ HRESULT CPdfFile::AddToPdfFromBinary(BYTE* pBuffer, unsigned int nLen, CConvertFromBinParams* pParams)
+ {
+ 	if (!m_pInternal->pEditor || !NSOnlineOfficeBinToPdf::AddBinToPdf(this, pBuffer, nLen, pParams))
+diff --git a/core/PdfFile/OnlineOfficeBinToPdf.h b/core/PdfFile/OnlineOfficeBinToPdf.h
+--- a/core/PdfFile/OnlineOfficeBinToPdf.h
++++ b/core/PdfFile/OnlineOfficeBinToPdf.h
+@@ -42,6 +42,8 @@
+ {
+ 	bool ConvertBufferToPdf(CPdfFile* pPdf, BYTE* pBuffer, LONG lBufferLen, CConvertFromBinParams* pParams);
+ 	bool ConvertBinToPdf(CPdfFile* pPdf, const std::wstring& wsSrcFile, const std::wstring& wsDstFile, bool bBinary, CConvertFromBinParams* pParams);
++	bool ConvertBufferToPdfV1(CPdfFile* pPdf, BYTE* pBuffer, LONG lBufferLen, CConvertFromBinParams* pParams, const ConversionPolicyV1* policy, ConversionResultV1* result);
++	bool ConvertBinToPdfV1(CPdfFile* pPdf, const std::wstring& wsSrcFile, const std::wstring& wsDstFile, bool bBinary, CConvertFromBinParams* pParams, const ConversionPolicyV1* policy, ConversionResultV1* result);
+ 	bool AddBinToPdf(CPdfFile* pPdf, BYTE* pBuffer, unsigned int nLen, CConvertFromBinParams* pParams);
+ }
+ 
+diff --git a/core/PdfFile/OnlineOfficeBinToPdf.cpp b/core/PdfFile/OnlineOfficeBinToPdf.cpp
+--- a/core/PdfFile/OnlineOfficeBinToPdf.cpp
++++ b/core/PdfFile/OnlineOfficeBinToPdf.cpp
+@@ -33,6 +33,15 @@
+  * SPDX-License-Identifier: AGPL-3.0-only
+  */
+ #include "OnlineOfficeBinToPdf.h"
++#include <vector>
++#include <limits>
++#include <cstdio>
++#include <cstdlib>
++#if defined(_WIN32) || defined(_WIN64)
++#include <windows.h>
++#else
++#include <unistd.h>
++#endif
+ 
+ #include "../../DesktopEditor/common/Directory.h"
+ #include "../../DesktopEditor/graphics/MetafileToRenderer.h"
+@@ -59,7 +68,7 @@
+ 		}
+ 	};
+ 
+-	bool ConvertBufferToPdf(CPdfFile* pPdf, BYTE* pBuffer, LONG lBufferLen, CConvertFromBinParams* pParams)
++	static bool ConvertBufferToPdfImpl(CPdfFile* pPdf, BYTE* pBuffer, LONG lBufferLen, CConvertFromBinParams* pParams, const ConversionPolicyV1* policy, ConversionResultV1* result)
+ 	{
+ 		CMetafileToRenderterPDF oCorrector(pPdf);
+ 		oCorrector.SetTempDirectory(pPdf->GetTempDirectory());
+@@ -68,84 +77,140 @@
+ 			oCorrector.SetMediaDirectory(pParams->m_sMediaDirectory);
+ 			oCorrector.SetInternalMediaDirectory(pParams->m_sInternalMediaDirectory);
+ 			oCorrector.SetThemesDirectory(pParams->m_sThemesDirectory);
+-
+ 			if (pParams->m_bIsUsePicker)
+ 				oCorrector.InitPicker(pPdf->GetFonts());
+ 		}
+-		NSOnlineOfficeBinToPdf::ConvertBufferToRenderer(pBuffer, lBufferLen, &oCorrector);
+-
+-		return true;
++		return policy ? ConvertBufferToRendererV1(pBuffer, lBufferLen, &oCorrector, policy, result)
++			: ConvertBufferToRenderer(pBuffer, lBufferLen, &oCorrector);
++	}
++	bool ConvertBufferToPdf(CPdfFile* pPdf, BYTE* pBuffer, LONG lBufferLen, CConvertFromBinParams* pParams)
++	{
++		return ConvertBufferToPdfImpl(pPdf, pBuffer, lBufferLen, pParams, NULL, NULL);
++	}
++	bool ConvertBufferToPdfV1(CPdfFile* pPdf, BYTE* pBuffer, LONG lBufferLen, CConvertFromBinParams* pParams, const ConversionPolicyV1* policy, ConversionResultV1* result)
++	{
++		if (!PrepareConversionV1(policy, result))
++			return false;
++		try
++		{
++			if (pPdf && pBuffer && lBufferLen > 0)
++				return ConvertBufferToPdfImpl(pPdf, pBuffer, lBufferLen, pParams, policy, result);
++		}
++		catch (...) {}
++		SetConversionErrorV1(result, ConversionStreamFailedV1);
++		return false;
++	}
++
++	static std::wstring CreatePdfCandidateV1(const std::wstring& directory)
++	{
++#if defined(_WIN32) || defined(_WIN64)
++		wchar_t path[MAX_PATH + 1] = {0};
++		if (!::GetTempFileNameW(directory.c_str(), L"cpf", 0, path))
++			return std::wstring();
++		try { return std::wstring(path); }
++		catch (...) { ::DeleteFileW(path); throw; }
++#else
++		std::string pattern = U_TO_UTF8(directory + L"/core-pdf-XXXXXX");
++		const int fd = ::mkstemp(&pattern[0]);
++		if (fd < 0)
++			return std::wstring();
++		::close(fd);
++		try { return NSFile::CUtf8Converter::GetUnicodeStringFromUTF8(reinterpret_cast<BYTE*>(&pattern[0]), static_cast<LONG>(pattern.size())); }
++		catch (...) { ::unlink(pattern.c_str()); throw; }
++#endif
++	}
++	struct COwnedPdfCandidateV1
++	{
++		std::wstring path;
++		~COwnedPdfCandidateV1()
++		{
++			try { if (!path.empty()) NSFile::CFileBinary::Remove(path); }
++			catch (...) {} // Never delete the caller's existing destination.
++		}
++	};
++	static bool SavePdfCandidateV1(CPdfFile* pPdf, const std::wstring& destination, ConversionResultV1* result)
++	{
++		COwnedPdfCandidateV1 candidate;
++		try
++		{
++			std::wstring directory = NSFile::GetDirectoryName(destination);
++			if (directory.empty()) directory = L".";
++			// Same directory/filesystem: do not use CFileBinary::Move (copy then delete).
++			candidate.path = CreatePdfCandidateV1(directory);
++			if (candidate.path.empty() || pPdf->SaveToFile(candidate.path) != 0)
++			{
++				SetConversionErrorV1(result, ConversionOutputFailedV1);
++				return false;
++			}
++#if defined(_WIN32) || defined(_WIN64)
++			const bool published = ::MoveFileExW(candidate.path.c_str(), destination.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
++#else
++			const std::string sourceUtf8 = U_TO_UTF8(candidate.path);
++			const std::string destinationUtf8 = U_TO_UTF8(destination);
++			const bool published = std::rename(sourceUtf8.c_str(), destinationUtf8.c_str()) == 0;
++#endif
++			if (published)
++			{
++				candidate.path.clear();
++				return true;
++			}
++		}
++		catch (...) {}
++		SetConversionErrorV1(result, ConversionOutputFailedV1);
++		return false;
++	}
++	static bool ConvertBinToPdfImpl(CPdfFile* pPdf, const std::wstring& wsSrcFile, const std::wstring& wsDstFile, bool bBinary, CConvertFromBinParams* pParams, const ConversionPolicyV1* policy, ConversionResultV1* result)
++	{
++		NSFile::CFileBinary file;
++		if (!file.OpenFile(wsSrcFile))
++			return false;
++		const long size = file.GetFileSize();
++		if (size <= 0 || size > (std::numeric_limits<int>::max)())
++			return false;
++		std::vector<BYTE> input(static_cast<size_t>(size));
++		DWORD readCount = 0;
++		if (!file.ReadFile(input.data(), static_cast<DWORD>(size), readCount) || readCount != static_cast<DWORD>(size))
++			return false;
++		file.CloseFile();
++		CConvertFromBinParams defaults;
++		CConvertFromBinParams* effective = pParams ? pParams : &defaults;
++		if (effective->m_sMediaDirectory.empty())
++			effective->m_sMediaDirectory = NSFile::GetDirectoryName(wsSrcFile);
++		bool converted = false;
++		if (bBinary)
++			converted = ConvertBufferToPdfImpl(pPdf, input.data(), static_cast<LONG>(size), effective, policy, result);
++		else
++		{
++			int decodedSize = NSBase64::Base64DecodeGetRequiredLength(static_cast<int>(size));
++			if (decodedSize <= 0)
++				return false;
++			std::vector<BYTE> decoded(static_cast<size_t>(decodedSize));
++			if (!NSBase64::Base64Decode(reinterpret_cast<const char*>(input.data()), static_cast<int>(size), decoded.data(), &decodedSize) || decodedSize <= 0 || static_cast<size_t>(decodedSize) > decoded.size())
++				return false;
++			converted = ConvertBufferToPdfImpl(pPdf, decoded.data(), decodedSize, effective, policy, result);
++		}
++		if (!converted)
++			return false;
++		if (wsDstFile.empty())
++			return true;
++		return policy ? SavePdfCandidateV1(pPdf, wsDstFile, result) : pPdf->SaveToFile(wsDstFile) == 0;
+ 	}
+ 	bool ConvertBinToPdf(CPdfFile* pPdf, const std::wstring& wsSrcFile, const std::wstring& wsDstFile, bool bBinary, CConvertFromBinParams* pParams)
+ 	{
+-		NSFile::CFileBinary oFile;
+-		if (!oFile.OpenFile(wsSrcFile))
+-			return false;
+-
+-		DWORD dwFileSize = oFile.GetFileSize();
+-		BYTE* pFileContent = new BYTE[dwFileSize];
+-		if (!pFileContent)
+-		{
+-			oFile.CloseFile();
+-			return false;
+-		}
+-
+-		DWORD dwReaded;
+-		oFile.ReadFile(pFileContent, dwFileSize, dwReaded);
+-		oFile.CloseFile();
+-
+-		bool bIsNeedDestroy = (NULL == pParams) ? true : false;
+-		if (bIsNeedDestroy)
+-			pParams = new CConvertFromBinParams();
+-
+-		if (pParams->m_sMediaDirectory.empty())
+-			pParams->m_sMediaDirectory = NSFile::GetDirectoryName(wsSrcFile);
+-
+-		if (bBinary)
+-		{
+-			ConvertBufferToPdf(pPdf, pFileContent, dwFileSize, pParams);
+-		}
+-		else
+-		{
+-			int nBufferLen = NSBase64::Base64DecodeGetRequiredLength(dwFileSize);
+-			BYTE* pBuffer = new BYTE[nBufferLen];
+-			if (!pBuffer)
+-			{
+-				RELEASEARRAYOBJECTS(pFileContent);
+-
+-				if (bIsNeedDestroy)
+-					RELEASEOBJECT(pParams);
+-				return false;
+-			}
+-
+-			if (NSBase64::Base64Decode((const char*)pFileContent, dwFileSize, pBuffer, &nBufferLen))
+-			{
+-				ConvertBufferToPdf(pPdf, pBuffer, nBufferLen, pParams);
+-			}
+-			else
+-			{
+-				RELEASEARRAYOBJECTS(pBuffer);
+-				RELEASEARRAYOBJECTS(pFileContent);
+-
+-				if (bIsNeedDestroy)
+-					RELEASEOBJECT(pParams);
+-				return false;
+-			}
+-
+-			RELEASEARRAYOBJECTS(pBuffer);
+-		}
+-		RELEASEARRAYOBJECTS(pFileContent);
+-
+-		if (bIsNeedDestroy)
+-			RELEASEOBJECT(pParams);
+-
+-		if (!wsDstFile.empty())
+-		{
+-			if (0 != pPdf->SaveToFile(wsDstFile))
+-				return false;
+-		}
+-
+-		return true;
++		return ConvertBinToPdfImpl(pPdf, wsSrcFile, wsDstFile, bBinary, pParams, NULL, NULL);
++	}
++	bool ConvertBinToPdfV1(CPdfFile* pPdf, const std::wstring& wsSrcFile, const std::wstring& wsDstFile, bool bBinary, CConvertFromBinParams* pParams, const ConversionPolicyV1* policy, ConversionResultV1* result)
++	{
++		if (!PrepareConversionV1(policy, result))
++			return false;
++		try
++		{
++			if (pPdf && ConvertBinToPdfImpl(pPdf, wsSrcFile, wsDstFile, bBinary, pParams, policy, result))
++				return true;
++		}
++		catch (...) {}
++		SetConversionErrorV1(result, ConversionStreamFailedV1);
++		return false;
+ 	}
+ 
+ 	enum class AddCommandType

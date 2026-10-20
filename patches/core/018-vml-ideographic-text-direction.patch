@@ -1,0 +1,17 @@
+diff --git a/core/OOXML/PPTXFormat/DrawingConverter/ASCOfficeDrawingConverter.cpp b/core/OOXML/PPTXFormat/DrawingConverter/ASCOfficeDrawingConverter.cpp
+--- a/core/OOXML/PPTXFormat/DrawingConverter/ASCOfficeDrawingConverter.cpp
++++ b/core/OOXML/PPTXFormat/DrawingConverter/ASCOfficeDrawingConverter.cpp
+@@ -2248,10 +2248,11 @@
+ 
+ 						if (pFind != oCssStyle.m_mapProperties.end())
+ 						{
+-							if (oCssStyle.m_arrProperties[pFind->second]->get_Value().eLayoutFlow == SimpleTypes::Vml::csslayoutflowVertical)
++							const SimpleTypes::Vml::ECssLayoutFlow flow = oCssStyle.m_arrProperties[pFind->second]->get_Value().eLayoutFlow;
++							if (flow == SimpleTypes::Vml::csslayoutflowVertical || flow == SimpleTypes::Vml::csslayoutflowVerticalIdeographic)
+ 							{
+ 								pShape->oTextBoxBodyPr->vert = new PPTX::Limit::TextVerticalType();
+-								pShape->oTextBoxBodyPr->vert->set(L"vert");
++								pShape->oTextBoxBodyPr->vert->set(flow == SimpleTypes::Vml::csslayoutflowVerticalIdeographic ? L"eaVert" : L"vert");
+ 							}
+ 						}
+ 						pFind = oCssStyle.m_mapProperties.find(SimpleTypes::Vml::cssptMsoLayoutFlowAlt);

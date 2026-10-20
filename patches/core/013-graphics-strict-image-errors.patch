@@ -1,0 +1,355 @@
+diff --git a/core/DesktopEditor/graphics/MetafileToRenderer.h b/core/DesktopEditor/graphics/MetafileToRenderer.h
+--- a/core/DesktopEditor/graphics/MetafileToRenderer.h
++++ b/core/DesktopEditor/graphics/MetafileToRenderer.h
+@@ -39,6 +39,7 @@
+ 
+ #include "pro/Image.h"
+ #include "MetafileToRendererCheck.h"
++#include "ConversionPolicyV1.h"
+ 
+ #ifndef INT32
+ typedef int INT32;
+@@ -216,6 +217,7 @@
+ 	};
+ 
+ 	bool GRAPHICS_DECL ConvertBufferToRenderer(BYTE* pBuffer, LONG lBufferLen, IMetafileToRenderter* pCorrector);
++	bool GRAPHICS_DECL ConvertBufferToRendererV1(BYTE* pBuffer, LONG lBufferLen, IMetafileToRenderter* pCorrector, const ConversionPolicyV1* policy, ConversionResultV1* result);
+ }
+ 
+ #endif // _BUILD_METAFILE_TO_IRENDERER_H_
+diff --git a/core/DesktopEditor/graphics/MetafileToRenderer.cpp b/core/DesktopEditor/graphics/MetafileToRenderer.cpp
+--- a/core/DesktopEditor/graphics/MetafileToRenderer.cpp
++++ b/core/DesktopEditor/graphics/MetafileToRenderer.cpp
+@@ -334,8 +334,9 @@
+ 
+ namespace NSOnlineOfficeBinToPdf
+ {
+-	bool ConvertBufferToRenderer(BYTE* pBuffer, LONG lBufferLen, IMetafileToRenderter* pCorrector)
++	static bool ConvertBufferToRendererImpl(BYTE* pBuffer, LONG lBufferLen, IMetafileToRenderter* pCorrector, const ConversionPolicyV1* policy, ConversionResultV1* result)
+ 	{
++		const bool strictImages = policy && (policy->flags & 1u);
+ 		IRenderer* pRenderer = pCorrector->m_pRenderer;
+ 		CMetafileFontPicker* pPicker = NULL;
+ 		if (pCorrector->m_pPicker)
+@@ -364,7 +365,11 @@
+ 		bool isResetRot = false;
+ 		while (oReader.Check())
+ 		{
++			if (result)
++				result->commandOffset = static_cast<uint32_t>(oReader.Tell());
+ 			eCommand = (CommandType)(oReader.ReadByte());
++			if (result)
++				result->commandType = static_cast<uint32_t>(eCommand);
+ 			switch (eCommand)
+ 			{
+ 			case ctPageWidth:
+@@ -797,7 +802,9 @@
+ 			{
+ 				int nLen = oReader.ReadInt();
+ 				std::wstring sTempPath = oReader.ReadString16(nLen);
+-				std::wstring sImagePath = pCorrector->GetImagePath(sTempPath);
++				std::wstring sLegacyImagePath;
++				if (!strictImages)
++					sLegacyImagePath = pCorrector->GetImagePath(sTempPath);
+ 
+ 				double m1 = oReader.ReadDouble();
+ 				double m2 = oReader.ReadDouble();
+@@ -806,10 +813,26 @@
+ 
+ 				try
+ 				{
+-					pRenderer->DrawImageFromFile(sImagePath, m1, m2, m3, m4);
++					const std::wstring sImagePath = strictImages ? pCorrector->GetImagePath(sTempPath) : sLegacyImagePath;
++					if (strictImages && sImagePath.empty())
++					{
++						SetConversionErrorV1(result, ConversionImageFailedV1);
++						return false;
++					}
++					const HRESULT status = pRenderer->DrawImageFromFile(sImagePath, m1, m2, m3, m4);
++					if (strictImages && status != S_OK)
++					{
++						SetConversionErrorV1(result, ConversionImageFailedV1, static_cast<int32_t>(status));
++						return false;
++					}
+ 				}
+ 				catch (...)
+ 				{
++					if (strictImages)
++					{
++						SetConversionErrorV1(result, ConversionImageFailedV1);
++						return false;
++					}
+ 				}
+ 
+ 				break;
+@@ -1086,6 +1109,9 @@
+ 
+ 				BYTE* cur = oReader.GetCurrentBuffer();
+ 				int nLen = oReader.ReadInt();
++				if (nLen < 4)
++					throw std::out_of_range("invalid metafile record");
++				oReader.Require(nLen - 4);
+ 
+ 				if ((IAdvancedCommand::AdvancedCommandType::Undefined != eAdvancedCommandType) &&
+ 					(S_OK == pRenderer->IsSupportAdvancedCommand(eAdvancedCommandType)))
+@@ -1103,14 +1129,43 @@
+ 			}
+ 			default:
+ 			{
+-				BYTE* cur = oReader.GetCurrentBuffer();
+-				oReader.SetCurrentBuffer(cur + oReader.ReadInt());
++				const int nLen = oReader.ReadInt();
++				if (nLen < 4)
++					throw std::out_of_range("invalid metafile record");
++				oReader.Skip(nLen - 4);
+ 				break;
+ 			}
+ 			}; // switch (eCommand)
+ 		}
+ 
+ 		return true;
++	}
++
++	bool ConvertBufferToRenderer(BYTE* pBuffer, LONG lBufferLen, IMetafileToRenderter* pCorrector)
++	{
++		return ConvertBufferToRendererImpl(pBuffer, lBufferLen, pCorrector, NULL, NULL);
++	}
++	bool ConvertBufferToRendererV1(BYTE* pBuffer, LONG lBufferLen, IMetafileToRenderter* pCorrector, const ConversionPolicyV1* policy, ConversionResultV1* result)
++	{
++		if (!PrepareConversionV1(policy, result))
++			return false;
++		if (!pBuffer || lBufferLen <= 0 || !pCorrector || !pCorrector->m_pRenderer)
++		{
++			SetConversionErrorV1(result, ConversionStreamFailedV1);
++			return false;
++		}
++		try
++		{
++			const bool ok = ConvertBufferToRendererImpl(pBuffer, lBufferLen, pCorrector, policy, result);
++			if (!ok)
++				SetConversionErrorV1(result, ConversionStreamFailedV1);
++			return ok;
++		}
++		catch (...)
++		{
++			SetConversionErrorV1(result, ConversionStreamFailedV1);
++			return false;
++		}
+ 	}
+ 
+ 	void CMetafilePagesInfo::CheckBuffer(BYTE* pBuffer, LONG lBufferLen)
+diff --git a/core/DesktopEditor/graphics/MetafileToRendererReader.h b/core/DesktopEditor/graphics/MetafileToRendererReader.h
+--- a/core/DesktopEditor/graphics/MetafileToRendererReader.h
++++ b/core/DesktopEditor/graphics/MetafileToRendererReader.h
+@@ -37,6 +37,9 @@
+ 
+ #pragma once
+ #include <string>
++#include <stdexcept>
++#include <limits>
++#include <stdint.h>
+ #include "./IRenderer.h"
+ 
+ #if !defined(_WIN32) && !defined(_WIN64)
+@@ -58,13 +61,25 @@
+ 	public:
+ 		CBufferReader(unsigned char* data, int len)
+ 		{
++			if (len < 0 || (!data && len != 0))
++				throw std::out_of_range("invalid metafile buffer");
+ 			m_buffer = data;
+ 			m_cur = m_buffer;
+ 			m_len = len;
+-			m_buffer_end = m_cur + len;
++			m_buffer_end = len ? m_cur + len : m_cur;
+ 		}
+ 
+ 	public:
++		// Uses the existing bounds fields; no object layout or virtual ABI change.
++		inline void Require(int count) const
++		{
++			if (count < 0 || (!m_buffer && count != 0))
++				throw std::out_of_range("invalid metafile read length");
++			if (!m_buffer)
++				return;
++			if (m_cur < m_buffer || m_cur > m_buffer_end || count > m_buffer_end - m_cur)
++				throw std::out_of_range("truncated metafile command");
++		}
+ 		inline bool Check()
+ 		{
+ 			return (m_cur < m_buffer_end) ? true : false;
+@@ -75,12 +90,16 @@
+ 		}
+ 		inline void SetCurrentBuffer(unsigned char* cur)
+ 		{
++			if (reinterpret_cast<uintptr_t>(cur) < reinterpret_cast<uintptr_t>(m_buffer) ||
++				reinterpret_cast<uintptr_t>(cur) > reinterpret_cast<uintptr_t>(m_buffer_end))
++				throw std::out_of_range("invalid metafile seek");
+ 			m_cur = cur;
+ 		}
+ 
+ 	public:
+ 		inline unsigned char ReadByte()
+ 		{
++			Require(1);
+ 			return *m_cur++;
+ 		}
+ 		inline bool ReadBool()
+@@ -89,6 +108,7 @@
+ 		}
+ 		inline unsigned short ReadUShort()
+ 		{
++			Require(2);
+ #ifdef _ARM_ALIGN_
+ 			unsigned short ret = 0;
+ 			memcpy(&ret, m_cur, sizeof(unsigned short));
+@@ -100,6 +120,7 @@
+ 		}
+ 		inline int ReadInt()
+ 		{
++			Require(4);
+ #ifdef _ARM_ALIGN_
+ 			int ret = 0;
+ 			memcpy(&ret, m_cur, sizeof(int));
+@@ -116,23 +137,33 @@
+ 
+ 		inline void Skip(int count)
+ 		{
++			Require(count);
+ 			m_cur += count;
+ 		}
+ 		inline void SkipUShort(int count = 1)
+ 		{
+-			m_cur += (count << 1);
++			if (count < 0 || count > (std::numeric_limits<int>::max)() / 2)
++				throw std::out_of_range("invalid metafile skip");
++			Skip(count * 2);
+ 		}
+ 		inline void SkipInt(int count = 1)
+ 		{
+-			m_cur += (count << 2);
++			if (count < 0 || count > (std::numeric_limits<int>::max)() / 4)
++				throw std::out_of_range("invalid metafile skip");
++			Skip(count * 4);
+ 		}
+ 		inline void SkipDouble(int count = 1)
+ 		{
+-			m_cur += (count << 2);
++			if (count < 0 || count > (std::numeric_limits<int>::max)() / 4)
++				throw std::out_of_range("invalid metafile skip");
++			Skip(count * 4);
+ 		}
+ 
+ 		inline std::wstring ReadString16(int nLen)
+ 		{
++			Require(nLen);
++			if (nLen % 2)
++				throw std::out_of_range("odd UTF-16 metafile length");
+ 			std::wstring wsTempString;
+ #ifdef _ARM_ALIGN_
+ 
+@@ -180,6 +211,7 @@
+ 		inline std::string ReadStringA()
+ 		{
+ 			int len = ReadInt();
++			Require(len);
+ 			std::string sRes = std::string((char*)m_cur, len);
+ 			m_cur += len;
+ 			return sRes;
+diff --git a/core/DesktopEditor/graphics/ConversionPolicyV1.h b/core/DesktopEditor/graphics/ConversionPolicyV1.h
+new file mode 100644
+--- /dev/null
++++ b/core/DesktopEditor/graphics/ConversionPolicyV1.h
+@@ -0,0 +1,92 @@
++﻿/*
++ * Copyright (C) Ascensio System SIA, 2009-2026
++ *
++ * This program is a free software product. You can redistribute it and/or
++ * modify it under the terms of the GNU Affero General Public License (AGPL)
++ * version 3 as published by the Free Software Foundation, together with the
++ * additional terms provided in the LICENSE file.
++ *
++ * This program is distributed WITHOUT ANY WARRANTY; without even the implied
++ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. For
++ * details, see the GNU AGPL at: https://www.gnu.org/licenses/agpl-3.0.html
++ *
++ * You can contact Ascensio System SIA by email at info@onlyoffice.com
++ * or by postal mail at 20A-6 Ernesta Birznieka-Upisha Street, Riga,
++ * LV-1050, Latvia, European Union.
++ *
++ * The interactive user interfaces in modified versions of the Program
++ * are required to display Appropriate Legal Notices in accordance with
++ * Section 5 of the GNU AGPL version 3.
++ *
++ * No trademark rights are granted under this License.
++ *
++ * All non-code elements of the Product, including illustrations,
++ * icon sets, and technical writing content, are licensed under the
++ * Creative Commons Attribution-ShareAlike 4.0 International License:
++ * https://creativecommons.org/licenses/by-sa/4.0/legalcode
++ *
++ * This license applies only to such non-code elements and does not
++ * modify or replace the licensing terms applicable to the Program's
++ * source code, which remains licensed under the GNU Affero General
++ * Public License v3.
++ *
++ * SPDX-License-Identifier: AGPL-3.0-only
++ */
++#ifndef _CORE_CONVERSION_POLICY_V1_H_
++#define _CORE_CONVERSION_POLICY_V1_H_
++
++#include <stdint.h>
++
++namespace NSOnlineOfficeBinToPdf
++{
++    // Additive POD contract. No existing renderer/parameter layout or vtable changes.
++    struct ConversionPolicyV1
++    {
++        uint32_t size;
++        uint32_t version;
++        uint32_t flags; // bit 0: fail on every non-S_OK image command
++    };
++    struct ConversionResultV1
++    {
++        uint32_t size;
++        uint32_t version;
++        uint32_t code;
++        uint32_t commandOffset;
++        uint32_t commandType;
++        int32_t rendererStatus;
++    };
++    enum ConversionErrorV1
++    {
++        ConversionOkV1 = 0,
++        ConversionImageFailedV1 = 1,
++        ConversionStreamFailedV1 = 2,
++        ConversionOutputFailedV1 = 3,
++        ConversionPolicyInvalidV1 = 4
++    };
++    inline void SetConversionErrorV1(ConversionResultV1* result, uint32_t code, int32_t status = 0)
++    {
++        if (result && result->code == ConversionOkV1)
++        {
++            result->code = code;
++            result->rendererStatus = status;
++        }
++    }
++    inline bool PrepareConversionV1(const ConversionPolicyV1* policy, ConversionResultV1* result)
++    {
++        // Never write through an unknown result layout.
++        if (!result || result->size != sizeof(ConversionResultV1) || result->version != 1)
++            return false;
++        result->code = ConversionOkV1;
++        result->commandOffset = 0;
++        result->commandType = 0;
++        result->rendererStatus = 0;
++        if (!policy || policy->size != sizeof(ConversionPolicyV1) || policy->version != 1 || (policy->flags & ~1u))
++        {
++            result->code = ConversionPolicyInvalidV1;
++            return false;
++        }
++        return true;
++    }
++}
++
++#endif

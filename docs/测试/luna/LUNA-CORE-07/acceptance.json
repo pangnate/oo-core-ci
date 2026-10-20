@@ -1,0 +1,17 @@
+{
+  "taskId": "LUNA-CORE-07",
+  "case": "permission-xml",
+  "execution": "NOT-RUN",
+  "markers": ["permStart", "permEnd"],
+  "readers": ["real Core DOM", "real Core streaming"],
+  "values": ["next", "prev"],
+  "spellingCases": ["absent", "standard only", "legacy only", "both with same value", "both with different values, standard first", "both with different values, legacy first"],
+  "standardAttribute": "displacedByCustomXml",
+  "legacyReadAlias": "displacedbyCustomXml",
+  "conflictRule": "standard wins independently of attribute order; no valid-legacy fallback if the present standard value is invalid",
+  "invalidValueRule": "existing CDisplacedByCustomXml parsing/default behavior retained; not new strict-value validation",
+  "routes": ["XML -> Core model -> XML", "DOCX -> BIN -> DOCX -> BIN -> DOCX"],
+  "unrelatedFields": ["id", "colFirst=0", "colLast", "ed including escaped characters", "all native edGrp values", "ed and edGrp coexisting"],
+  "assertions": ["writers only emit standard spelling on these markers", "absence remains absent", "DOM and stream choose the same value in both conflict orders", "native permission fields and scope unchanged", "no dynamic identity or allow/deny injected", "unrelated Annotation classes unchanged"],
+  "runtimeAssertionsExecuted": 0
+}

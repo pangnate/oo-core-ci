@@ -1,0 +1,174 @@
+diff --git a/core/X2tConverter/src/cextracttools.h b/core/X2tConverter/src/cextracttools.h
+--- a/core/X2tConverter/src/cextracttools.h
++++ b/core/X2tConverter/src/cextracttools.h
+@@ -551,6 +551,7 @@
+ 		mutable bool m_bMacro;
+ 		std::wstring* m_sCmapDir;
+ 		std::wstring* m_sOverrideSdkJsPath;
++		std::wstring* m_sImageFailurePolicyV1;
+ 
+ 	public:
+ 		InputParams()
+@@ -597,6 +598,7 @@
+ 
+ 			m_sCmapDir = NULL;
+ 			m_sOverrideSdkJsPath = NULL;
++			m_sImageFailurePolicyV1 = NULL;
+ 		}
+ 		~InputParams()
+ 		{
+@@ -638,6 +640,7 @@
+ 			RELEASEOBJECT(m_sSigningKeyStorePath);
+ 			RELEASEOBJECT(m_sCmapDir);
+ 			RELEASEOBJECT(m_sOverrideSdkJsPath);
++			RELEASEOBJECT(m_sImageFailurePolicyV1);
+ 		}
+ 
+ 		bool FromXmlFile(const std::wstring& sFilename)
+@@ -666,6 +669,7 @@
+ 		}
+ 		bool FromXmlNode(XmlUtils::CXmlNode& oRoot)
+ 		{
++			bool seenImageFailurePolicyV1 = false;
+ 			std::vector<XmlUtils::CXmlNode> oXmlNodes;
+ 			if (TRUE == oRoot.GetChilds(oXmlNodes))
+ 			{
+@@ -675,7 +679,17 @@
+ 					if (oXmlNode.IsValid())
+ 					{
+ 						std::wstring sName = oXmlNode.GetName();
+-						if (_T("m_oMailMergeSend") == sName)
++						if (_T("m_sImageFailurePolicyV1") == sName)
++						{
++							std::wstring value;
++							const bool hasValue = oXmlNode.GetTextIfExist(value);
++							RELEASEOBJECT(m_sImageFailurePolicyV1);
++							m_sImageFailurePolicyV1 = new std::wstring(seenImageFailurePolicyV1 ? L"" : value);
++							if (seenImageFailurePolicyV1 || !hasValue || !isImageFailurePolicyV1Valid())
++								return false;
++							seenImageFailurePolicyV1 = true;
++						}
++						else if (_T("m_oMailMergeSend") == sName)
+ 						{
+ 							RELEASEOBJECT(m_oMailMergeSend);
+ 							m_oMailMergeSend = new InputParamsMailMerge();
+@@ -943,6 +957,15 @@
+ 		std::wstring getFontPath() const
+ 		{
+ 			return (NULL != m_sFontDir) ? (*m_sFontDir) : L"";
++		}
++		bool isImageFailurePolicyV1Valid() const
++		{
++			return !m_sImageFailurePolicyV1 || *m_sImageFailurePolicyV1 == L"legacy" ||
++				*m_sImageFailurePolicyV1 == L"0" || *m_sImageFailurePolicyV1 == L"strict" || *m_sImageFailurePolicyV1 == L"1";
++		}
++		bool getStrictImagesV1() const
++		{
++			return m_sImageFailurePolicyV1 && (*m_sImageFailurePolicyV1 == L"strict" || *m_sImageFailurePolicyV1 == L"1");
+ 		}
+ 		bool getIsNoBase64() const
+ 		{
+diff --git a/core/X2tConverter/src/lib/pdf_image.h b/core/X2tConverter/src/lib/pdf_image.h
+--- a/core/X2tConverter/src/lib/pdf_image.h
++++ b/core/X2tConverter/src/lib/pdf_image.h
+@@ -198,8 +198,38 @@
+ 
+ namespace NExtractTools
+ {
++	static HRESULT ConvertPdfCommandsWithPolicyV1(CPdfFile& pdf, const std::wstring& source, const std::wstring& destination, bool binary, InputParams& params, CConvertFromBinParams& bufferParams)
++	{
++		if (!params.getStrictImagesV1())
++			return binary ? pdf.OnlineWordToPdfFromBinary(source, destination, &bufferParams)
++				: pdf.OnlineWordToPdf(source, destination, &bufferParams);
++		NSOnlineOfficeBinToPdf::ConversionPolicyV1 policy = {sizeof(NSOnlineOfficeBinToPdf::ConversionPolicyV1), 1, 1};
++		NSOnlineOfficeBinToPdf::ConversionResultV1 result = {sizeof(NSOnlineOfficeBinToPdf::ConversionResultV1), 1, 0, 0, 0, 0};
++		HRESULT status = S_FALSE;
++		try
++		{
++			status = binary ? pdf.OnlineWordToPdfFromBinaryV1(source, destination, &bufferParams, &policy, &result)
++				: pdf.OnlineWordToPdfV1(source, destination, &bufferParams, &policy, &result);
++		}
++		catch (...)
++		{
++			NSOnlineOfficeBinToPdf::SetConversionErrorV1(&result, NSOnlineOfficeBinToPdf::ConversionStreamFailedV1);
++			status = S_FALSE;
++		}
++		if (status == S_OK && result.code != NSOnlineOfficeBinToPdf::ConversionOkV1)
++			status = S_FALSE;
++		if (status != S_OK)
++		{
++			// Numeric diagnostics only: no image paths, payloads, tokens or document text.
++			std::wcerr << L"CoreStrictImageV1 code=" << result.code << L" command=" << result.commandType
++				<< L" offset=" << result.commandOffset << L" rendererStatus=" << result.rendererStatus << std::endl;
++		}
++		return status;
++	}
+ 	_UINT32 bin2pdf(const std::wstring& sFrom, const std::wstring& sTo, InputParams& params, ConvertParams& convertParams)
+ 	{
++		if (!params.isImageFailurePolicyV1Valid())
++			return AVS_FILEUTILS_ERROR_CONVERT_PARAMS;
+ 		NSFonts::IApplicationFonts* pApplicationFonts = createApplicationFonts(params);
+ 
+ 		CPdfFile pdfWriter(pApplicationFonts);
+@@ -222,11 +252,11 @@
+ 		_UINT32 nRet = 0;
+ 		if (params.getIsNoBase64())
+ 		{
+-			nRet = S_OK == pdfWriter.OnlineWordToPdfFromBinary(sFrom, sTo, &oBufferParams) ? 0 : AVS_FILEUTILS_ERROR_CONVERT;
++			nRet = S_OK == ConvertPdfCommandsWithPolicyV1(pdfWriter, sFrom, sTo, true, params, oBufferParams) ? 0 : AVS_FILEUTILS_ERROR_CONVERT;
+ 		}
+ 		else
+ 		{
+-			nRet = S_OK == pdfWriter.OnlineWordToPdf(sFrom, sTo, &oBufferParams) ? 0 : AVS_FILEUTILS_ERROR_CONVERT;
++			nRet = S_OK == ConvertPdfCommandsWithPolicyV1(pdfWriter, sFrom, sTo, false, params, oBufferParams) ? 0 : AVS_FILEUTILS_ERROR_CONVERT;
+ 		}
+ 
+ 		if (0 == nRet && !params.getSigningKeyStorePath().empty())
+@@ -348,6 +378,8 @@
+ 	_UINT32 doct_bin2pdf(NSDoctRenderer::DoctRendererFormat::FormatFile eFromType,
+ 						 const std::wstring& sFrom, const std::wstring& sTo, InputParams& params, ConvertParams& convertParams)
+ 	{
++		if (!params.isImageFailurePolicyV1Valid())
++			return AVS_FILEUTILS_ERROR_CONVERT_PARAMS;
+ 		NSDoctRenderer::DoctRendererFormat::FormatFile eToType = NSDoctRenderer::DoctRendererFormat::FormatFile::PDF;
+ 
+ 		std::wstring sFileDir         = NSDirectory::GetFolderPath(sFrom);
+@@ -403,7 +435,7 @@
+ 			}
+ 
+ 			int nReg = (convertParams.m_bIsPaid == false) ? 0 : 1;
+-			nRes = (S_OK == pdfWriter.OnlineWordToPdfFromBinary(sPdfBinFile, sTo, &oBufferParams)) ? nRes : AVS_FILEUTILS_ERROR_CONVERT;
++			nRes = (S_OK == ConvertPdfCommandsWithPolicyV1(pdfWriter, sPdfBinFile, sTo, true, params, oBufferParams)) ? nRes : AVS_FILEUTILS_ERROR_CONVERT;
+ 
+ 			if (0 == nRes && !params.getSigningKeyStorePath().empty())
+ 			{
+diff --git a/core/X2tConverter/src/ASCConverters.cpp b/core/X2tConverter/src/ASCConverters.cpp
+--- a/core/X2tConverter/src/ASCConverters.cpp
++++ b/core/X2tConverter/src/ASCConverters.cpp
+@@ -1741,6 +1741,8 @@
+ 
+ 	_UINT32 fromInputParams(InputParams& oInputParams)
+ 	{
++		if (!oInputParams.isImageFailurePolicyV1Valid())
++			return AVS_FILEUTILS_ERROR_CONVERT_PARAMS;
+ 		_CP_LOG << L"start/detect conversion" << std::endl;
+ 		TConversionDirection conversion = oInputParams.getConversionDirection();
+ 		
+@@ -1753,6 +1755,17 @@
+ 		int nFormatTo = AVS_OFFICESTUDIO_FILE_UNKNOWN;
+ 		if (NULL != oInputParams.m_nFormatTo)
+ 			nFormatTo = *oInputParams.m_nFormatTo;
++		if (oInputParams.getStrictImagesV1())
++		{
++			const bool rawPdfCommands = conversion == TCD_BIN2PDF;
++			const bool documentRoute = conversion == TCD_DOCUMENT2 || conversion == TCD_SPREADSHEET2 ||
++				conversion == TCD_PRESENTATION2 || conversion == TCD_DOCT_BIN2 || conversion == TCD_XLST_BIN2 ||
++				conversion == TCD_PPTT_BIN2 || conversion == TCD_T2;
++			const bool pdfTarget = nFormatTo == AVS_OFFICESTUDIO_FILE_CROSSPLATFORM_PDF ||
++				nFormatTo == AVS_OFFICESTUDIO_FILE_CROSSPLATFORM_PDFA;
++			if (!rawPdfCommands && (!documentRoute || !pdfTarget))
++				return AVS_FILEUTILS_ERROR_CONVERT_PARAMS;
++		}
+ 
+ 		if (TCD_ERROR == conversion)
+ 		{

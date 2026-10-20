@@ -1,0 +1,10 @@
+{
+  "taskId": "LUNA-CORE-06",
+  "entries": [
+    {"path": "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h", "anchors": ["Spacing_AfterLines = 48", "Spacing_BeforeLines = 49", "CompressText = 44"]},
+    {"path": "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp", "anchors": ["Spacing.m_oAfterLines.IsInit()", "Spacing.m_oBeforeLines.IsInit()", "WriteLONG(Spacing.m_oAfterLines->GetValue())", "WriteLONG(Spacing.m_oBeforeLines->GetValue())", "rPr->m_oW.IsInit()", "WriteLONG(rPr->m_oW->m_oVal->GetValue())", "brPrs.Write_rPr", "bpPrs.Write_pPr", "WritePPrChange"]},
+    {"path": "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp", "anchors": ["case c_oSerProp_rPrType::CompressText:", "pRPr->m_oW->m_oVal->SetValue", "pSpacing->m_oAfterLines->SetValue", "pSpacing->m_oBeforeLines->SetValue", "ReadrPrChange2", "ReadPPrChange"]},
+    {"path": "core/OOXML/Common/ComplexTypes.cpp", "anchors": ["L\"w:afterLines\", m_oAfterLines", "L\"w:beforeLines\", m_oBeforeLines", "if (m_oAfterLines.IsInit())", "if (m_oBeforeLines.IsInit())", "oProperties.m_oAfterLines = Merge", "oProperties.m_oBeforeLines = Merge"]},
+    {"path": "core/OOXML/DocxFormat/Logic/RunProperty.cpp", "anchors": ["m_oW = oChild", "m_oW->ValNode", "oProperties.m_oW = Merge"]}
+  ]
+}

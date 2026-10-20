@@ -1,0 +1,13 @@
+diff --git a/core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp b/core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp
+--- a/core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp
++++ b/core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp
+@@ -191,6 +191,9 @@
+ 				WritingElement_ReadAttributes_Read_else_if( oReader, _T("marR"),	marR)
+ 				WritingElement_ReadAttributes_Read_else_if( oReader, _T("indent"),	indent)
+ 				WritingElement_ReadAttributes_Read_else_if( oReader, _T("defTabSz"),defTabSz)
++				WritingElement_ReadAttributes_Read_else_if( oReader, _T("eaLnBrk"), eaLnBrk)
++				WritingElement_ReadAttributes_Read_else_if( oReader, _T("latinLnBrk"), latinLnBrk)
++				WritingElement_ReadAttributes_Read_else_if( oReader, _T("hangingPunct"), hangingPunct)
+ 			WritingElement_ReadAttributes_End	( oReader )
+ 		}
+ 		void TextParagraphPr::toXmlWriter(NSBinPptxRW::CXmlWriter* pWriter) const

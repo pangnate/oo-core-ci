@@ -234,7 +234,8 @@ def source_manifest(sdk_lock: dict[str, Any], staged_core: Path, baseline: dict[
 
 
 def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, nmake: str,
-                    env: dict[str, str], font: Path, work: Path) -> dict[str, Any]:
+                    env: dict[str, str], font: Path, work: Path,
+                    probe_source: Path | None = None) -> dict[str, Any]:
     print("[windows-sdk] prepare HarfBuzz sources", flush=True)
     harfbuzz_dir = staged_core / "Common/3dParty/harfbuzz"
     make_script = harfbuzz_dir / "make.py"
@@ -261,8 +262,8 @@ def build_and_probe(sdk_lock: dict[str, Any], staged_core: Path, qmake: Path, nm
             raise InputError("HarfBuzz checkout is not the pinned source revision")
 
     project = work / "probe/build_deps_windows_probe.pro"
-    project.parent.mkdir(parents=True)
-    generate_probe_project(project, staged_core, ROOT / "tests/core-features/cpp/build_deps_windows_probe.cpp")
+    project.parent.mkdir(parents=True, exist_ok=True)
+    generate_probe_project(project, staged_core, probe_source or ROOT / "tests/core-features/cpp/build_deps_windows_probe.cpp")
     print("[windows-sdk] verify Qt qmake", flush=True)
     try:
         qmake_probe = subprocess.run([str(qmake), "-v"], cwd=project.parent, env=env, capture_output=True,

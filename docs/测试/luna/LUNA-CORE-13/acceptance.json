@@ -1,0 +1,13 @@
+{
+  "taskId": "LUNA-CORE-13",
+  "case": "image-render",
+  "execution": "NOT-RUN",
+  "cppAssertionsExecuted": 0,
+  "requiredTarget": "current Core graphics interpreter compiled with C++ fault renderer and working image target",
+  "entries": ["legacy ConvertBufferToRenderer", "ConvertBufferToRendererV1 flags=0", "ConvertBufferToRendererV1 flags=1"],
+  "cases": ["good PNG with alpha", "missing file", "bad image", "renderer S_FALSE", "renderer failing HRESULT", "renderer throws", "resolver throws", "empty resolved path", "shared cached image", "clip plus transform"],
+  "errorAssertions": ["strict: first non-S_OK image returns false/code1 without executing following commands", "record offset/type/status without path or sensitive text", "legacy still tolerates draw non-S_OK/exception", "legacy resolver exception behavior retained", "policy/result sizes, versions and unknown flags fail closed", "unknown result layout is never written"],
+  "malformedCases": ["empty/null buffer", "truncated primitive", "negative image string length", "odd UTF-16 image string length", "image coordinates truncated", "negative/short/overrun length-prefixed records", "skip overflow", "advanced command exceptions"],
+  "abiAssertions": ["policy fixed-width layout", "result fixed-width layout", "old exported signature and virtual tables unchanged", "CBufferReader size unchanged"],
+  "boundary": "Source candidate only; actual faults, buffer coverage and real image rendering are unverified"
+}

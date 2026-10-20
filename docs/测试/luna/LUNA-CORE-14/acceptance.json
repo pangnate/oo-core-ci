@@ -1,0 +1,12 @@
+{
+  "taskId": "LUNA-CORE-14",
+  "case": "pdf-errors",
+  "execution": "NOT-RUN",
+  "cppAssertionsExecuted": 0,
+  "requiredTarget": "actual current PdfFile buffer/file/wrapper implementation; external renderer and filesystem fault injection only",
+  "entries": ["legacy OnlineWordToPdf", "legacy OnlineWordToPdfFromBinary", "legacy CommandsToPdfFromBinary", "OnlineWordToPdfV1", "OnlineWordToPdfFromBinaryV1", "CommandsToPdfFromBinaryV1"],
+  "routes": ["raw binary file", "base64 command file", "in-memory commands"],
+  "faults": ["missing source", "empty source", "oversized source", "short read", "invalid base64", "empty decoded buffer", "missing writer", "null commands", "invalid policy/result descriptor", "image S_FALSE", "image failing HRESULT", "image exception", "truncated commands", "save failure return", "save exception", "candidate reservation failure", "atomic publish failure", "locked existing destination"],
+  "assertions": ["first error code and command metadata survive every wrapper", "non-S_OK cannot produce success HRESULT", "decode/render failure never calls SaveToFile", "strict failed output never overwrites or removes pre-existing destination", "only this call's reserved candidate is cleaned", "successful conversion publishes a real PDF", "memory-only commands failure is checked before any caller save", "legacy valid-document behavior and image tolerance remain compatible", "public parameter layouts and virtual tables unchanged"],
+  "platformBoundary": "Windows runtime verification pending; POSIX publication branch is uncompiled source only"
+}

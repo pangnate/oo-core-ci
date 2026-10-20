@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+  "officialTreeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
+  "sourceFileCount": 21117,
+  "sourceInventorySha256Before": "cc16fb1824a7788140aa76064c6714d803e51deb90205fe8d625664f508ab5f6",
+  "sourceInventorySha256After": "cc16fb1824a7788140aa76064c6714d803e51deb90205fe8d625664f508ab5f6",
+  "stagedCorePath": "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\vendor\\work\\pdf-candidate-full-replay-20261019\\core",
+  "stagedCoreFiles": 21118,
+  "stagedCoreInventorySha256": "9dbf8d7535dcdf1fb33aa60ae1a549b969c28c6f2da683272dbe6e01d926ba19",
+  "featurePatches": [
+    {
+      "path": "patches/core/003-word-distributed-jc.patch",
+      "sha256": "b91369a92089b039afd8be38cbadfa4020b9cbe4bed4a42538528cb5c83f1fa9"
+    },
+    {
+      "path": "patches/core/004-word-character-indents.patch",
+      "sha256": "e327a08858de371456fd1a66472fc2eb7361feb32ac295472da4dae52e7c88e7"
+    },
+    {
+      "path": "patches/core/005-word-east-asian-booleans.patch",
+      "sha256": "e36ec625fe3ad30de565b6cf41a4604ff5fd68932cb955d19cd405cf6076d09d"
+    },
+    {
+      "path": "patches/core/007-word-permission-xml-spelling.patch",
+      "sha256": "44dde10b3151759148a48842bbb8dbfeb2e292d10bcd8f88e8c5983b9fe6d23f"
+    },
+    {
+      "path": "patches/core/013-graphics-strict-image-errors.patch",
+      "sha256": "d650695cfbde6f0adb78c1d1e154af1c80bab86d94e021c22c2cf774988b5c40"
+    },
+    {
+      "path": "patches/core/014-pdffile-strict-error-propagation.patch",
+      "sha256": "bb77692c407ea0aab60b45c850f56ace224d59ca7cbfebb79eb5da5a8ed7543c"
+    },
+    {
+      "path": "patches/core/015-x2t-strict-image-policy.patch",
+      "sha256": "87d88f782d500e79e91d4642488b7a545fdd1546df4f1a4a817eca7fbfa36448"
+    }
+  ],
+  "buildCorrections": [
+    {
+      "path": "scripts/patch_x2t_sln.py",
+      "sha256": "6d8868ea65ff796ab3b31b6ad631396082d31a8b853514ebd19c4fd89f8af813",
+      "output": "Patched D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\vendor\\work\\pdf-candidate-full-replay-20261019\\core\\X2tConverter\\build\\Qt\\X2tSLN.pri: CryptoPPLib is part of the solution\nPatched D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\vendor\\work\\pdf-candidate-full-replay-20261019\\core\\X2tConverter\\build\\Qt\\X2tConverter.pro: Linux rpath-link points to core/build/lib/<platform>"
+    }
+  ],
+  "overlays": [
+    {
+      "path": "Common/copyright.txt",
+      "sha256": "990fedb0c4500aa1919560e6f8e9f4c077e607500be10a61bd3ad10ff1447744"
+    }
+  ],
+  "validationLevel": "SOURCE-REPLAY ONLY; C++/UNIT/Native NOT-RUN",
+  "originalLocalCoreInventoryBeforeAndAfter": [
+    21117,
+    "bd93e508a736b8c99948073354262fc883548c7ff4e34d8d395b54f64d739953"
+  ],
+  "protectedPocInputsSha256BeforeAndAfter": {
+    "ci/baseline.json": "1c31fd4bda34ff320dfd2c635f2976e7f765a5ab09f14e0ce809a4de6694e2f9",
+    "patches/core/series.json": "9e69d0ec44c46030967c1247d3b72e7daf374b37105cd8503c76d09afd700a77",
+    "config/v8-windows.lock.json": "16e91f08ebf14e7c7cda54142f84e70a266a50d3c7835359639d891cff72ff36",
+    "vendor/checksums.json": "8bb077359cbafed862bf4530f1d3b9d6d5cf172b709ba95d1535165775920b2c",
+    "tests/core-features/profiles/source-windows.json": "625eda77683f95f92e123f40c2931489bb62c61d6180295411dbcdd48377756a",
+    ".github/workflows/build-v8-windows.yml": "9268bc156c9b24e4a5d220f30e6499d7105928b3ab4afdbab54b5badfa0a01ba",
+    ".github/workflows/build-x2t.yml": "024a7cca636c9455c6e1d41e747524c3c402ff1fde01c84dfad63413d706a9c0",
+    ".github/actions/restore-v8-windows-sdk/action.yml": "6863bbb894ec2780bf2a258dcecdd3d4b97a266cabc7ed988754882cd9ded589"
+  },
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "cppAssertionsExecuted": 0
+}

@@ -1,0 +1,140 @@
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h b/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+--- a/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
++++ b/core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h
+@@ -368,7 +368,14 @@
+ 		Ind_LeftChars = 206,
+ 		Ind_RightChars = 207,
+ 		Ind_FirstLineChars = 208,
+-		Ind_HangingChars = 209
++		Ind_HangingChars = 209,
++		// Private paragraph booleans; absence and explicit false are distinct.
++		Kinsoku = 200,
++		WordWrap = 201,
++		OverflowPunct = 202,
++		TopLinePunct = 203,
++		AutoSpaceDE = 204,
++		AutoSpaceDN = 205
+ 	};}
+ 	namespace c_oSerProp_rPrType{enum c_oSerProp_rPrType
+ 	{
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+--- a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
++++ b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+@@ -1213,7 +1213,46 @@
+ 		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::Bidi);
+ 		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Byte);
+ 		m_oBcw.m_oStream.WriteBOOL(pPr.m_oBidi->m_oVal.ToBool());
+-	}}
++	}
++
++	// IsInit guards presence only: explicit false must also be serialized.
++	if (pPr.m_oKinsoku.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::Kinsoku);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Byte);
++		m_oBcw.m_oStream.WriteBOOL(pPr.m_oKinsoku->m_oVal.ToBool());
++	}
++	if (pPr.m_oWordWrap.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::WordWrap);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Byte);
++		m_oBcw.m_oStream.WriteBOOL(pPr.m_oWordWrap->m_oVal.ToBool());
++	}
++	if (pPr.m_oOverflowPunct.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::OverflowPunct);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Byte);
++		m_oBcw.m_oStream.WriteBOOL(pPr.m_oOverflowPunct->m_oVal.ToBool());
++	}
++	if (pPr.m_oTopLinePunct.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::TopLinePunct);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Byte);
++		m_oBcw.m_oStream.WriteBOOL(pPr.m_oTopLinePunct->m_oVal.ToBool());
++	}
++	if (pPr.m_oAutoSpaceDE.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::AutoSpaceDE);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Byte);
++		m_oBcw.m_oStream.WriteBOOL(pPr.m_oAutoSpaceDE->m_oVal.ToBool());
++	}
++	if (pPr.m_oAutoSpaceDN.IsInit())
++	{
++		m_oBcw.m_oStream.WriteBYTE(c_oSerProp_pPrType::AutoSpaceDN);
++		m_oBcw.m_oStream.WriteBYTE(c_oSerPropLenType::Byte);
++		m_oBcw.m_oStream.WriteBOOL(pPr.m_oAutoSpaceDN->m_oVal.ToBool());
++	}
++}
+ void Binary_pPrWriter::WritePPrChange(const OOX::Logic::CPPrChange& pPrChange)
+ {
+ 	int nCurPos = 0;
+diff --git a/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp b/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
+--- a/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
++++ b/core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp
+@@ -1115,6 +1115,66 @@
+ 		pPPr->m_oBidi.Init();
+ 		pPPr->m_oBidi->m_oVal.FromBool(m_oBufferedStream.GetBool());
+ 	}break;
++	case c_oSerProp_pPrType::Kinsoku:
++	{
++		if (length != 1)
++			return c_oSerConstants::ErrorUnknown;
++		BYTE value = m_oBufferedStream.GetUChar();
++		if (value > 1)
++			return c_oSerConstants::ErrorUnknown;
++		pPPr->m_oKinsoku.Init();
++		pPPr->m_oKinsoku->m_oVal.FromBool(value != 0);
++	}break;
++	case c_oSerProp_pPrType::WordWrap:
++	{
++		if (length != 1)
++			return c_oSerConstants::ErrorUnknown;
++		BYTE value = m_oBufferedStream.GetUChar();
++		if (value > 1)
++			return c_oSerConstants::ErrorUnknown;
++		pPPr->m_oWordWrap.Init();
++		pPPr->m_oWordWrap->m_oVal.FromBool(value != 0);
++	}break;
++	case c_oSerProp_pPrType::OverflowPunct:
++	{
++		if (length != 1)
++			return c_oSerConstants::ErrorUnknown;
++		BYTE value = m_oBufferedStream.GetUChar();
++		if (value > 1)
++			return c_oSerConstants::ErrorUnknown;
++		pPPr->m_oOverflowPunct.Init();
++		pPPr->m_oOverflowPunct->m_oVal.FromBool(value != 0);
++	}break;
++	case c_oSerProp_pPrType::TopLinePunct:
++	{
++		if (length != 1)
++			return c_oSerConstants::ErrorUnknown;
++		BYTE value = m_oBufferedStream.GetUChar();
++		if (value > 1)
++			return c_oSerConstants::ErrorUnknown;
++		pPPr->m_oTopLinePunct.Init();
++		pPPr->m_oTopLinePunct->m_oVal.FromBool(value != 0);
++	}break;
++	case c_oSerProp_pPrType::AutoSpaceDE:
++	{
++		if (length != 1)
++			return c_oSerConstants::ErrorUnknown;
++		BYTE value = m_oBufferedStream.GetUChar();
++		if (value > 1)
++			return c_oSerConstants::ErrorUnknown;
++		pPPr->m_oAutoSpaceDE.Init();
++		pPPr->m_oAutoSpaceDE->m_oVal.FromBool(value != 0);
++	}break;
++	case c_oSerProp_pPrType::AutoSpaceDN:
++	{
++		if (length != 1)
++			return c_oSerConstants::ErrorUnknown;
++		BYTE value = m_oBufferedStream.GetUChar();
++		if (value > 1)
++			return c_oSerConstants::ErrorUnknown;
++		pPPr->m_oAutoSpaceDN.Init();
++		pPPr->m_oAutoSpaceDN->m_oVal.FromBool(value != 0);
++	}break;
+ 	default:
+ 		res = c_oSerConstants::ReadUnknown;
+ 		break;

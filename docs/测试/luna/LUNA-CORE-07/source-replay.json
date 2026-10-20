@@ -1,0 +1,164 @@
+{
+  "taskId": "LUNA-CORE-07",
+  "completionLevel": "SOURCE-READY / WAIT-BUILD",
+  "coreRef": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+  "patches": [
+    {
+      "path": "patches/core/003-word-distributed-jc.patch",
+      "sha256": "b91369a92089b039afd8be38cbadfa4020b9cbe4bed4a42538528cb5c83f1fa9",
+      "purpose": "CORE-03: preserve paragraph distribute as Jc value 4; source-only candidate"
+    },
+    {
+      "path": "patches/core/004-word-character-indents.patch",
+      "sha256": "e327a08858de371456fd1a66472fc2eb7361feb32ac295472da4dae52e7c88e7",
+      "purpose": "CORE-04: preserve four raw character indents in Ind container; source-only candidate",
+      "dependsOn": [
+        "patches/core/003-word-distributed-jc.patch"
+      ]
+    },
+    {
+      "path": "patches/core/005-word-east-asian-booleans.patch",
+      "sha256": "e36ec625fe3ad30de565b6cf41a4604ff5fd68932cb955d19cd405cf6076d09d",
+      "purpose": "CORE-05: preserve six paragraph Boolean properties including false; source-only candidate",
+      "dependsOn": [
+        "patches/core/004-word-character-indents.patch"
+      ]
+    },
+    {
+      "path": "patches/core/007-word-permission-xml-spelling.patch",
+      "sha256": "44dde10b3151759148a48842bbb8dbfeb2e292d10bcd8f88e8c5983b9fe6d23f",
+      "purpose": "CORE-07: standard permission attribute spelling with legacy read alias and order-independent standard precedence; source-only candidate"
+    }
+  ],
+  "replayScope": "Four touched Core files copied from locked pristine source; complete candidate feature set applied in order. Not a C++ test or build. Full official inventory/staging receipt is recorded separately.",
+  "comparison": "UTF-8 text including BOM equal after CRLF/LF normalization; scoped replay pins core.eol=lf; full staging follows repository attributes. Output SHA256 binds actual replay bytes.",
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/word-replay-07-6e70277a",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\003-word-distributed-jc.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/word-replay-07-6e70277a",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\003-word-distributed-jc.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/word-replay-07-6e70277a",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\004-word-character-indents.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/word-replay-07-6e70277a",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\004-word-character-indents.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/word-replay-07-6e70277a",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\005-word-east-asian-booleans.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/word-replay-07-6e70277a",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\005-word-east-asian-booleans.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--check",
+        "--directory",
+        "vendor/work/word-replay-07-6e70277a",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\007-word-permission-xml-spelling.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.eol=lf",
+        "apply",
+        "--whitespace=error-all",
+        "--directory",
+        "vendor/work/word-replay-07-6e70277a",
+        "D:\\ONLYOFFICE\\onlyoffice-x2t-ci\\patches\\core\\007-word-permission-xml-spelling.patch"
+      ],
+      "exitCode": 0,
+      "stderr": ""
+    }
+  ],
+  "outputFileSha256": {
+    "core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp": "b23b59d0cd124bb8aedd4aad7da0f3076c9614e9a1b58b2a40deb8f680706e9c",
+    "core/OOXML/Binary/Document/BinReader/BinaryReaderD.cpp": "b3972821d0e20121cd36165d56bfa727d37bddd5e8ecb341b7d6cd8bb0a8384a",
+    "core/OOXML/Binary/Document/BinWriter/BinReaderWriterDefines.h": "9b27ab516cfde027de428853c84d62cd41be244599f3cf48d0e1c03707b46b10",
+    "core/OOXML/DocxFormat/Logic/Annotations.cpp": "9ea0af4bdac41348e8fffe684f8e8d1796ad5aedfcf31a95ddb5c6ee91b3d968"
+  },
+  "sourceImplementation": "SOURCE-READY",
+  "buildAcceptance": "NOT-RUN",
+  "runtimeAcceptance": "NOT-RUN",
+  "protectedPocInputsUnchanged": true,
+  "implementationCommit": "Resolve with git log -1 -- patches/core/007-word-permission-xml-spelling.patch"
+}
