@@ -14,11 +14,26 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def resolve_sccache(value: str | None = None, *, windows: bool | None = None) -> Path:
+    value = value if value is not None else (os.environ.get("SCCACHE_PATH") or shutil.which("sccache"))
+    if not value:
+        raise RuntimeError("the pinned sccache setup action must run first")
+    candidate = Path(value).resolve()
+    if candidate.is_file():
+        return candidate
+    # sccache-action exports an extensionless SCCACHE_PATH on Windows, while
+    # the release archive contains sccache.exe. Path.is_file does not use PATHEXT.
+    is_windows = os.name == "nt" if windows is None else windows
+    if is_windows:
+        executable = Path(str(candidate) + ".exe")
+        if executable.is_file():
+            return executable
+    raise RuntimeError(f"the pinned sccache executable is missing: {candidate}")
+
+
 def main() -> None:
     lock = json.loads((ROOT / "config/build-acceleration.json").read_text(encoding="utf-8"))
-    cache = Path(os.environ.get("SCCACHE_PATH") or shutil.which("sccache") or "").resolve()
-    if not cache.is_file():
-        raise RuntimeError("the pinned sccache setup action must run first")
+    cache = resolve_sccache()
     version = subprocess.check_output([str(cache), "--version"], text=True).strip()
     if version != f"sccache {lock['sccacheVersion']}":
         raise RuntimeError(f"unexpected compiler cache: {version}")

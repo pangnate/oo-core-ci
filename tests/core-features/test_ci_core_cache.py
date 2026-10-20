@@ -22,6 +22,8 @@ import ci_handoff
 import prepare
 import build_metrics
 import build_x2t
+import ci_deps_key
+import setup_build_acceleration
 
 
 class CoreReuseTests(unittest.TestCase):
@@ -155,6 +157,38 @@ class ParallelismTests(unittest.TestCase):
 
 
 class LinuxSysrootTests(unittest.TestCase):
+    def test_linux_dependency_key_uses_locked_inputs_instead_of_runner_image(self):
+        objects = {path: "a" * 40 for path in ci_deps_key.INPUTS + ci_deps_key.WINDOWS_INPUTS}
+        def git_object(command, **kwargs):
+            return SimpleNamespace(stdout=objects[command[-1].removeprefix("HEAD:")])
+        with patch.object(ci_deps_key.subprocess, "run", side_effect=git_object):
+            with patch.dict(os.environ, ImageOS="ubuntu24", ImageVersion="20261012", X2T_COMPILER_VERSION="host-a"):
+                first = ci_deps_key.identity("linux_64")
+                windows = ci_deps_key.identity("win_64")
+            with patch.dict(os.environ, ImageOS="ubuntu24", ImageVersion="20261018", X2T_COMPILER_VERSION="host-b"):
+                self.assertEqual(first, ci_deps_key.identity("linux_64"))
+                self.assertNotEqual(windows, ci_deps_key.identity("win_64"))
+                self.assertNotEqual(first, ci_deps_key.identity("linux_arm64"))
+                objects["scripts/windows_build.cmd"] = "b" * 40
+                self.assertEqual(first, ci_deps_key.identity("linux_64"))
+                for path in ("vendor/checksums.json", "ci/toolchains", "build_tools", "scripts/make_minimal_deps.py"):
+                    objects[path] = "b" * 40
+                    self.assertNotEqual(first, ci_deps_key.identity("linux_64"))
+                    objects[path] = "a" * 40
+
+    def test_sccache_action_windows_extensionless_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            binary = Path(directory) / "sccache.exe"
+            binary.write_bytes(b"fixture")
+            extensionless = str(binary.with_suffix(""))
+            self.assertEqual(setup_build_acceleration.resolve_sccache(extensionless, windows=True), binary.resolve())
+            self.assertEqual(setup_build_acceleration.resolve_sccache(str(binary), windows=True), binary.resolve())
+            with self.assertRaisesRegex(RuntimeError, "executable is missing"):
+                setup_build_acceleration.resolve_sccache(extensionless, windows=False)
+            native = Path(extensionless)
+            native.write_bytes(b"fixture")
+            self.assertEqual(setup_build_acceleration.resolve_sccache(extensionless, windows=False), native.resolve())
+
     def test_linux_qmake_receives_prepared_relocation_config(self):
         with tempfile.TemporaryDirectory() as directory:
             qt = Path(directory)

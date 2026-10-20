@@ -17,8 +17,6 @@ INPUTS = (
     "build_tools",
     "core/Common/3dParty",
     "ci/toolchains",
-    "ci/vswrap",
-    "scripts/ci_vs_env.ps1",
     "scripts/prepare.py",
     "scripts/native_sources.py",
     "config/native-sources.lock.json",
@@ -26,8 +24,33 @@ INPUTS = (
     "scripts/make_minimal_deps.py",
     "scripts/ci_deps_key.py",
     "scripts/ci_handoff.py",
-    "scripts/windows_build.cmd",
 )
+WINDOWS_INPUTS = ("ci/vswrap", "scripts/ci_vs_env.ps1", "scripts/windows_build.cmd")
+
+
+def identity(platform: str) -> str:
+    if platform not in ("win_64", "linux_64", "linux_arm64"):
+        raise ValueError(f"Unsupported dependency target: {platform}")
+    digest = hashlib.sha256()
+    if platform == "win_64":
+        environment = (os.environ.get("ImageOS", ""), os.environ.get("ImageVersion", ""),
+                       os.environ.get("X2T_COMPILER_VERSION", ""))
+        inputs = INPUTS + WINDOWS_INPUTS
+    else:
+        # Linux compilers/sysroots/Qt come from checksum-locked archives, not
+        # the hosted image. Image rollouts must not invalidate those outputs.
+        environment = ("locked-linux-sysroot-v2",)
+        inputs = INPUTS
+    for value in (platform, *environment):
+        digest.update(value.encode("utf-8") + b"\0")
+    for path in inputs:
+        result = subprocess.run(
+            ["git", "rev-parse", f"HEAD:{path}"], cwd=ROOT,
+            check=True, text=True, capture_output=True,
+        )
+        digest.update(path.encode("utf-8") + b"\0")
+        digest.update(result.stdout.strip().encode("ascii") + b"\0")
+    return digest.hexdigest()
 
 
 def main() -> None:
@@ -35,18 +58,7 @@ def main() -> None:
     parser.add_argument("--platform", required=True,
                         choices=("win_64", "linux_64", "linux_arm64"))
     args = parser.parse_args()
-    digest = hashlib.sha256()
-    for value in (args.platform, os.environ.get("ImageOS", ""),
-                  os.environ.get("ImageVersion", ""), os.environ.get("X2T_COMPILER_VERSION", "")):
-        digest.update(value.encode("utf-8") + b"\0")
-    for path in INPUTS:
-        result = subprocess.run(
-            ["git", "rev-parse", f"HEAD:{path}"], cwd=ROOT,
-            check=True, text=True, capture_output=True,
-        )
-        digest.update(path.encode("utf-8") + b"\0")
-        digest.update(result.stdout.strip().encode("ascii") + b"\0")
-    key = digest.hexdigest()
+    key = identity(args.platform)
     github_env = os.environ.get("GITHUB_ENV")
     if github_env:
         with Path(github_env).open("a", encoding="utf-8") as output:
