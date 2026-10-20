@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "profileId": "onlyoffice-core10-windows-dev-v1",
+  "platform": "windows-amd64",
+  "core": {
+    "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
+    "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34"
+  },
+  "sdk": {
+    "id": "onlyoffice-core10-windows-amd64-feature-sdk-v1",
+    "lockPath": "config/windows-feature-sdk.lock.json",
+    "lockSha256": "5e202f5d2d031757badbfd91b7240fa9d69ec9acd784ec7591185e74afefcda2",
+    "abi": "windows-amd64-msvc142-dynamic-qt5152"
+  },
+  "targets": {
+    "dependency-probe": {
+      "kind": "qmake-probe",
+      "projectSource": "tests/core-features/cpp/build_deps_windows_probe.cpp"
+    }
+  },
+  "build": {
+    "configuration": "release",
+    "generator": "Qt qmake + nmake",
+    "timeoutSeconds": 5400
+  }
+}

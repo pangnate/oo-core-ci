@@ -42,6 +42,10 @@
       "path": "config/sdk-manifest.schema.json",
       "sha256": "140cdae7003b888d96e3d993af2ef126c3a9b3fa1003355938f7398a9500f9fe"
     },
+    "windows-dev-build-profile": {
+      "path": "config/windows-dev-build.profile.json",
+      "sha256": "893e96d385be16fc881641822ba608089443df696f4f34f3cf0b808678c63147"
+    },
     "patch-series": {
       "path": "patches/core/series.json",
       "sha256": "9e69d0ec44c46030967c1247d3b72e7daf374b37105cd8503c76d09afd700a77"

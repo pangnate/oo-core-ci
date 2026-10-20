@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - codex/v8-probe-icu-path
+      - codex/windows-dev-build-latest
   workflow_dispatch:
 
 permissions:
@@ -59,6 +60,15 @@ jobs:
         run: |
           python scripts/feature_deps/windows.py --v8-root "$env:V8_ROOT"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
+      - name: Verify isolated incremental Core dev-build entry
+        shell: pwsh
+        env:
+          V8_ROOT: ${{ steps.v8.outputs.sdk-root }}
+        run: |
+          python scripts/build_core_dev.py --core-root core --sdk-root dist/windows-feature-sdk --v8-root "$env:V8_ROOT" --target dependency-probe --output-root vendor/work/build-core-dev/windows-amd64-msvc142/dependency-probe
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath vendor/work/build-core-dev/windows-amd64-msvc142/dependency-probe/build-receipt.json -Destination dist/windows-feature-sdk/dev-build-receipt.json
 
       - uses: actions/upload-artifact@v4
         with:

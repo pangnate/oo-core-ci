@@ -29,6 +29,7 @@ REGISTRY = {
     "contract": (TEST_ROOT / "test_contract.py", "verify_contract"),
     "build-deps-contract": (TEST_ROOT / "test_build_deps_contract.py", "verify_build_deps_contract"),
     "build-deps-io": (TEST_ROOT / "test_build_deps_io.py", "verify_build_deps_io"),
+    "dev-build": (TEST_ROOT / "test_dev_build.py", "verify_dev_build"),
     "patch-staging": (TEST_ROOT / "test_patch_staging.py", "verify_patch_staging"),
 }
 SECRET_PATTERNS = [
@@ -102,6 +103,7 @@ def validate_profile(profile_path: Path, case: str) -> tuple[dict[str, Any], Pat
         "contract": {"core-source", "feature-contract", "feature-profile-schema"},
         "build-deps-contract": {"core-source", "build-deps-lock", "build-deps-schema"},
         "build-deps-io": {"core-source", "sdk-manifest-schema"},
+        "dev-build": {"core-source", "windows-dev-build-profile"},
         "patch-staging": {"core-source", "core-staging-baseline", "patch-series", "patch-series-schema",
                           "build-correction", "core-overlay"},
     }.get(case)
