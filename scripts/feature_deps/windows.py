@@ -80,12 +80,14 @@ def developer_environment(vcvarsall: Path, work: Path) -> dict[str, str]:
         batch_file.unlink(missing_ok=True)
     if result.returncode:
         raise InputError(f"vcvarsall failed ({result.returncode}): {result.stderr.strip()}")
-    env = os.environ.copy()
+    # subprocess receives a normal case-sensitive dict; normalize Windows' case-
+    # insensitive environment names so a captured `Path=` replaces old `PATH`.
+    env = {key.upper(): value for key, value in os.environ.items()}
     for line in result.stdout.splitlines():
         if "=" in line:
             key, value = line.split("=", 1)
             if key and not key.startswith("="):
-                env[key] = value
+                env[key.upper()] = value
     if not shutil.which("cl", path=env.get("PATH")) or not shutil.which("nmake", path=env.get("PATH")):
         raise InputError("MSVC v142 developer environment did not expose cl.exe and nmake.exe")
     return env
