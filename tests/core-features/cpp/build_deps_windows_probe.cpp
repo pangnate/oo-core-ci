@@ -143,6 +143,7 @@ static bool probeOpenJpeg(const char* outputPath)
 	opj_cparameters_t encodeParameters;
 	opj_set_default_encoder_parameters(&encodeParameters);
 	encodeParameters.tcp_numlayers = 1;
+	encodeParameters.numresolution = 1;
 	encodeParameters.tcp_rates[0] = 0;
 	encodeParameters.cp_disto_alloc = 1;
 	encodeParameters.tcp_mct = 1;
