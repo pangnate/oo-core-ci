@@ -212,7 +212,7 @@ def _prepare_harfBuzz(staged_core: Path, sdk_lock: dict[str, Any], env: dict[str
 
 
 def run_target(*, target: str, profile: dict[str, Any], sdk_lock: dict[str, Any],
-               sdk_paths: dict[str, Path], core_root: Path, output_root: Path,
+               manifest: dict[str, Any], sdk_paths: dict[str, Path], core_root: Path, output_root: Path,
                core_identity: dict[str, Any],
                vswhere: Path | None = None, sevenzip: Path | None = None) -> dict[str, Any]:
     if os.name != "nt":
@@ -323,7 +323,8 @@ def main(argv: list[str] | None = None) -> int:
         plan["mode"] = "plan-only"
         print(json.dumps(plan, indent=2, ensure_ascii=False))
         return 0
-    result = run_target(target=args.target, profile=profile, sdk_lock=sdk_lock, sdk_paths=sdk_paths,
+    result = run_target(target=args.target, profile=profile, sdk_lock=sdk_lock, manifest=manifest,
+                        sdk_paths=sdk_paths,
                         core_root=args.core_root.resolve(), output_root=args.output_root, core_identity=core,
                         vswhere=args.vswhere, sevenzip=args.sevenzip)
     print(json.dumps(result, indent=2, ensure_ascii=False))
