@@ -24,6 +24,11 @@ PATCH_CASES: dict[str, tuple[str, ...]] = {
         "extern const FileType WorkbookBin;",
         '#include "../Binary/XlsbFormat/FileTypes_SpreadsheetBin.h"',
     ),
+    "026-word-east-asian-layout-stream.patch": (
+        "m_oStream.WriteLONG(EastAsianLayout.m_oID->GetValue());",
+        'sResult += L"w:id=\\\"";',
+        "sResult += m_oVertCompress->ToString();",
+    ),
     "023-reduce-header-static-initialization.patch": (
         "inline const std::map<int, std::string>& GetEncodingsICU()",
         "static const wchar_t g_bstr_nodeclose[]",

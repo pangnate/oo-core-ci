@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproduce protection and spacing differences with a supplied X2T runtime."""
+"""Reproduce Word, protection, and slide spacing differences with a supplied X2T runtime."""
 from __future__ import annotations
 import argparse
 import json
@@ -53,6 +53,24 @@ def main() -> None:
         with zipfile.ZipFile(restored) as z:node=ET.fromstring(z.read('word/settings.xml')).find('{'+WORD+'}documentProtection')
         actual={k.split('}')[-1]:v for k,v in node.attrib.items()} if node is not None else {}
         report['tests'][-1].update(expectedAlgorithmName='SHA-256' if algorithm else None,actualProtection=actual,passed=actual.get('algorithmName')==('SHA-256' if algorithm else None))
+    for label,layout,expected in [
+        ('combine-with-id',{'id':'1','combine':'1','combineBrackets':'square'},{'id':'1','combine':'1','combineBrackets':'square'}),
+        ('combine-false-with-id',{'id':'23','combine':'0','combineBrackets':'square'},{'id':'23','combine':'0','combineBrackets':'square'}),
+        ('combine-without-id',{'combine':'1','combineBrackets':'round'},{'combine':'1','combineBrackets':'round'}),
+        ('vertical-compress-only',{'vertCompress':'1'},{'vertCompress':'1'}),
+    ]:
+        folder=work/('word-'+label);folder.mkdir();source=folder/'source.docx'
+        with zipfile.ZipFile(word) as z:xml=z.read('word/document.xml').decode()
+        attributes=' '.join('w:'+key+'="'+value+'"' for key,value in layout.items())
+        xml,count=re.subn(r'<w:r><w:t>',lambda _: '<w:r><w:rPr><w:eastAsianLayout '+attributes+'/></w:rPr><w:t>',xml,count=1)
+        assert count==1
+        rewrite(word,source,{'word/document.xml':xml.encode()})
+        restored=roundtrip('word-'+label,source,'.docx')
+        with zipfile.ZipFile(restored) as z:
+            root=ET.fromstring(z.read('word/document.xml'))
+            node=root.find('.//{'+WORD+'}eastAsianLayout')
+        actual={k.split('}')[-1]:v for k,v in node.attrib.items()} if node is not None else {}
+        report['tests'][-1].update(expectedEastAsianLayout=expected,actualEastAsianLayout=actual,passed=actual==expected)
     pptx=ROOT/'tests/core-features/fixtures/slide-core-features.pptx'
     for prefix in ('a','draw'):
         for unit,value in [('spcPct',75000),('spcPts',1800)]:

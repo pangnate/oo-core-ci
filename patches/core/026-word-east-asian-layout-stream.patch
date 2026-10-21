@@ -1,0 +1,35 @@
+diff --git a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+index 581d209a..13406406 100644
+--- a/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
++++ b/core/OOXML/Binary/Document/BinWriter/BinaryWriterD.cpp
+@@ -965,7 +965,7 @@ void BinaryCommonWriter::WriteEastAsianLayout(const ComplexTypes::Word::CEastAsi
+ 	{
+ 		m_oStream.WriteBYTE(c_oSerProp_EastAsianLayoute::ID);
+ 		m_oStream.WriteBYTE(c_oSerPropLenType::Long);
+-		m_oStream.WriteBOOL(EastAsianLayout.m_oID->GetValue());
++		m_oStream.WriteLONG(EastAsianLayout.m_oID->GetValue());
+ 	}
+ 	if (false != EastAsianLayout.m_oCombine.IsInit())
+ 	{
+diff --git a/core/OOXML/Common/ComplexTypes.cpp b/core/OOXML/Common/ComplexTypes.cpp
+index 373e23c2..97a679e4 100644
+--- a/core/OOXML/Common/ComplexTypes.cpp
++++ b/core/OOXML/Common/ComplexTypes.cpp
+@@ -1864,7 +1864,7 @@ namespace Word
+ 		}
+ 		if (m_oID.IsInit())
+ 		{
+-			sResult += L"w:themeTint=\"";
++			sResult += L"w:id=\"";
+ 			sResult += m_oID->ToString();
+ 			sResult += L"\" ";
+ 		}
+@@ -1877,7 +1877,7 @@ namespace Word
+ 		if (m_oVertCompress.IsInit())
+ 		{
+ 			sResult += L"w:vertCompress=\"";
+-			sResult += m_oVert->ToString();
++			sResult += m_oVertCompress->ToString();
+ 			sResult += L"\" ";
+ 		}
+ 		return sResult;

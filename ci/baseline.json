@@ -19,7 +19,8 @@
     "patches/core/022-fix-texture-tile-path-clipping.patch",
     "patches/core/023-reduce-header-static-initialization.patch",
     "patches/core/024-share-shape-and-color-tables.patch",
-    "patches/core/025-share-presentation-namespaces-and-xlsb-types.patch"
+    "patches/core/025-share-presentation-namespaces-and-xlsb-types.patch",
+    "patches/core/026-word-east-asian-layout-stream.patch"
   ],
   "coreOverlays": [
     "Common/copyright.txt"

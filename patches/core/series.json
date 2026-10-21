@@ -99,6 +99,11 @@
       "path": "patches/core/025-share-presentation-namespaces-and-xlsb-types.patch",
       "sha256": "3b4998b5d574d53ba33a9f8ba73aed78c6ccd7b1c6ad87313a4a6cbb3135d81d",
       "purpose": "Share presentation namespaces and XLSB file-type descriptors using existing compiled source files"
+    },
+    {
+      "path": "patches/core/026-word-east-asian-layout-stream.patch",
+      "sha256": "c0bd836df2cccb41b5fcbe0f60fc7e35744056ee24ee62e80d79617bac68782a",
+      "purpose": "Write East Asian layout IDs with their declared 32-bit width and serialize combine, ID, and vertical-compress attributes correctly"
     }
   ]
 }
