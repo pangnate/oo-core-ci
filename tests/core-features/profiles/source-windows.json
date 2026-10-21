@@ -6,7 +6,7 @@
   "core": {
     "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
     "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
-    "stagingInventorySha256": "a776e91f8df51dd10fa0b05ce120e3811e95fd88088cef1f968c0b6d89989e3c",
+    "stagingInventorySha256": "c8d8c0aeb2eacb3615720d40b484fad1b7a60e2029d83b4edb3aaa9d2cd67d3d",
     "sourceInventorySha256": "cc16fb1824a7788140aa76064c6714d803e51deb90205fe8d625664f508ab5f6"
   },
   "inputs": {
@@ -48,7 +48,7 @@
     },
     "patch-series": {
       "path": "patches/core/series.json",
-      "sha256": "e1c543624f8fa53a135e5e3ae7789e3d8ce44ff26f409a9c3a33d5eee5dccce3"
+      "sha256": "58dca9e95e26fb89a7130232c34c87145799e6e06ef5f78c8eba42051860e801"
     },
     "patch-series-schema": {
       "path": "patches/core/series.schema.json",

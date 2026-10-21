@@ -136,7 +136,7 @@ diff --git a/core/PdfFile/OnlineOfficeBinToPdf.cpp b/core/PdfFile/OnlineOfficeBi
 +		try { return std::wstring(path); }
 +		catch (...) { ::DeleteFileW(path); throw; }
 +#else
-+		std::string pattern = U_TO_UTF8(directory + L"/core-pdf-XXXXXX");
++		std::string pattern = U_TO_UTF8((directory + L"/core-pdf-XXXXXX"));
 +		const int fd = ::mkstemp(&pattern[0]);
 +		if (fd < 0)
 +			return std::wstring();

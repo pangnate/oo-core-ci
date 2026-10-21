@@ -36,7 +36,7 @@
     },
     {
       "path": "patches/core/014-pdffile-strict-error-propagation.patch",
-      "sha256": "bb77692c407ea0aab60b45c850f56ace224d59ca7cbfebb79eb5da5a8ed7543c",
+      "sha256": "1a9b0866792b6dee61bb49071c87530c76589bebf1e5418cad6e4eab496d4d42",
       "purpose": "CORE-14: additive strict PdfFile entries, conversion-result propagation and owned atomic PDF candidate publication; source-only candidate",
       "dependsOn": [
         "patches/core/013-graphics-strict-image-errors.patch"

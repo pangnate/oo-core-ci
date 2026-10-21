@@ -56,6 +56,7 @@ PATCH_CASES: dict[str, tuple[str, ...]] = {
         "OnlineWordToPdfV1(",
         "CommandsToPdfFromBinaryV1(",
         "CreatePdfCandidateV1(",
+        'U_TO_UTF8((directory + L"/core-pdf-XXXXXX"))',
         "std::rename(sourceUtf8.c_str(), destinationUtf8.c_str())",
         "ConversionOutputFailedV1",
     ),
