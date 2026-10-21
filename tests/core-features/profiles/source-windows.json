@@ -6,7 +6,7 @@
   "core": {
     "ref": "ed63e94de814ff1d4ea28cddfaba6939bc9df9ed",
     "treeSha256": "ea6b4a04be6a1459caa1e9e23d3c59659a7c6cf65f39cb0222690602d2b77e34",
-    "stagingInventorySha256": "b9a7ae6ba13feead71131ddc7b96cffbd31f94de69f32f0a53a7269aa13f3ce9",
+    "stagingInventorySha256": "dfff4676e09d063c53df5e97f86887009abf56cd8b87b601e27760ffbe6bd06c",
     "sourceInventorySha256": "cc16fb1824a7788140aa76064c6714d803e51deb90205fe8d625664f508ab5f6"
   },
   "inputs": {
@@ -48,7 +48,7 @@
     },
     "patch-series": {
       "path": "patches/core/series.json",
-      "sha256": "61c0e9617f6ee4afdfa54917f24264faac625ad5da84bb926f38ea81f9622fef"
+      "sha256": "8d49dd4536a541ae04fa2e827dea6340019970a6546829ccd976e24d6527776e"
     },
     "patch-series-schema": {
       "path": "patches/core/series.schema.json",
@@ -60,7 +60,7 @@
     },
     "core-staging-baseline": {
       "path": "ci/baseline.json",
-      "sha256": "5531507c974270f26706d408270f21712e40448e5b473067cb3af7acf2296ae1"
+      "sha256": "2bbb4736894240cf182c741ce23e9c14dea26a225bc745866fa5e98b0b411a08"
     },
     "core-overlay": {
       "path": "overlays/core/Common/copyright.txt",

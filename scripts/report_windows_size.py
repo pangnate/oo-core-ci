@@ -13,6 +13,83 @@ PREVIOUS_RUNTIME_EXE_BYTES = 39_928_816
 PREVIOUS_CI_EXE_BYTES = 57_206_272
 SYMBOL = re.compile(r"^\s*([0-9A-Fa-f]{4}):([0-9A-Fa-f]{8})\s+\S+\s+[0-9A-Fa-f]{8,16}\s+(?:f|i)\s+(.+?)\s*$")
 
+# Function-local encoding storage has no eager ??__E initializer. XML tokens
+# are character arrays. The two standart_color arrays have different values
+# and lengths (8 and 56), so two initializers are intentional.
+HEADER_STATIC_LIMITS = {
+    "??__EmapEncodingsICU@NSUnicodeConverter@@YAXXZ": 0,
+    "??__Ec_oContentTypeFileName@OOX@@YAXXZ": 1,
+    "??__E_OO_OOX_custom_shapes@@YAXXZ": 1,
+    "??__E_OO_OOX_wordart@@YAXXZ": 1,
+    "??__Estandart_color@@YAXXZ": 2,
+    "??__Eg_Namespaces@PPTX@@YAXXZ": 1,
+}
+for _type in ("Workbook", "SharedStrings", "Styles", "Worksheet", "Chartsheets", "Table",
+              "QueryTable", "Connections", "Comments", "SlicerCache", "Slicer", "ExternalLinks",
+              "PivotTable", "PivotCacheDefinition", "PivotCacheRecords", "Metadata"):
+    HEADER_STATIC_LIMITS[f"??__E{_type}Bin@FileTypes@SpreadsheetBin@OOX@@YAXXZ"] = 1
+for _namespace, _tokens in {
+    "NSBinPptxRW": ("nodeopen", "nodeclose", "nodeopen_slash", "nodeclose_slash",
+                     "node_space", "node_equal", "node_quote", "boolean_true",
+                     "boolean_false", "boolean_true2", "boolean_false2"),
+    "PPT": ("nodeopen", "nodeclose", "nodeopen_slash", "nodeclose_slash",
+            "node_space", "node_equal", "node_quote", "boolean_true", "boolean_false"),
+}.items():
+    for _token in _tokens:
+        HEADER_STATIC_LIMITS[f"??__Eg_bstr_{_token}@{_namespace}@@YAXXZ"] = 0
+
+
+def header_static_initializers(initializers: list[dict]) -> list[dict]:
+    counts = {entry["symbol"]: entry["instances"] for entry in initializers}
+    return [{"symbol": symbol, "instances": counts.get(symbol, 0), "maximum": maximum}
+            for symbol, maximum in HEADER_STATIC_LIMITS.items()]
+
+
+def header_static_symbol_gaps(path: Path) -> list[dict]:
+    """Attribute adjacent map-symbol ranges once per address, not per alias.
+
+    These are estimates including alignment, not exact function/PE lengths.
+    Segment numbers are retained so the map section table remains authoritative.
+    """
+    offsets = defaultdict(set)
+    owners = defaultdict(lambda: defaultdict(set))
+    zero_fill = defaultdict(list)
+    symbol_line = re.compile(r"^\s*([0-9A-Fa-f]{4}):([0-9A-Fa-f]{8})\s+(\S+)\s+[0-9A-Fa-f]{8,16}\b")
+    families = ("mapEncodingsICU", "c_oContentTypeFileName", "_OO_OOX_custom_shapes",
+                "_OO_OOX_wordart", "standart_color", "g_Namespaces")
+    with path.open(encoding="utf-8", errors="replace") as stream:
+        for line in stream:
+            section = re.match(r"^\s*([0-9A-Fa-f]{4}):([0-9A-Fa-f]{8})\s+([0-9A-Fa-f]+)H\s+\.bss\s+DATA", line)
+            if section:
+                start = int(section[2], 16)
+                zero_fill[section[1]].append((start, start + int(section[3], 16)))
+            match = symbol_line.match(line)
+            if not match:
+                continue
+            segment, offset, symbol = match[1], int(match[2], 16), match[3]
+            offsets[segment].add(offset)
+            family = next((name for name in families if name in symbol), None)
+            if "g_bstr_" in symbol and ("@PPT@@" in symbol or "@NSBinPptxRW@@" in symbol):
+                family = "XML tokens (PPT/NSBinPptxRW)"
+            if "Bin@FileTypes@SpreadsheetBin@OOX@@" in symbol:
+                family = "XLSB FileTypes"
+            if family:
+                owners[segment][offset].add(family)
+    totals = defaultdict(lambda: defaultdict(int))
+    bss_totals = defaultdict(int)
+    for segment, values in offsets.items():
+        ordered = sorted(values)
+        for start, end in zip(ordered, ordered[1:]):
+            family_names = owners[segment].get(start, set())
+            if family_names:
+                family = next(iter(family_names)) if len(family_names) == 1 else "shared aliases"
+                totals[family][segment] += end - start
+                for bss_start, bss_end in zero_fill[segment]:
+                    bss_totals[family] += max(0, min(end, bss_end) - max(start, bss_start))
+    return [{"family": family, "estimatedSymbolGapBytesBySegment": dict(segments),
+             "estimatedZeroFillBytes": bss_totals[family]}
+            for family, segments in sorted(totals.items())]
+
 
 def pe_sections(path: Path) -> list[dict[str, int | str]]:
     with path.open("rb") as stream:
@@ -75,6 +152,7 @@ def main() -> None:
     parser.add_argument("--map", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--max-palette-instances", type=int)
+    parser.add_argument("--check-header-statics", action="store_true")
     args = parser.parse_args()
     if not args.map.is_file():
         raise SystemExit(f"linker map is missing: {args.map}")
@@ -93,6 +171,8 @@ def main() -> None:
         "mapBytes": args.map.stat().st_size,
         "defaultPaletteInitializerInstances": palette_instances,
         "mostRepeatedInitializers": initializers[:20],
+        "headerStaticInitializers": header_static_initializers(initializers),
+        "headerStaticSymbolGaps": header_static_symbol_gaps(args.map),
         "mapEstimateNote": "Public symbol gaps approximate object contribution; use the uploaded map for exact investigation.",
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
@@ -100,6 +180,11 @@ def main() -> None:
     print(json.dumps(report, indent=2))
     if args.max_palette_instances is not None and palette_instances > args.max_palette_instances:
         raise SystemExit(f"DefaultPalette initialization still duplicated: {palette_instances} instances")
+    if args.check_header_statics:
+        failed = [entry for entry in report["headerStaticInitializers"]
+                  if entry["instances"] > entry["maximum"]]
+        if failed:
+            raise SystemExit(f"Header static initialization regression: {failed}")
 
 
 if __name__ == "__main__":

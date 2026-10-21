@@ -24,7 +24,8 @@ vendor/runtime/*.zip filter=lfs diff=lfs merge=lfs -text
 *.json text eol=lf
 *.md text eol=lf
 # Diff context/deletion lines retain upstream whitespace verbatim.
-*.patch text eol=lf whitespace=-blank-at-eol
+# A context marker followed by an upstream tab is not source indentation.
+*.patch text eol=lf whitespace=-blank-at-eol,-space-before-tab
 
 *.pro text eol=lf
 *.pri text eol=lf

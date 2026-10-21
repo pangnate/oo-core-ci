@@ -152,7 +152,7 @@ jobs:
         if: steps.core-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
-          python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json --max-palette-instances 1
+          python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json --max-palette-instances 1 --check-header-statics
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Record Core producer
         if: steps.core-cache.outputs.cache-hit != 'true'

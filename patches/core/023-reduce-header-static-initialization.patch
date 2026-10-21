@@ -1,0 +1,216 @@
+diff --git a/core/UnicodeConverter/UnicodeConverter_Encodings.h b/core/UnicodeConverter/UnicodeConverter_Encodings.h
+--- a/core/UnicodeConverter/UnicodeConverter_Encodings.h
++++ b/core/UnicodeConverter/UnicodeConverter_Encodings.h
+@@ -38,6 +38,7 @@
+ #pragma once
+ 
+ #include <map>
++#include <string>
+ 
+ namespace NSUnicodeConverter
+ {
+@@ -127,7 +127,7 @@
+         { 53,   54936,   "GB18030",         "Chinese government standard" }
+     };
+ 
+-    static std::map<int, std::string> create_mapEncodingsICU()
++    inline std::map<int, std::string> create_mapEncodingsICU()
+     {
+         std::map<int, std::string> m;
+         m[28596]	= "ISO-8859-6";
+@@ -205,7 +205,12 @@
+         m[54936]    = "GB18030";
+         return m;
+     }
+-    static const std::map<int, std::string> mapEncodingsICU = create_mapEncodingsICU();
++    // One immutable table per linked image, initialized only when lookup is needed.
++    inline const std::map<int, std::string>& GetEncodingsICU()
++    {
++        static const std::map<int, std::string> encodings = create_mapEncodingsICU();
++        return encodings;
++    }
+ 
+ }
+ 
+diff --git a/core/RtfFile/Format/Utils.cpp b/core/RtfFile/Format/Utils.cpp
+--- a/core/RtfFile/Format/Utils.cpp
++++ b/core/RtfFile/Format/Utils.cpp
+@@ -448,8 +448,8 @@
+ 	if (start == end) return L"";
+ 
+ 	std::string sCodePage;
+-	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::mapEncodingsICU.find(nCodepage);
+-	if (pFind != NSUnicodeConverter::mapEncodingsICU.end())
++	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::GetEncodingsICU().find(nCodepage);
++	if (pFind != NSUnicodeConverter::GetEncodingsICU().end())
+ 	{
+ 		sCodePage = pFind->second;
+ 	}
+@@ -482,8 +482,8 @@
+ std::string RtfUtility::convert_string_icu(std::wstring::const_iterator start, std::wstring::const_iterator end, int nCodepage)
+ {
+ 	std::string sCodePage;
+-	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::mapEncodingsICU.find(nCodepage);
+-	if (pFind != NSUnicodeConverter::mapEncodingsICU.end())
++	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::GetEncodingsICU().find(nCodepage);
++	if (pFind != NSUnicodeConverter::GetEncodingsICU().end())
+ 	{
+ 		sCodePage = pFind->second;
+ 	}
+diff --git a/core/MsBinaryFile/XlsFile/Format/Auxiliary/HelpFunc.cpp b/core/MsBinaryFile/XlsFile/Format/Auxiliary/HelpFunc.cpp
+--- a/core/MsBinaryFile/XlsFile/Format/Auxiliary/HelpFunc.cpp
++++ b/core/MsBinaryFile/XlsFile/Format/Auxiliary/HelpFunc.cpp
+@@ -557,8 +557,8 @@
+ std::wstring toStdWString(std::string ansi_string, const _UINT32 code_page)
+ {
+     std::string sCodePage;
+-	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::mapEncodingsICU.find(code_page);
+-	if (pFind != NSUnicodeConverter::mapEncodingsICU.end())
++	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::GetEncodingsICU().find(code_page);
++	if (pFind != NSUnicodeConverter::GetEncodingsICU().end())
+ 	{
+ 		sCodePage = pFind->second;
+ 	}
+@@ -589,8 +589,8 @@
+ std::wstring	toStdWString(char* ansi, int size, const _UINT32 code_page)
+ {
+     std::string sCodePage;
+-	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::mapEncodingsICU.find(code_page);
+-	if (pFind != NSUnicodeConverter::mapEncodingsICU.end())
++	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::GetEncodingsICU().find(code_page);
++	if (pFind != NSUnicodeConverter::GetEncodingsICU().end())
+ 	{
+ 		sCodePage = pFind->second;
+ 	}
+@@ -609,8 +609,8 @@
+ std::string toStdString(std::wstring wide_string, const _UINT32 code_page)
+ {
+     std::string sCodePage;
+-	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::mapEncodingsICU.find(code_page);
+-	if (pFind != NSUnicodeConverter::mapEncodingsICU.end())
++	std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::GetEncodingsICU().find(code_page);
++	if (pFind != NSUnicodeConverter::GetEncodingsICU().end())
+ 	{
+ 		sCodePage = pFind->second;
+ 	}
+diff --git a/core/MsBinaryFile/Common/Vba/Records.cpp b/core/MsBinaryFile/Common/Vba/Records.cpp
+--- a/core/MsBinaryFile/Common/Vba/Records.cpp
++++ b/core/MsBinaryFile/Common/Vba/Records.cpp
+@@ -104,8 +104,8 @@
+ 		if (!buffer || size < 1) return L"";
+ 
+ 		std::string sCodePage;
+-		std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::mapEncodingsICU.find(nCodePage);
+-		if (pFind != NSUnicodeConverter::mapEncodingsICU.end())
++		std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::GetEncodingsICU().find(nCodePage);
++		if (pFind != NSUnicodeConverter::GetEncodingsICU().end())
+ 		{
+ 			sCodePage = pFind->second;
+ 		}
+diff --git a/core/MsBinaryFile/Common/Base/FormatUtils.cpp b/core/MsBinaryFile/Common/Base/FormatUtils.cpp
+--- a/core/MsBinaryFile/Common/Base/FormatUtils.cpp
++++ b/core/MsBinaryFile/Common/Base/FormatUtils.cpp
+@@ -304,8 +304,8 @@
+ 	else
+ 	{
+ 		std::string sCodePage;
+-		std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::mapEncodingsICU.find(code_page);
+-		if (pFind != NSUnicodeConverter::mapEncodingsICU.end())
++		std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::GetEncodingsICU().find(code_page);
++		if (pFind != NSUnicodeConverter::GetEncodingsICU().end())
+ 		{
+ 			sCodePage = pFind->second;
+ 		}
+@@ -378,8 +378,8 @@
+ 	else
+ 	{
+ 		std::string sCodePage;
+-		std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::mapEncodingsICU.find(code_page);
+-		if (pFind != NSUnicodeConverter::mapEncodingsICU.end())
++		std::map<int, std::string>::const_iterator pFind = NSUnicodeConverter::GetEncodingsICU().find(code_page);
++		if (pFind != NSUnicodeConverter::GetEncodingsICU().end())
+ 		{
+ 			sCodePage = pFind->second;
+ 		}
+diff --git a/core/OOXML/Binary/Presentation/XmlWriter.h b/core/OOXML/Binary/Presentation/XmlWriter.h
+--- a/core/OOXML/Binary/Presentation/XmlWriter.h
++++ b/core/OOXML/Binary/Presentation/XmlWriter.h
+@@ -45,17 +45,17 @@
+ 
+ namespace NSBinPptxRW
+ {
+-    static std::wstring	g_bstr_nodeopen		= L"<";
+-    static std::wstring	g_bstr_nodeclose	= L">";
+-    static std::wstring	g_bstr_nodeopen_slash	= L"</";
+-    static std::wstring	g_bstr_nodeclose_slash	= L"/>";
+-    static std::wstring	g_bstr_node_space	= L" ";
+-    static std::wstring	g_bstr_node_equal	= L"=";
+-    static std::wstring	g_bstr_node_quote	= L"\"";
+-    static std::wstring	g_bstr_boolean_true	= L"true";
+-    static std::wstring	g_bstr_boolean_false	= L"false";
+-    static std::wstring	g_bstr_boolean_true2	= L"1";
+-    static std::wstring	g_bstr_boolean_false2	= L"0";
++    static const wchar_t g_bstr_nodeopen[] = L"<";
++    static const wchar_t g_bstr_nodeclose[] = L">";
++    static const wchar_t g_bstr_nodeopen_slash[] = L"</";
++    static const wchar_t g_bstr_nodeclose_slash[] = L"/>";
++    static const wchar_t g_bstr_node_space[] = L" ";
++    static const wchar_t g_bstr_node_equal[] = L"=";
++    static const wchar_t g_bstr_node_quote[] = L"\"";
++    static const wchar_t g_bstr_boolean_true[] = L"true";
++    static const wchar_t g_bstr_boolean_false[] = L"false";
++    static const wchar_t g_bstr_boolean_true2[] = L"1";
++    static const wchar_t g_bstr_boolean_false2[] = L"0";
+ 	
+ 	static double FABS(double dVal)
+     {
+diff --git a/core/MsBinaryFile/PptFile/Drawing/XmlStringWriter.h b/core/MsBinaryFile/PptFile/Drawing/XmlStringWriter.h
+--- a/core/MsBinaryFile/PptFile/Drawing/XmlStringWriter.h
++++ b/core/MsBinaryFile/PptFile/Drawing/XmlStringWriter.h
+@@ -37,15 +37,15 @@
+ 
+ namespace PPT
+ {
+-    static std::wstring	g_bstr_nodeopen				= L"<";
+-    static std::wstring	g_bstr_nodeclose			= L">";
+-    static std::wstring	g_bstr_nodeopen_slash		= L"</";
+-    static std::wstring	g_bstr_nodeclose_slash		= L"/>";
+-    static std::wstring	g_bstr_node_space			= L" ";
+-    static std::wstring	g_bstr_node_equal			= L"=";
+-    static std::wstring	g_bstr_node_quote			= L"\"";
+-    static std::wstring	g_bstr_boolean_true			= L"true";
+-    static std::wstring	g_bstr_boolean_false		= L"false";
++    static const wchar_t g_bstr_nodeopen[] = L"<";
++    static const wchar_t g_bstr_nodeclose[] = L">";
++    static const wchar_t g_bstr_nodeopen_slash[] = L"</";
++    static const wchar_t g_bstr_nodeclose_slash[] = L"/>";
++    static const wchar_t g_bstr_node_space[] = L" ";
++    static const wchar_t g_bstr_node_equal[] = L"=";
++    static const wchar_t g_bstr_node_quote[] = L"\"";
++    static const wchar_t g_bstr_boolean_true[] = L"true";
++    static const wchar_t g_bstr_boolean_false[] = L"false";
+ 	
+ 	inline static double FABS(double dVal)
+ 	{
+diff --git a/core/OOXML/DocxFormat/ContentTypes.h b/core/OOXML/DocxFormat/ContentTypes.h
+--- a/core/OOXML/DocxFormat/ContentTypes.h
++++ b/core/OOXML/DocxFormat/ContentTypes.h
+@@ -100,7 +100,6 @@
+ 		};
+ 	} // namespace ContentTypes
+ 
+-    static const CPath c_oContentTypeFileName (L"[Content_Types].xml");
+ 
+ 	class CContentTypes
+ 	{
+diff --git a/core/OOXML/DocxFormat/ContentTypes.cpp b/core/OOXML/DocxFormat/ContentTypes.cpp
+--- a/core/OOXML/DocxFormat/ContentTypes.cpp
++++ b/core/OOXML/DocxFormat/ContentTypes.cpp
+@@ -38,6 +38,7 @@
+ 
+ namespace OOX
+ {
++    static const CPath c_oContentTypeFileName (L"[Content_Types].xml");
+ 	namespace ContentTypes
+ 	{
+ 		CExtensionTable::CExtensionTable()

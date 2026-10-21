@@ -3,7 +3,7 @@
 
 This changes the package copies, not the locked vendor archives or Core sources.
 ICU DLLs are third-party and remain untouched. Every other packaged PE must
-carry the configured company and version after this step.
+carry the configured company, copyright holder and version after this step.
 """
 
 from __future__ import annotations
@@ -109,6 +109,14 @@ def update_version(data: bytes, company: str, version: str,
         "ProductVersion": version,
     }
     for table in tables:
+        copyrights = [item for item in table.children if item.key == "LegalCopyright"]
+        if not copyrights:
+            raise ValueError("missing LegalCopyright in VERSIONINFO")
+        for item in copyrights:
+            copyright_text = string_value(item)
+            if UPSTREAM_COMPANY not in copyright_text and company not in copyright_text:
+                raise ValueError(f"unexpected copyright holder in Core PE: {copyright_text}")
+            item.value = (copyright_text.replace(UPSTREAM_COMPANY, company) + "\0").encode("utf-16le")
         for item in table.children:
             if item.key in replacements:
                 item.value = (replacements[item.key] + "\0").encode("utf-16le")
@@ -241,6 +249,10 @@ def main() -> None:
                    {"CompanyName": company, "FileVersion": version,
                     "ProductVersion": version}.items()):
                 raise RuntimeError(f"VERSIONINFO verification failed: {dll}")
+            copyright_text = fields.get("LegalCopyright", "")
+            if company not in copyright_text or (UPSTREAM_COMPANY != company and
+                                                 UPSTREAM_COMPANY in copyright_text):
+                raise RuntimeError(f"copyright verification failed: {dll}")
         records.append({"file": dll.name, "beforeSha256": before, "afterSha256": sha256(dll)})
     if not records:
         raise RuntimeError(f"no Core PE files found in {runtime_bin}")

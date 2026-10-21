@@ -84,6 +84,21 @@
       "path": "patches/core/022-fix-texture-tile-path-clipping.patch",
       "sha256": "d27bbab0f713cd7de87fa0efc982ed2020431f6dfe437fe9c69cd12999dc1e97",
       "purpose": "Keep texture tile coverage on the full fill path; only explicit stretch bounds clip"
+    },
+    {
+      "path": "patches/core/023-reduce-header-static-initialization.patch",
+      "sha256": "798229a686b3005dab7c042e4412a8dc9dd1f2e532b1803c963b4dae0fe696a6",
+      "purpose": "Share lazy encoding lookup, localize ContentTypes path, and remove XML token dynamic initialization"
+    },
+    {
+      "path": "patches/core/024-share-shape-and-color-tables.patch",
+      "sha256": "4a6994784ea1e8f84117dd2075da10148fb6a0d98dc8a80544fff68983c581d5",
+      "purpose": "Define ODF shape tables once and localize XLS drawing colors without changing table values or indexing"
+    },
+    {
+      "path": "patches/core/025-share-presentation-namespaces-and-xlsb-types.patch",
+      "sha256": "3b4998b5d574d53ba33a9f8ba73aed78c6ccd7b1c6ad87313a4a6cbb3135d81d",
+      "purpose": "Share presentation namespaces and XLSB file-type descriptors using existing compiled source files"
     }
   ]
 }

@@ -18,6 +18,22 @@ SERIES_PATH = ROOT / "patches" / "core" / "series.json"
 # Keeping cases mapped to patch files makes dropped or weakened patches visible
 # in the normal unittest discovery run.
 PATCH_CASES: dict[str, tuple[str, ...]] = {
+    "025-share-presentation-namespaces-and-xlsb-types.patch": (
+        "extern Namespaces g_Namespaces;",
+        "Namespaces g_Namespaces;",
+        "extern const FileType WorkbookBin;",
+        '#include "../Binary/XlsbFormat/FileTypes_SpreadsheetBin.h"',
+    ),
+    "023-reduce-header-static-initialization.patch": (
+        "inline const std::map<int, std::string>& GetEncodingsICU()",
+        "static const wchar_t g_bstr_nodeclose[]",
+        'static const CPath c_oContentTypeFileName (L"[Content_Types].xml");',
+    ),
+    "024-share-shape-and-color-tables.patch": (
+        "extern const _shape_converter _OO_OOX_custom_shapes[205];",
+        "extern const _shape_converter _OO_OOX_wordart[53];",
+        "static const std::wstring standart_color[56]",
+    ),
     "022-fix-texture-tile-path-clipping.patch": (
         "const bool isStretch = textureMode == c_BrushTextureModeStretch;",
         "if (isStretch && bIsEnableBrushRect)",

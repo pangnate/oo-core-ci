@@ -10,6 +10,34 @@ RELATIVE = Path("core/MsBinaryFile/XlsFile/Format/Logic")
 PATCH = ROOT / "patches/core/019-xls-share-default-palette.patch"
 
 class SharedPaletteTests(unittest.TestCase):
+    def test_symbol_gap_estimates_do_not_multiply_aliases(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from report_windows_size import header_static_symbol_gaps
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "aliases.map"
+            path.write_text(" 0001:00000010 ??__EmapEncodingsICU@NSUnicodeConverter@@YAXXZ 0000000140001010 f a.obj\n"
+                            " 0001:00000010 ??__EmapEncodingsICU@NSUnicodeConverter@@YAXXZ 0000000140001010 f b.obj\n"
+                            " 0001:00000010 ?otherAlias@@YAXXZ 0000000140001010 f c.obj\n"
+                            " 0001:00000030 ?next@@YAXXZ 0000000140001030 f c.obj\n")
+            self.assertEqual(header_static_symbol_gaps(path), [{"family": "mapEncodingsICU",
+                             "estimatedSymbolGapBytesBySegment": {"0001": 32},
+                             "estimatedZeroFillBytes": 0}])
+
+    def test_header_static_limits_cover_removed_and_shared_initializers(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from report_windows_size import header_static_initializers
+        actual = header_static_initializers([
+            {"symbol": "??__EmapEncodingsICU@NSUnicodeConverter@@YAXXZ", "instances": 2153},
+            {"symbol": "??__Eg_bstr_nodeclose@PPT@@YAXXZ", "instances": 477},
+        ])
+        failed = [entry for entry in actual if entry["instances"] > entry["maximum"]]
+        self.assertEqual(len(failed), 2)
+        self.assertTrue(all(entry["maximum"] == 0 for entry in failed))
+        self.assertTrue(all(entry["instances"] <= entry["maximum"]
+                            for entry in header_static_initializers([])))
+
     def test_map_initializer_count_uses_distinct_addresses(self):
         import sys
         sys.path.insert(0, str(ROOT / "scripts"))

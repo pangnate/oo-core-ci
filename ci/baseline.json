@@ -16,7 +16,10 @@
     "patches/core/019-xls-share-default-palette.patch",
     "patches/core/020-word-preserve-protection-algorithm.patch",
     "patches/core/021-slide-preserve-spacing-namespace.patch",
-    "patches/core/022-fix-texture-tile-path-clipping.patch"
+    "patches/core/022-fix-texture-tile-path-clipping.patch",
+    "patches/core/023-reduce-header-static-initialization.patch",
+    "patches/core/024-share-shape-and-color-tables.patch",
+    "patches/core/025-share-presentation-namespaces-and-xlsb-types.patch"
   ],
   "coreOverlays": [
     "Common/copyright.txt"
