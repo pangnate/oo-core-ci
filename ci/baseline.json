@@ -13,7 +13,10 @@
     "patches/core/016-word-protection-source-omissions.patch",
     "patches/core/017-slide-paragraph-stream-bools.patch",
     "patches/core/018-vml-ideographic-text-direction.patch",
-    "patches/core/019-xls-share-default-palette.patch"
+    "patches/core/019-xls-share-default-palette.patch",
+    "patches/core/020-word-preserve-protection-algorithm.patch",
+    "patches/core/021-slide-preserve-spacing-namespace.patch",
+    "patches/core/022-fix-texture-tile-path-clipping.patch"
   ],
   "coreOverlays": [
     "Common/copyright.txt"

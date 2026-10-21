@@ -18,6 +18,22 @@ SERIES_PATH = ROOT / "patches" / "core" / "series.json"
 # Keeping cases mapped to patch files makes dropped or weakened patches visible
 # in the normal unittest discovery run.
 PATCH_CASES: dict[str, tuple[str, ...]] = {
+    "022-fix-texture-tile-path-clipping.patch": (
+        "const bool isStretch = textureMode == c_BrushTextureModeStretch;",
+        "if (isStretch && bIsEnableBrushRect)",
+        "path = drawPath;",
+    ),
+    "020-word-preserve-protection-algorithm.patch": (
+        'ComplexTypes_WriteAttribute(L"w:algorithmName=\\\"", m_oAlgorithmName);',
+        "algorithmName is independent of the legacy crypt* attribute spelling.",
+    ),
+    "021-slide-preserve-spacing-namespace.patch": (
+        'node.ReadNodeNoNS(L"spcPct")',
+        'node.ReadNodeNoNS(L"spcPts")',
+        "XmlUtils::GetNameNoNS(oReader.GetName())",
+        "spcPct.reset();",
+        "spcPts.reset();",
+    ),
     "019-xls-share-default-palette.patch": (
         "extern const std::wstring DefaultPalette[64];",
         "const std::wstring DefaultPalette[64] = {",

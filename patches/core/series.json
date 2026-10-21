@@ -69,6 +69,21 @@
       "path": "patches/core/019-xls-share-default-palette.patch",
       "sha256": "5bc7fb4e8e6d5713db90dac692146aadd6dbc792d268a67bcb53fff5a51afe8a",
       "purpose": "Share the immutable 64-color XLS palette across translation units without changing its type or values"
+    },
+    {
+      "path": "patches/core/020-word-preserve-protection-algorithm.patch",
+      "sha256": "896bc8110f643d91468a7b9f0289f8669ba0831ae813465dd3819fe5de57c3e0",
+      "purpose": "Preserve explicit algorithmName alongside legacy crypt* protection attributes"
+    },
+    {
+      "path": "patches/core/021-slide-preserve-spacing-namespace.patch",
+      "sha256": "c8651fb972498bf95d7cb6a38970c95dff35a76ae59eedede4959aae3bef3fcc",
+      "purpose": "Read spacing values independently of namespace prefixes and reset reused spacing units"
+    },
+    {
+      "path": "patches/core/022-fix-texture-tile-path-clipping.patch",
+      "sha256": "d27bbab0f713cd7de87fa0efc982ed2020431f6dfe437fe9c69cd12999dc1e97",
+      "purpose": "Keep texture tile coverage on the full fill path; only explicit stretch bounds clip"
     }
   ]
 }

@@ -195,3 +195,12 @@ CI 对缺少 import library 的 DLL 使用 `dumpbin /exports` 生成 `.def`，�
 当前 `download.py` 和workflow仍有在输入树应用/构建快照的旧行为，须由任务 `LUNA-CORE-BLD-01-FIX02` 改成隔离源流程；这不代表脚本已完成改造。改造前不要在用户当前源码执行上述force-source命令来测试功能patch，也不要通过重置Core清理历史构建/品牌或用户改动。
 
 runtime同步只打包动态库，不会把来源中的 `x2t`、字体缓存或其他应用资源混进链接依赖。`native-bin/windows/bin`里的9.4 DLL不能用于Core 10；当前vendor归档来自单独的10.0.0.169目录且逐文件匹配，但标记为metadata-only-reconciliation，须先做实际加载/转换验证，失败时重建匹配DLL闭包。生成的 `x2t` 也要部署到对应版本的完整运行环境。Core官方commit、项目patch列表和runtime SHA256记录在 `ci/baseline.json` 与 `vendor/checksums.json`；这些hash证明输入字节固定，不单独证明来源/ABI匹配。
+
+
+## Core 重编译版本约定
+
+- 每一轮修改 Core 源码、C++ 补丁或其它需要重编译 Core 的输入，必须在同一轮修改中递增 `config/branding.json` 的四段版本。
+- 常规修复递增第四段 build 号，例如 `1.0.0.0` → `1.0.0.1`；发布策略要求提升前三段时另行调整，但不得复用旧版本号发布修改后的 Core。
+- 同一轮失败重试不重复递增；新一轮 Core 修改再次递增。三端的同一轮源码使用同一版本，EXE、自有 DLL 和运行包命名均从该配置读取。
+- 只有测试、诊断或文档变化且不需要重编译 Core 时，不为其单独提升 Core 版本，也不自动触发流水线。
+- 本轮 Word 保护属性、Slide 行距及 Core 纹理裁剪修复的目标版本为 `1.0.0.1`，此前 `1.0.0.0` 运行包不包含这些修复。

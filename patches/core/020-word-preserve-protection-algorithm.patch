@@ -1,0 +1,39 @@
+diff --git a/core/OOXML/DocxFormat/Settings/Settings.cpp b/core/OOXML/DocxFormat/Settings/Settings.cpp
+--- a/core/OOXML/DocxFormat/Settings/Settings.cpp
++++ b/core/OOXML/DocxFormat/Settings/Settings.cpp
+@@ -877,6 +877,9 @@
+ 		sResult += m_oFormatting.ToAttribute( L"w:formatting");
+ 		sResult += m_oEnforcment.ToAttribute( L"w:enforcement");
+ 
++		// algorithmName is independent of the legacy crypt* attribute spelling.
++		ComplexTypes_WriteAttribute(L"w:algorithmName=\"", m_oAlgorithmName);
++
+ 		if (m_oCryptProviderType.IsInit() || m_oCryptAlgorithmSid.IsInit())
+ 		{
+ 			ComplexTypes_WriteAttribute(L"w:cryptProviderType=\"", m_oCryptProviderType);
+@@ -895,7 +898,6 @@
+ 		}
+ 		else
+ 		{
+-			ComplexTypes_WriteAttribute(L"w:algorithmName=\"", m_oAlgorithmName);
+ 			sResult += m_sHashValue.ToAttribute(L"w:hashValue");
+ 			sResult += m_sSaltValue.ToAttribute(L"w:saltValue");
+ 			sResult += m_oSpinCount.ToAttribute(L"w:spinCount");
+@@ -1785,6 +1787,9 @@
+ 
+ 		sResult += m_oRecommended.ToAttribute( L"w:recommended");
+ 
++		// algorithmName is independent of the legacy crypt* attribute spelling.
++		ComplexTypes_WriteAttribute(L"w:algorithmName=\"", m_oAlgorithmName);
++
+ 		if (m_oCryptProviderType.IsInit() || m_oCryptAlgorithmSid.IsInit())
+ 		{
+ 			ComplexTypes_WriteAttribute(L"w:cryptProviderType=\"", m_oCryptProviderType);
+@@ -1803,7 +1808,6 @@
+ 		}
+ 		else
+ 		{
+-			ComplexTypes_WriteAttribute(L"w:algorithmName=\"", m_oAlgorithmName);
+ 			sResult += m_sHashValue.ToAttribute(L"w:hashValue");
+ 			sResult += m_sSaltValue.ToAttribute(L"w:saltValue");
+ 			sResult += m_oSpinCount.ToAttribute(L"w:spinCount");

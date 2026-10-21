@@ -1,0 +1,40 @@
+diff --git a/core/DesktopEditor/graphics/MetafileToRenderer.cpp b/core/DesktopEditor/graphics/MetafileToRenderer.cpp
+--- a/core/DesktopEditor/graphics/MetafileToRenderer.cpp
++++ b/core/DesktopEditor/graphics/MetafileToRenderer.cpp
+@@ -721,14 +721,14 @@
+ 
+ 				if (fill != c_nStroke && type == c_BrushTypeTexture)
+ 				{
++					long textureMode = c_BrushTextureModeStretch;
++					pRenderer->get_BrushTextureMode(&textureMode);
++					const bool isStretch = textureMode == c_BrushTextureModeStretch;
+ 					Aggplus::CGraphicsPath clipPath;
+ 					Aggplus::CGraphicsPath drawPath(path);
+ 
+ 					if (isResetRot)
+ 					{
+-						pRenderer->get_BrushTextureMode(&type);
+-						bool isStretch = type == c_BrushTextureModeStretch;
+-
+ 						double left, top, width, height;
+ 						drawPath.GetBounds(left, top, width, height);
+ 
+@@ -775,8 +775,16 @@
+ 						}
+ 					}
+ 
+-					clipPath.AddRectangle(clipRect.X, clipRect.Y, clipRect.Width, clipRect.Height);
+-					path = Aggplus::CalcBooleanOperation(drawPath, clipPath, Aggplus::Intersection);
++					// Texture bounds select the image mapping, not the tile coverage.
++					// An unset rectangle must not erase the path, and a tile must fill
++					// the complete path instead of being clipped to one image cell.
++					if (isStretch && bIsEnableBrushRect)
++					{
++						clipPath.AddRectangle(clipRect.X, clipRect.Y, clipRect.Width, clipRect.Height);
++						path = Aggplus::CalcBooleanOperation(drawPath, clipPath, Aggplus::Intersection);
++					}
++					else
++						path = drawPath;
+ 				}
+ 
+ 				pRenderer->AddPath(path);

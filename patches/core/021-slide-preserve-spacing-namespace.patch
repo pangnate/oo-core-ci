@@ -1,0 +1,79 @@
+diff --git a/core/OOXML/PPTXFormat/Logic/TextSpacing.cpp b/core/OOXML/PPTXFormat/Logic/TextSpacing.cpp
+--- a/core/OOXML/PPTXFormat/Logic/TextSpacing.cpp
++++ b/core/OOXML/PPTXFormat/Logic/TextSpacing.cpp
+@@ -45,6 +45,8 @@
+ 		}
+ 		void TextSpacing::fromXML(XmlUtils::CXmlLiteReader& oReader)
+ 		{
++			spcPct.reset();
++			spcPts.reset();
+ 			m_name = oReader.GetName();
+ 
+ 			if ( oReader.IsEmptyNode() )
+@@ -53,14 +55,14 @@
+ 			int nCurDepth = oReader.GetDepth();
+ 			while( oReader.ReadNextSiblingNode( nCurDepth ) )
+ 			{
+-				std::wstring sName = oReader.GetName();
++				std::wstring sName = XmlUtils::GetNameNoNS(oReader.GetName());
+ 				nullable_int val;
+-				if (sName == L"a:spcPct")
++				if (sName == L"spcPct")
+ 				{
+ 					ReadAttributes(oReader, val);
+ 					spcPct = val;
+ 				}
+-				if (sName == L"a:spcPts")
++				if (sName == L"spcPts")
+ 				{
+ 					ReadAttributes(oReader, val);
+ 					spcPts = val;
+@@ -76,12 +78,14 @@
+ 		}
+ 		void TextSpacing::fromXML(XmlUtils::CXmlNode& node)
+ 		{
++			spcPct.reset();
++			spcPts.reset();
+ 			m_name = node.GetName();
+ 
+-			XmlUtils::CXmlNode node1 = node.ReadNode(L"a:spcPct");
++			XmlUtils::CXmlNode node1 = node.ReadNodeNoNS(L"spcPct");
+ 			XmlMacroReadAttributeBase(node1, L"val", spcPct);
+ 
+-			XmlUtils::CXmlNode node2 = node.ReadNode(L"a:spcPts");
++			XmlUtils::CXmlNode node2 = node.ReadNodeNoNS(L"spcPts");
+ 			XmlMacroReadAttributeBase(node2, L"val", spcPts);
+ 
+ 			Normalize();
+@@ -119,6 +123,8 @@
+ 		}
+ 		void TextSpacing::fromPPTY(NSBinPptxRW::CBinaryFileReader* pReader)
+ 		{
++			spcPct.reset();
++			spcPts.reset();
+ 			LONG _end_rec = pReader->GetPos() + pReader->GetRecordSize() + 4;
+ 
+ 			pReader->Skip(1); // start attributes
+diff --git a/core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp b/core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp
+--- a/core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp
++++ b/core/OOXML/PPTXFormat/Logic/TextParagraphPr.cpp
+@@ -88,14 +88,15 @@
+ 			while( oReader.ReadNextSiblingNode( nParentDepth ) )
+ 			{
+ 				std::wstring sName = oReader.GetName();
+-
+-				if ( _T("a:lnSpc") == sName )
++				const std::wstring localName = XmlUtils::GetNameNoNS(sName);
++
++				if ( _T("lnSpc") == localName )
+ 					lnSpc = oReader;
+ 				else if ( _T("a:defRPr") == sName )
+ 					defRPr = oReader;
+-				else if ( _T("a:spcAft") == sName )
++				else if ( _T("spcAft") == localName )
+ 					spcAft = oReader;
+-				else if ( _T("a:spcBef") == sName )
++				else if ( _T("spcBef") == localName )
+ 					spcBef = oReader;
+ 				else if ( _T("a:tabLst") == sName )
+ 				{
