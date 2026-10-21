@@ -64,6 +64,11 @@
       "path": "patches/core/018-vml-ideographic-text-direction.patch",
       "sha256": "97947aa1d1ca6c7fe922a009e7392b94a7be3061a7626581484186aef8ec5b54",
       "purpose": "CORE-10: confirmed codec source omissions; uncompiled candidate"
+    },
+    {
+      "path": "patches/core/019-xls-share-default-palette.patch",
+      "sha256": "5bc7fb4e8e6d5713db90dac692146aadd6dbc792d268a67bcb53fff5a51afe8a",
+      "purpose": "Share the immutable 64-color XLS palette across translation units without changing its type or values"
     }
   ]
 }

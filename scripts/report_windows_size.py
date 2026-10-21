@@ -55,15 +55,33 @@ def map_contributors(path: Path) -> list[dict[str, int | str]]:
             for name, size in sorted(totals.items(), key=lambda item: item[1], reverse=True)[:40]]
 
 
+
+def repeated_initializers(path: Path) -> list[dict[str, int | str]]:
+    """Count distinct initializer addresses, including map static symbols."""
+    addresses: dict[str, set[str]] = defaultdict(set)
+    with path.open(encoding="utf-8", errors="replace") as stream:
+        for line in stream:
+            fields = line.split()
+            if (len(fields) >= 3 and fields[0].startswith("0001:")
+                    and fields[1].startswith("??__E")):
+                addresses[fields[1]].add(fields[0])
+    return [{"symbol": name, "instances": len(values)}
+            for name, values in sorted(addresses.items(), key=lambda item: (-len(item[1]), item[0]))]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--exe", type=Path, required=True)
     parser.add_argument("--map", type=Path, required=True)
     parser.add_argument("--receipt", type=Path, required=True)
+    parser.add_argument("--max-palette-instances", type=int)
     args = parser.parse_args()
     if not args.map.is_file():
         raise SystemExit(f"linker map is missing: {args.map}")
     size = args.exe.stat().st_size
+    initializers = repeated_initializers(args.map)
+    palette_instances = next((item["instances"] for item in initializers
+                              if item["symbol"] == "??__EDefaultPalette@XLS@@YAXXZ"), 0)
     report = {
         "exe": str(args.exe), "exeBytes": size,
         "previousRuntimeExeBytes": PREVIOUS_RUNTIME_EXE_BYTES,
@@ -73,11 +91,15 @@ def main() -> None:
         "sections": pe_sections(args.exe),
         "largestMapSymbolGapContributors": map_contributors(args.map),
         "mapBytes": args.map.stat().st_size,
+        "defaultPaletteInitializerInstances": palette_instances,
+        "mostRepeatedInitializers": initializers[:20],
         "mapEstimateNote": "Public symbol gaps approximate object contribution; use the uploaded map for exact investigation.",
     }
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
     args.receipt.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, indent=2))
+    if args.max_palette_instances is not None and palette_instances > args.max_palette_instances:
+        raise SystemExit(f"DefaultPalette initialization still duplicated: {palette_instances} instances")
 
 
 if __name__ == "__main__":

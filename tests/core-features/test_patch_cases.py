@@ -18,6 +18,10 @@ SERIES_PATH = ROOT / "patches" / "core" / "series.json"
 # Keeping cases mapped to patch files makes dropped or weakened patches visible
 # in the normal unittest discovery run.
 PATCH_CASES: dict[str, tuple[str, ...]] = {
+    "019-xls-share-default-palette.patch": (
+        "extern const std::wstring DefaultPalette[64];",
+        "const std::wstring DefaultPalette[64] = {",
+    ),
     "003-word-distributed-jc.patch": (
         "align_Distribute = 4",
         "case SimpleTypes::jcDistribute",
