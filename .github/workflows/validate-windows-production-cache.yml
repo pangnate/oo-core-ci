@@ -9,6 +9,10 @@ on:
       - 'tests/core-features/test_windows_compiler_cache.py'
   workflow_dispatch:
     inputs:
+      rebuild_core:
+        description: Force compilation instead of testing verified binary reuse
+        type: boolean
+        default: false
       run_linux:
         description: Also validate Linux amd64 and arm64
         type: boolean
@@ -117,7 +121,7 @@ jobs:
     needs: seed
     uses: ./.github/workflows/x2t-windows.yml
     with:
-      rebuild_core: true
+      rebuild_core: ${{ github.event_name == 'workflow_dispatch' && inputs.rebuild_core }}
   linux:
     # Push repairs validate Windows without duplicating already-running Linux builds.
     if: github.event_name == 'workflow_dispatch' && inputs.run_linux
@@ -128,4 +132,27 @@ jobs:
     uses: ./.github/workflows/x2t-linux.yml
     with:
       arch: ${{ matrix.arch }}
-      rebuild_core: true
+      rebuild_core: ${{ github.event_name == 'workflow_dispatch' && inputs.rebuild_core }}
+  require-windows-binary-reuse:
+    needs: windows
+    if: github.event_name != 'workflow_dispatch' || !inputs.rebuild_core
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-windows-build-diagnostics
+          path: diagnostics
+      - name: Require actual verified binary reuse from this run
+        shell: python
+        run: |
+          import json, os
+          from pathlib import Path
+          paths = list(Path('diagnostics').rglob('core-reuse-win_64.json'))
+          assert len(paths) == 1, 'Expected exactly one Core reuse receipt'
+          reuse = json.loads(paths[0].read_text())
+          assert reuse['reused'] is True, 'Binary reuse validation unexpectedly compiled Core'
+          assert reuse['platform'] == 'win_64', 'Wrong reuse platform'
+          assert reuse['sourceSha'] == os.environ['GITHUB_SHA'], 'Receipt is not from this validation source'
+          assert reuse['coreId'] and reuse['producerSourceSha'], 'Missing original producer identity'
+          assert str(reuse['producerRunId']) != os.environ['GITHUB_RUN_ID'], 'Expected a previous verified producer'
+          print(json.dumps(reuse, indent=2))

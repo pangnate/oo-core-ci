@@ -226,6 +226,18 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('arch: [amd64, arm64]',wrapper)
         self.assertIn('uses: ./.github/workflows/x2t-linux.yml',wrapper)
 
+    def test_validation_wrapper_distinguishes_forced_and_binary_reuse(self):
+        wrapper=(ROOT/'.github/workflows/validate-windows-production-cache.yml').read_text()
+        flag="rebuild_core: ${{ github.event_name == 'workflow_dispatch' && inputs.rebuild_core }}"
+        self.assertEqual(wrapper.count(flag),2)
+        self.assertIn('default: false',wrapper)
+        self.assertIn('if: github.event_name != \'workflow_dispatch\' || !inputs.rebuild_core',wrapper)
+        self.assertIn('needs: windows',wrapper)
+        self.assertIn("assert reuse['reused'] is True",wrapper)
+        self.assertIn("assert reuse['sourceSha'] == os.environ['GITHUB_SHA']",wrapper)
+        self.assertIn("assert str(reuse['producerRunId']) != os.environ['GITHUB_RUN_ID']",wrapper)
+        self.assertIn('name: x2t-windows-build-diagnostics',wrapper)
+
     def test_snapshot_steps_are_skipped_for_binary_hit(self):
         text=(ROOT/'.github/workflows/x2t-windows.yml').read_text()
         names={'Configure compatible compiler snapshot','Restore compatible compiler snapshot',

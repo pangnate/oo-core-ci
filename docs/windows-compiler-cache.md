@@ -29,3 +29,20 @@ Subsequent experimental-branch pushes validate Windows only, avoiding duplicate
 Linux builds. Manual validation defaults `run_linux` to true for both Linux
 architectures. Validation concurrency is per commit so a Windows repair does not
 wait for an unrelated in-progress Linux build.
+
+## Validation modes
+
+The experimental-branch push now selects `rebuild_core: false` and validates only
+Windows. Publish this follow-up only after a forced rebuild has passed all stages
+and saved its verified binary cache. A final wrapper job requires this run's
+`core-reuse-win_64.json` to report `reused: true`, the current source SHA, and the
+original previous-run producer. A cache miss that silently recompiles is therefore
+not counted as successful binary-reuse validation. The normal reusable workflow
+still performs its unchanged producer, hash, smoke and packaging checks.
+
+Manual validation exposes `rebuild_core` (default false) and `run_linux` (default
+true). Set `rebuild_core: true` to exercise compiler snapshots and a real forced
+build; false tests the verified binary fast path. The selected rebuild flag is
+passed to Windows and any requested Linux jobs. Push never forces compilation and
+never starts duplicate Linux validation jobs. Linux validation results from the
+already-running forced builds must still pass before merging.
