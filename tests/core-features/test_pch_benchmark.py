@@ -1,5 +1,7 @@
 """Regression checks for opt-in PCH configuration and honest benchmark reporting."""
 import copy
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -103,6 +105,61 @@ class EvidenceTests(unittest.TestCase):
             self.check(mode='default')
 
 
+
+class FreshObjectTests(unittest.TestCase):
+    PREFIX_SOURCE = ("//\n// Prefix header for all source files of the 'TestDocs3' target in the 'TestDocs3' project\n"
+                     "//\n\n#ifdef __OBJC__\n    #import <Foundation/Foundation.h>\n    #import <UIKit/UIKit.h>\n#endif\n")
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name) / 'core'
+        self.root.mkdir()
+
+    def write(self, relative, content=b'compiled fixture'):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        return path
+
+    def test_empty_core_is_fresh(self):
+        self.assertEqual(report.fresh_object_evidence(self.root)['status'], 'passed')
+
+    def test_missing_core_is_not_fresh(self):
+        with self.assertRaises(ValueError):
+            report.fresh_object_evidence(self.root / 'missing')
+
+    def test_locked_ios_prefix_source_accepts_lf_and_crlf(self):
+        relative = next(iter(report.SOURCE_PCH))
+        for source in (self.PREFIX_SOURCE, self.PREFIX_SOURCE.replace('\n', '\r\n')):
+            self.write(relative, source.encode())
+            result = report.fresh_object_evidence(self.root)
+            self.assertEqual(result['status'], 'passed')
+            self.assertEqual(len(result['allowedSourceHeaders']), 1)
+            self.assertEqual(result['allowedSourceHeaders'][0]['gitBlobSha'], report.SOURCE_PCH[relative])
+
+    def test_changed_allowed_source_is_rejected(self):
+        relative = next(iter(report.SOURCE_PCH))
+        self.write(relative, (self.PREFIX_SOURCE + '// changed\n').encode())
+        self.assertEqual(report.fresh_object_evidence(self.root)['unexpectedObjectOrPchFiles'], [relative])
+
+    def test_other_source_pch_is_not_blanket_exempted(self):
+        self.write('Test/other.pch', self.PREFIX_SOURCE.encode())
+        self.assertEqual(report.fresh_object_evidence(self.root)['status'], 'failed')
+
+    def test_compiled_objects_anywhere_are_rejected_and_preserved(self):
+        obj = self.write('OOXML/Release/source.OBJ')
+        pch = self.write('Common/build/header.pch')
+        with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(ValueError, 'source.OBJ'):
+            report.check_fresh(self.root, self.root.parent / 'freshness.json')
+        evidence = json.loads((self.root.parent / 'freshness.json').read_text())
+        self.assertEqual(evidence['status'], 'failed')
+        self.assertEqual(set(evidence['unexpectedObjectOrPchFiles']),
+                         {'OOXML/Release/source.OBJ', 'Common/build/header.pch'})
+        self.assertTrue(obj.exists())
+        self.assertTrue(pch.exists())
+
+
 class ComparisonTests(unittest.TestCase):
     def setUp(self):
         self.records = []
@@ -141,6 +198,8 @@ class ComparisonTests(unittest.TestCase):
         self.assertNotIn('SCCACHE_IGNORE_SERVER_IO_ERROR', job)
         self.assertNotIn('Restore verified Core cache', job)
         self.assertLess(job.index('Assert fresh Core object outputs'), job.index('Restore verified dependency handoff'))
+        self.assertIn('pch_benchmark_report.py check-fresh', job)
+        self.assertIn('dist/pch-freshness.json', job)
         self.assertIn('--stop-server', job)
         self.assertIn('disable_annotations: true', job)
         self.assertIn('${{ inputs.mode }}-${{ inputs.phase }}-${{ github.run_attempt }}', job)

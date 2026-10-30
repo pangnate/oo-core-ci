@@ -61,11 +61,7 @@ jobs:
         shell: cmd
         run: scripts\windows_build.cmd prepare
       - name: Assert fresh Core object outputs before restoring dependencies
-        shell: pwsh
-        run: |
-          # Dependency archives may legitimately contain third-party build objects.
-          $objects = @(Get-ChildItem core -Recurse -File -Include *.obj,*.pch -ErrorAction Stop)
-          if ($objects.Count -ne 0) { throw "Fresh checkout contains $($objects.Count) object/PCH files" }
+        run: python scripts/pch_benchmark_report.py check-fresh --core-root core --report dist/pch-freshness.json
       - uses: actions/download-artifact@v4
         with:
           name: pch-benchmark-deps-${{ github.run_attempt }}
@@ -129,6 +125,7 @@ jobs:
             dist/core-inputs-win_64.json
             dist/core-producer-win_64.json
             dist/pch-benchmark-result.json
+            dist/pch-freshness.json
             dist/windows-size-report.json
             vendor/work/x2t-baseline-smoke-receipt.json
           if-no-files-found: warn

@@ -2,6 +2,7 @@
 """Validate isolated PCH cold/warm evidence; never infer speedups from failed jobs."""
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -55,6 +56,45 @@ def validate(metrics: dict, raw: dict, smoke: dict, log: str, mode: str, phase: 
             'cacheableHitPercent': round(100 * hits / (hits + misses), 2) if hits + misses else 0,
             'pchCommandCount': pch_commands, 'pchRejections': pch_rejections,
             'compilerCacheVersion': raw.get('version'), 'cacheLocation': raw.get('cache_location')}
+
+
+
+# This is an Objective-C prefix-header source, not a compiled MSVC PCH.
+# Pin its Git blob identity rather than exempting all tracked files or test trees.
+SOURCE_PCH = {
+    'Test/Applications/iosTest/TestDocs3/TestDocs3_Prefix.pch':
+        'b6a1f78b1f0b80e7c9216d885c77047b0bd62701',
+}
+
+
+def fresh_object_evidence(core: Path) -> dict:
+    if not core.is_dir():
+        raise ValueError(f'Core source directory is missing: {core}')
+    allowed, unexpected = [], []
+    for path in sorted(core.rglob('*')):
+        if path.suffix.lower() not in ('.obj', '.pch') or not path.is_file():
+            continue
+        relative = path.relative_to(core).as_posix()
+        if relative in SOURCE_PCH and not path.is_symlink():
+            # Windows text checkout may use CRLF; Git stores this source as LF.
+            content = path.read_bytes().replace(b'\r\n', b'\n')
+            blob = hashlib.sha1(b'blob ' + str(len(content)).encode('ascii') + b'\0' + content).hexdigest()
+            if blob == SOURCE_PCH[relative]:
+                allowed.append({'path': relative, 'gitBlobSha': blob, 'kind': 'source-prefix-header'})
+                continue
+        unexpected.append(relative)
+    return {'status': 'passed' if not unexpected else 'failed',
+            'allowedSourceHeaders': allowed, 'unexpectedObjectOrPchFiles': unexpected}
+
+
+def check_fresh(core: Path, receipt: Path) -> None:
+    evidence = fresh_object_evidence(core)
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    receipt.write_text(json.dumps(evidence, indent=2) + '\n', encoding='utf-8')
+    print(json.dumps(evidence, indent=2))
+    if evidence['status'] != 'passed':
+        raise ValueError('Fresh Core contains unexpected object/PCH files: '
+                         + ', '.join(evidence['unexpectedObjectOrPchFiles']))
 
 
 def record(mode: str, phase: str) -> None:
@@ -127,13 +167,18 @@ def compare(root: Path) -> None:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
+    fresh = sub.add_parser('check-fresh')
+    fresh.add_argument('--core-root', type=Path, required=True)
+    fresh.add_argument('--report', type=Path, required=True)
     rec = sub.add_parser('record')
     rec.add_argument('--mode', choices=MODES, required=True)
     rec.add_argument('--phase', choices=PHASES, required=True)
     comp = sub.add_parser('compare')
     comp.add_argument('--root', type=Path, required=True)
     args = parser.parse_args()
-    if args.command == 'record':
+    if args.command == 'check-fresh':
+        check_fresh(args.core_root, args.report)
+    elif args.command == 'record':
         record(args.mode, args.phase)
     else:
         compare(args.root)
