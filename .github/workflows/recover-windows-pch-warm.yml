@@ -1,9 +1,4 @@
-name: Probe Windows disk cache migration
-on:
-  push:
-    branches: ['experiment/windows-pch-cache-20261030']
-    paths: ['.github/workflows/recover-windows-pch-warm.yml']
-  workflow_dispatch:
+name: Verify Windows disk compiler cache migration
 permissions:
   contents: read
   actions: read
@@ -11,388 +6,699 @@ concurrency:
   group: pch-warm-recovery-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  benchmark:
-    strategy:
-      fail-fast: false
-      matrix:
-        mode: [disabled]
+  migrate:
+    outputs:
+      cache-key: ${{ steps.archive-key.outputs.key }}
+      inventory-name: ${{ steps.archive-key.outputs.inventory }}
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       X2T_CLEAN: '0'
-      X2T_PCH_MODE: ${{ matrix.mode }}
+      X2T_PCH_MODE: disabled
       X2T_DEPS_ID: c2d3619ecc9affe364f956f5d01e3c1bff6341992f3e35f7749d72850a2f7bba
       X2T_BENCHMARK_PHASE: warm
+      SCCACHE_LOG: off,sccache::server=debug
+      SCCACHE_CACHE_SIZE: 8G
+      SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY: all
+      X2T_DISK_CACHE_KEY: x2t-disk-v1-${{ github.run_id }}-${{ github.run_attempt }}
+      X2T_DISK_PHASE: migration
       SCCACHE_GHA_ENABLED: 'true'
-      # Server-only logging: do not enable global or HTTP/client trace.
-      SCCACHE_LOG: 'off,sccache::server=debug'
-      # Reuse only this mode's verified original cold namespace; this is a recovery observation.
-      SCCACHE_GHA_VERSION: pch-bench-40988417135-1-${{ matrix.mode }}
+      SCCACHE_GHA_RW_MODE: READ_ONLY
+      SCCACHE_GHA_VERSION: pch-bench-40988417135-1-disabled
+      SCCACHE_MULTILEVEL_CHAIN: disk,gha
     steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-          ref: a3affdf323cb4c6b1d49a65297842d9bdc930a70
-          persist-credentials: false
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Verify source and record recovery provenance
-        shell: pwsh
-        run: |
-          $actual = (git rev-parse HEAD).Trim()
-          if ($LASTEXITCODE -or $actual -ne 'a3affdf323cb4c6b1d49a65297842d9bdc930a70') { throw 'Unexpected source checkout' }
-          New-Item -ItemType Directory -Force dist | Out-Null
-          @{
-            actualSourceSha = $actual
-            originalRunId = '40988417135'
-            originalRunAttempt = '1'
-            recoveryRunId = $env:GITHUB_RUN_ID
-            recoveryRunAttempt = $env:GITHUB_RUN_ATTEMPT
-            recoveryWorkflowSha = $env:GITHUB_SHA
-            cacheNamespace = $env:SCCACHE_GHA_VERSION
-            mode = $env:X2T_PCH_MODE
-            workspace = $env:GITHUB_WORKSPACE
-            quality = 'Original cold had one cache write error; this is recovery evidence, not a clean four-trial benchmark.'
-            sourceShaFieldNote = 'Unmodified original scripts record GITHUB_SHA in sourceSha. In this recovery that is the workflow event SHA; actualSourceSha above identifies compiled checkout.'
-          } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 dist/pch-recovery-provenance.json
-      - name: Verify and patch locked Core
-        shell: pwsh
-        run: |
-          python scripts/verify_vendor.py --platform windows
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python scripts/verify_core_source.py
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python scripts/apply_core_patches.py
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          python scripts/apply_core_overlays.py
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Locate VS2022 and v142
-        shell: pwsh
-        run: ./scripts/ci_vs_env.ps1
-      - name: Check dependency compiler
-        shell: pwsh
-        env:
-          EXPECTED_COMPILER: msvc-14.29.30133
-        run: |
-          if ($env:X2T_COMPILER_VERSION -ne $env:EXPECTED_COMPILER) { throw 'Dependency compiler mismatch' }
-      - name: Identify Core inputs
-        run: python scripts/ci_core_cache.py key --platform win_64
-      - name: Prepare toolchain in fresh checkout
-        shell: cmd
-        run: scripts\windows_build.cmd prepare
-      - name: Assert fresh Core object outputs before restoring dependencies
-        run: python scripts/pch_benchmark_report.py check-fresh --core-root core --report dist/pch-freshness.json
-      - uses: actions/download-artifact@v4
-        with:
-          name: pch-benchmark-deps-1
-          path: dist/incoming-deps
-          run-id: 40988417135
-          github-token: ${{ github.token }}
-      - name: Restore verified dependency handoff
-        run: python scripts/ci_handoff.py restore --archive dist/incoming-deps/deps-win_64.tar --stage deps --platform win_64 --source-sha "c2d3619ecc9affe364f956f5d01e3c1bff6341992f3e35f7749d72850a2f7bba"
-      - name: Set private compiler diagnostic path before daemon startup
-        shell: pwsh
-        run: |
-          $privateLog = Join-Path $env:RUNNER_TEMP 'sccache-server-private.log'
-          "SCCACHE_ERROR_LOG=$privateLog" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-      - uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c
-        with:
-          version: v0.18.0
-          disable_annotations: true
-      - name: Configure bounded compiler cache
-        run: python scripts/setup_build_acceleration.py
-      - name: Verify comparable parallelism
-        shell: pwsh
-        run: |
-          if ($env:X2T_BUILD_JOBS -ne '4') { throw 'Recovery requires the original four compile jobs' }
-      - name: Write targeted cache probe
-        shell: pwsh
-        run: |
-          @'
-          import hashlib
-          import json
-          import os
-          from pathlib import Path
-          import subprocess
-          import time
-          
-          TARGETS = [{'name': 'Vsdx.cpp', 'cwd': 'core/OOXML/Projects/Linux/DocxFormatLib', 'source': 'core/OOXML/VsdxFormat/Vsdx.cpp', 'arguments': ['cl', '-c', '-nologo', '-Zc:wchar_t', '-FS', '-Zc:rvalueCast', '-Zc:inline', '-Zc:strictStrings', '-Zc:throwingNew', '-Zc:referenceBinding', '-Zc:__cplusplus', '/Zc:strictStrings-', '/bigobj', '-O2', '-MD', '/Zc:strictStrings-', '-w', '-EHsc', '-DUNICODE', '-D_UNICODE', '-DWIN32', '-D_ENABLE_EXTENDED_ALIGNED_STORAGE', '-DWIN64', '-DINTVER=1.0.0.3', '-DWIN_INTVER=1,0,0,3', '-DCOPYRIGHT_YEAR=2026', '-DWIN32', '-D_WIN32', '-DNOMINMAX', '-DWIN64', '-D_WIN64', '-DWINDOWS_IGNORE_PACKING_MISMATCH', '-DCRYPTOPP_DISABLE_ASM', '-DUNICODE', '-D_UNICODE', '-DDONT_WRITE_EMBEDDED_FONTS', '-DCRYPTOPP_DISABLE_ASM', '-DBOOST_USE_WINDOWS_H', '-DBOOST_WINAPI_NO_REDECLARATIONS', '-DNDEBUG', '-DQT_NO_DEBUG', '-I.', '-I..\\..\\..\\..\\Common\\3dParty\\boost\\build\\win_64\\include', '-ID:\\a\\oo-core-ci\\oo-core-ci\\vendor\\work\\qt-win\\Qt-5.15.2\\msvc2019_64\\mkspecs\\win32-msvc', '-Focore_build\\win_64\\release\\obj\\a\\oo-core-ci\\oo-core-ci\\core\\OOXML\\VsdxFormat\\Vsdx.obj', '..\\..\\..\\VsdxFormat\\Vsdx.cpp']}, {'name': 'Window1.cpp', 'cwd': 'core/MsBinaryFile/Projects/XlsFormatLib/Linux', 'source': 'core/MsBinaryFile/XlsFile/Format/Logic/Biff_records/Window1.cpp', 'arguments': ['cl', '-c', '-nologo', '-Zc:wchar_t', '-FS', '-Zc:rvalueCast', '-Zc:inline', '-Zc:strictStrings', '-Zc:throwingNew', '-Zc:referenceBinding', '-Zc:__cplusplus', '/Zc:strictStrings-', '/bigobj', '-O2', '-MD', '/Zc:strictStrings-', '-w', '-EHsc', '-DUNICODE', '-D_UNICODE', '-DWIN32', '-D_ENABLE_EXTENDED_ALIGNED_STORAGE', '-DWIN64', '-DINTVER=1.0.0.3', '-DWIN_INTVER=1,0,0,3', '-DCOPYRIGHT_YEAR=2026', '-DWIN32', '-D_WIN32', '-DNOMINMAX', '-DWIN64', '-D_WIN64', '-DWINDOWS_IGNORE_PACKING_MISMATCH', '-DCRYPTOPP_DISABLE_ASM', '-DBOOST_USE_WINDOWS_H', '-DBOOST_WINAPI_NO_REDECLARATIONS', '-DUNICODE', '-D_UNICODE', '-DDONT_WRITE_EMBEDDED_FONTS', '-DNDEBUG', '-DQT_NO_DEBUG', '-I.', '-I..\\..\\..\\..\\Common\\3dParty\\boost\\build\\win_64\\include', '-I..\\..\\..\\XlsFile\\Format', '-I..\\..\\..\\Common', '-I..\\..\\..\\..\\OOXML\\XlsbFormat', '-ID:\\a\\oo-core-ci\\oo-core-ci\\vendor\\work\\qt-win\\Qt-5.15.2\\msvc2019_64\\mkspecs\\win32-msvc', '-Focore_build\\win_64\\release\\obj\\a\\oo-core-ci\\oo-core-ci\\core\\MsBinaryFile\\XlsFile\\Format\\Logic\\Biff_records\\Window1.obj', '..\\..\\..\\XlsFile\\Format\\Logic\\Biff_records\\Window1.cpp']}, {'name': 'VisioPages.cpp', 'cwd': 'core/OOXML/Projects/Linux/DocxFormatLib', 'source': 'core/OOXML/VsdxFormat/VisioPages.cpp', 'arguments': ['cl', '-c', '-nologo', '-Zc:wchar_t', '-FS', '-Zc:rvalueCast', '-Zc:inline', '-Zc:strictStrings', '-Zc:throwingNew', '-Zc:referenceBinding', '-Zc:__cplusplus', '/Zc:strictStrings-', '/bigobj', '-O2', '-MD', '/Zc:strictStrings-', '-w', '-EHsc', '-DUNICODE', '-D_UNICODE', '-DWIN32', '-D_ENABLE_EXTENDED_ALIGNED_STORAGE', '-DWIN64', '-DINTVER=1.0.0.3', '-DWIN_INTVER=1,0,0,3', '-DCOPYRIGHT_YEAR=2026', '-DWIN32', '-D_WIN32', '-DNOMINMAX', '-DWIN64', '-D_WIN64', '-DWINDOWS_IGNORE_PACKING_MISMATCH', '-DCRYPTOPP_DISABLE_ASM', '-DUNICODE', '-D_UNICODE', '-DDONT_WRITE_EMBEDDED_FONTS', '-DCRYPTOPP_DISABLE_ASM', '-DBOOST_USE_WINDOWS_H', '-DBOOST_WINAPI_NO_REDECLARATIONS', '-DNDEBUG', '-DQT_NO_DEBUG', '-I.', '-I..\\..\\..\\..\\Common\\3dParty\\boost\\build\\win_64\\include', '-ID:\\a\\oo-core-ci\\oo-core-ci\\vendor\\work\\qt-win\\Qt-5.15.2\\msvc2019_64\\mkspecs\\win32-msvc', '-Focore_build\\win_64\\release\\obj\\a\\oo-core-ci\\oo-core-ci\\core\\OOXML\\VsdxFormat\\VisioPages.obj', '..\\..\\..\\VsdxFormat\\VisioPages.cpp']}]
-          ROOT = Path.cwd().resolve()
-          SCCACHE = os.environ["X2T_SCCACHE"]
-          REPORT_PATH = ROOT / "dist/sccache-targeted-probe.json"
-          REPORT_PATH.parent.mkdir(exist_ok=True)
-          NAMESPACE = os.environ["SCCACHE_GHA_VERSION"]
-          DISK = Path(os.environ["RUNNER_TEMP"]) / "pch-targeted-disk-cache"
-          if DISK.exists():
-              raise RuntimeError("Targeted disk cache must start empty")
-          DISK.mkdir()
-          report = {"schemaVersion": 1, "scope": "Three C++ translation units only; not a full X2T build or smoke test",
-                    "namespace": os.environ["SCCACHE_GHA_VERSION"], "phases": [], "success": False}
-          
-          
-          def cache_command(*args):
-              p = subprocess.run([SCCACHE, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-              if p.returncode:
-                  raise RuntimeError("sccache control command failed: " + args[0])
-              return p.stdout
-          
-          
-          def count(value):
-              return sum(value.get("counts", {}).values()) if isinstance(value, dict) else int(value)
-          
-          
-          def statistics():
-              # Restrict export to numeric counters, not backend response text or URLs.
-              value = json.loads(cache_command("--show-stats", "--stats-format", "json"))["stats"]
-              return {key: count(value.get(key, 0)) for key in (
-                  "compile_requests", "cache_hits", "cache_misses", "cache_writes", "cache_write_errors",
-                  "cache_read_errors", "cache_errors", "cache_timeouts", "compile_fails",
-                  "requests_not_cacheable", "requests_unsupported_compiler",
-              )}
-          
-          
-          def level_statistics():
-              value = json.loads(cache_command("--show-stats", "--stats-format", "json"))["stats"]
-              return [{"level": index, **{key: int(level.get(key, 0)) for key in (
-                  "hits", "misses", "writes", "write_failures", "backfills_from", "backfills_to"
-              )}} for index,level in enumerate(value.get("multi_level") or [])]
-          
-          
-          def server_running():
-              processes = subprocess.run(["tasklist", "/FI", "IMAGENAME eq sccache.exe", "/FO", "CSV", "/NH"],
-                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-              if processes.returncode:
-                  raise RuntimeError("Could not inspect sccache daemon state")
-              return any(line.strip().lower().startswith('"sccache.exe",') for line in processes.stdout.splitlines())
-          
-          
-          def wait_server_exit():
-              deadline = time.monotonic() + 90
-              while server_running():
-                  if time.monotonic() >= deadline:
-                      raise RuntimeError("Timed out waiting for sccache daemon exit")
-                  time.sleep(1)
-          
-          
-          def configure(phase):
-              # Installation need not start a daemon. Only the initial absent state is valid.
-              # Later switches must stop the daemon that this probe explicitly started.
-              if phase != "original" or server_running():
-                  cache_command("--stop-server")
-                  wait_server_exit()
-              os.environ.pop("SCCACHE_C_CUSTOM_CACHE_BUSTER", None)
-              os.environ["SCCACHE_DIR"] = str(DISK)
-              os.environ["SCCACHE_CACHE_SIZE"] = "2G"
-              os.environ["SCCACHE_LOCAL_RW_MODE"] = "READ_WRITE"
-              os.environ.pop("SCCACHE_MULTILEVEL_CHAIN", None)
-              os.environ.pop("SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY", None)
-              if phase == "original":
-                  os.environ["SCCACHE_GHA_ENABLED"] = "true"
-                  os.environ["SCCACHE_GHA_VERSION"] = NAMESPACE
-                  os.environ["SCCACHE_GHA_RW_MODE"] = "READ_WRITE"
-              elif phase == "disk_migration":
-                  os.environ["SCCACHE_GHA_ENABLED"] = "true"
-                  os.environ["SCCACHE_GHA_VERSION"] = NAMESPACE
-                  os.environ["SCCACHE_GHA_RW_MODE"] = "READ_ONLY"
-                  os.environ["SCCACHE_MULTILEVEL_CHAIN"] = "disk,gha"
-                  os.environ["SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY"] = "all"
-              else:
-                  # VERSION itself enables GHA even if ENABLED is false; remove both selectors.
-                  os.environ.pop("SCCACHE_GHA_VERSION", None)
-                  os.environ["SCCACHE_GHA_ENABLED"] = "false"
-                  os.environ.pop("SCCACHE_GHA_RW_MODE", None)
-              cache_command("--start-server")
-              info = json.loads(cache_command("--show-stats", "--stats-format", "json"))
-              location = info.get("cache_location", "").lower()
-              if phase == "disk_warm" and "local disk" not in location:
-                  raise RuntimeError("Disk-only backend verification failed")
-              return {"ghaEnabled": os.environ["SCCACHE_GHA_ENABLED"],
-                      "chain": os.environ.get("SCCACHE_MULTILEVEL_CHAIN", "single"),
-                      "ghaMode": os.environ.get("SCCACHE_GHA_RW_MODE"),
-                      "writeErrorPolicy": os.environ.get("SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY"),
-                      "diskOnlyVerified": phase == "disk_warm" and "local disk" in location}
-          
-          
-          def flush_stats():
-              # A compiler response can precede its async cache write. Do not reset early.
-              deadline = time.monotonic() + 90
-              while True:
-                  value = statistics()
-                  if value["cache_writes"] + value["cache_write_errors"] >= value["cache_misses"]:
-                      return value
-                  if time.monotonic() >= deadline:
-                      raise RuntimeError("Timed out waiting for cache write accounting")
-                  time.sleep(1)
-          
-          
-          def save():
-              REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
-          
-          
-          try:
-              for phase in ("original", "disk_migration", "disk_warm"):
-                  backend = configure(phase)
-                  cache_command("--zero-stats")
-                  result = {"name": phase, "objects": [], "backend": backend}
-                  report["phases"].append(result)
-                  for target in TARGETS:
-                      cwd = (ROOT / target["cwd"]).resolve()
-                      source = (ROOT / target["source"]).resolve()
-                      args = target["arguments"]
-                      if (cwd / args[-1]).resolve() != source or not source.is_file():
-                          raise RuntimeError("Source path validation failed: " + target["name"])
-                      output_arg = next(arg[3:] for arg in args if arg.startswith("-Fo"))
-                      output = (cwd / output_arg).resolve()
-                      if not output.is_relative_to(cwd):
-                          raise RuntimeError("Output path escaped its project")
-                      output.parent.mkdir(parents=True, exist_ok=True)
-                      output.unlink(missing_ok=True)
-                      env = os.environ.copy()
-                      env.pop("SCCACHE_C_CUSTOM_CACHE_BUSTER", None)
-                      before = statistics()
-                      started = time.monotonic()
-                      process = subprocess.run([SCCACHE, *args], cwd=cwd, env=env)
-                      obj = {"source": target["source"], "sourceSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
-                             "compileReturnCode": process.returncode, "seconds": round(time.monotonic()-started,3)}
-                      result["objects"].append(obj)
-                      if process.returncode != 0 or not output.is_file():
-                          save()
-                          raise RuntimeError("Target compile failed: " + target["name"])
-                      obj["objectSize"] = output.stat().st_size
-                      obj["objectSha256"] = hashlib.sha256(output.read_bytes()).hexdigest()
-                      after = flush_stats()
-                      obj["statsDelta"] = {key: after[key] - before[key] for key in after}
-                      save()
-                  result["stats"] = flush_stats()
-                  if phase == "disk_migration":
-                      # Healthy L1 hits backfill asynchronously; wait before shutting down.
-                      deadline = time.monotonic() + 90
-                      while True:
-                          levels = level_statistics()
-                          if (len(levels) == 2 and levels[0]["backfills_to"] >= 1
-                                  and levels[0]["backfills_to"] == levels[1]["backfills_from"]):
-                              break
-                          if time.monotonic() >= deadline:
-                              raise RuntimeError("Healthy GHA object was not backfilled to disk")
-                          time.sleep(1)
-                      if any(level["write_failures"] for level in levels) or levels[1]["writes"] != 0:
-                          raise RuntimeError("Migration backend had a write failure or wrote to read-only GHA")
-                      result["levels"] = levels
-                  save()
-              cold, warm = report["phases"][1:]
-              for result in (cold, warm):
-                  stats = result["stats"]
-                  if stats["compile_requests"] != 3 or any(stats[key] for key in (
-                      "cache_write_errors", "cache_read_errors", "cache_errors", "cache_timeouts",
-                      "compile_fails", "requests_not_cacheable", "requests_unsupported_compiler")):
-                      raise RuntimeError("Migrated probe cache quality failed: " + result["name"])
-              if cold["stats"]["cache_misses"] != 2 or cold["stats"]["cache_writes"] != 2 or cold["stats"]["cache_hits"] != 1:
-                  raise RuntimeError("Expected two disk writes and one healthy GHA hit")
-              if warm["stats"]["cache_hits"] != 3 or warm["stats"]["cache_misses"] != 0:
-                  raise RuntimeError("Expected three disk-only cache hits")
-              if any(level["write_failures"] for level in cold["levels"]) or cold["levels"][1]["writes"] != 0:
-                  raise RuntimeError("Read-only GHA migration wrote remotely or had write failures")
-              for a,b in zip(cold["objects"],warm["objects"]):
-                  if a["sourceSha256"] != b["sourceSha256"] or a["objectSha256"] != b["objectSha256"]:
-                      raise RuntimeError("Disk hit did not restore the identical object")
-              report["success"] = True
-          finally:
-              save()
-              print(json.dumps(report, indent=2))
-          '@ | Set-Content -Encoding utf8 "$env:RUNNER_TEMP/pch_target_probe.py"
-      - name: Probe original keys and disk migration
-        id: compile
-        shell: cmd
-        timeout-minutes: 12
-        run: |
-          call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
-          if errorlevel 1 exit /b 1
-          python "%RUNNER_TEMP%\pch_target_probe.py"
-      - name: Flush compiler cache
-        if: always() && steps.compile.outcome != 'skipped'
-        shell: pwsh
-        run: |
-          $running = Get-Process -Name sccache -ErrorAction SilentlyContinue
-          if (!$running) { Write-Output 'No compiler cache daemon to stop'; exit 0 }
-          & $env:X2T_SCCACHE --stop-server
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $deadline = (Get-Date).AddSeconds(90)
-          while (Get-Process -Name sccache -ErrorAction SilentlyContinue) {
-            if ((Get-Date) -gt $deadline) { throw 'Compiler cache daemon did not exit' }
-            Start-Sleep -Seconds 1
-          }
-      - name: Extract safe cache-write diagnostics
-        if: always() && steps.compile.outcome != 'skipped'
-        shell: pwsh
-        run: |
-          @'
-          import json
-          import os
-          import re
-          from pathlib import Path
-          
-          # Deliberately export only public source basenames and fixed enumerations.
-          # Never export raw error lines, URLs, headers, response bodies or arbitrary keys.
-          def summarize(text, allowed_objects):
-              misses = []
-              errors = []
-              for line in text.splitlines():
-                  match = re.search(r"\[([^\[\]]+)\]: compile result: cache miss", line)
-                  if match:
-                      name = match.group(1).replace("\\", "/").rsplit("/", 1)[-1]
-                      misses.append(name if name in allowed_objects else "[unrecognized object]")
-                  if "Error executing cache write:" not in line:
-                      continue
-                  # Enum values are emitted from this literal list, never copied wholesale.
-                  kinds = [kind for kind in (
-                      "Unexpected", "Unsupported", "ConfigInvalid", "NotFound",
-                      "PermissionDenied", "IsADirectory", "NotADirectory", "AlreadyExists",
-                      "RateLimited", "IsSameFile", "ConditionNotMatch", "RangeNotSatisfied",
-                      "Timeout", "InvalidInput", "ContentIncomplete",
-                  ) if re.search(r"\b" + kind + r"\b", line)]
-                  statuses = sorted({int(value) for value in re.findall(
-                      r"(?i)\bstatus(?:_code| code)?\s*[:=]\s*(?:Some\()?([1-5][0-9]{2})\b", line
-                  )})
-                  operations = [op for op in ("write", "writer", "close", "upload", "reserve", "commit")
-                                if re.search(r"(?i)\b" + op + r"\b", line)]
-                  categories = [name for name, pattern in (
-                      ("already_exists", r"already exists|alreadyexists"),
-                      ("permission_denied", r"permission denied|permissiondenied|forbidden"),
-                      ("timeout", r"timed out|timeout"),
-                      ("rate_limited", r"rate.?limit|too many requests"),
-                      ("read_only", r"read.only"),
-                      ("serialization", r"zip|serializ"),
-                      ("connection", r"connection|network|dns"),
-                  ) if re.search(pattern, line, re.I)]
-                  errors.append({"kinds": kinds, "httpStatuses": statuses,
-                                 "operations": operations, "categories": categories,
-                                 "backend": "ghac" if re.search(r"\bghac\b", line) else "unknown"})
-              return {"schemaVersion": 1, "cacheMissObjects": misses,
-                      "cacheWriteErrorCount": len(errors), "cacheWriteErrors": errors,
-                      "privacy": "Allowlisted fields only; raw logs and arbitrary identifiers omitted."}
-          
-          raw = Path(os.environ["SCCACHE_ERROR_LOG"])
-          known = {p.stem + ".obj" for p in Path("core").rglob("*")
-                   if p.suffix.lower() in {".c", ".cc", ".cpp", ".cxx"}}
-          report = summarize(raw.read_text(encoding="utf-8", errors="replace") if raw.is_file() else "", known)
-          report["rawLogPresent"] = raw.is_file()
-          Path("dist").mkdir(exist_ok=True)
-          Path("dist/sccache-write-diagnostic.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-          print(json.dumps(report, indent=2))
-          # Only the safe report survives. Raw logs are not an upload input even if removal fails.
-          if raw.is_file():
-              raw.unlink()
-          '@ | python -
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Upload targeted probe evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pch-targeted-cache-probe-${{ github.run_attempt }}
-          path: |
-            dist/sccache-targeted-probe.json
-            dist/sccache-write-diagnostic.json
-            dist/pch-recovery-provenance.json
-          if-no-files-found: warn
-          retention-days: 14
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
+        ref: a3affdf323cb4c6b1d49a65297842d9bdc930a70
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Verify exact source and record cache backend provenance
+      shell: pwsh
+      run: |
+        $actual = (git rev-parse HEAD).Trim()
+        if ($LASTEXITCODE -or $actual -ne 'a3affdf323cb4c6b1d49a65297842d9bdc930a70') { throw 'Unexpected source checkout' }
+        New-Item -ItemType Directory -Force dist | Out-Null
+        @{
+          actualSourceSha = $actual
+          workflowSha = $env:GITHUB_SHA
+          runId = $env:GITHUB_RUN_ID
+          runAttempt = $env:GITHUB_RUN_ATTEMPT
+          phase = $env:X2T_DISK_PHASE
+          originalGhaNamespace = 'pch-bench-40988417135-1-disabled'
+          backendChain = $env:SCCACHE_MULTILEVEL_CHAIN
+          ghaMode = $env:SCCACHE_GHA_RW_MODE
+          strictWritePolicy = $env:SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY
+          mode = 'disabled'
+          cacheArchiveKey = $env:X2T_DISK_CACHE_KEY
+          sourceShaFieldNote = 'Original scripts record workflow GITHUB_SHA. actualSourceSha identifies the checked-out compiled source.'
+        } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 dist/disk-cache-provenance.json
+    - name: Verify and patch locked Core
+      shell: pwsh
+      run: |
+        python scripts/verify_vendor.py --platform windows
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        python scripts/verify_core_source.py
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        python scripts/apply_core_patches.py
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        python scripts/apply_core_overlays.py
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Locate VS2022 and v142
+      shell: pwsh
+      run: ./scripts/ci_vs_env.ps1
+    - name: Check dependency compiler
+      shell: pwsh
+      env:
+        EXPECTED_COMPILER: msvc-14.29.30133
+      run: |
+        if ($env:X2T_COMPILER_VERSION -ne $env:EXPECTED_COMPILER) { throw 'Dependency compiler mismatch' }
+    - name: Identify Core inputs
+      run: python scripts/ci_core_cache.py key --platform win_64
+    - name: Prepare toolchain in fresh checkout
+      shell: cmd
+      run: scripts\windows_build.cmd prepare
+    - name: Assert fresh Core object outputs before restoring dependencies
+      run: python scripts/pch_benchmark_report.py check-fresh --core-root core --report dist/pch-freshness.json
+    - uses: actions/download-artifact@v4
+      with:
+        name: pch-benchmark-deps-1
+        path: dist/incoming-deps
+        run-id: 40988417135
+        github-token: ${{ github.token }}
+    - name: Restore verified dependency handoff
+      run: python scripts/ci_handoff.py restore --archive dist/incoming-deps/deps-win_64.tar --stage deps --platform win_64 --source-sha "c2d3619ecc9affe364f956f5d01e3c1bff6341992f3e35f7749d72850a2f7bba"
+    - name: Set isolated cache paths before daemon startup
+      shell: pwsh
+      run: |
+        $cacheDir = Join-Path $env:RUNNER_TEMP 'x2t-sccache-disk'
+        $privateLog = Join-Path $env:RUNNER_TEMP 'sccache-server-private.log'
+        if (Test-Path $cacheDir) { throw 'Expected fresh disk-cache directory' }
+        New-Item -ItemType Directory -Force $cacheDir | Out-Null
+        "SCCACHE_DIR=$cacheDir" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+        "SCCACHE_ERROR_LOG=$privateLog" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+    - name: Expose exact migration archive identity
+      shell: pwsh
+      run: |
+        "key=$env:X2T_DISK_CACHE_KEY" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "inventory=disk-cache-inventory-$env:GITHUB_RUN_ATTEMPT" | Out-File $env:GITHUB_OUTPUT -Append -Encoding utf8
+      id: archive-key
+    - uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c
+      with:
+        version: v0.18.0
+        disable_annotations: true
+    - name: Configure bounded compiler cache
+      run: python scripts/setup_build_acceleration.py
+    - name: Verify comparable parallelism
+      shell: pwsh
+      run: |
+        if ($env:X2T_BUILD_JOBS -ne '4') { throw 'Recovery requires the original four compile jobs' }
+    - name: Reset compiler cache counters
+      shell: pwsh
+      run: |
+        & $env:X2T_SCCACHE --zero-stats
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Build X2T
+      id: compile
+      shell: cmd
+      timeout-minutes: 75
+      run: scripts\windows_build.cmd core
+    - name: Wait for all cache writes and backfills, then stop daemon
+      shell: pwsh
+      run: |
+        @'
+        import json, os, subprocess, time
+        from pathlib import Path
+        cache=os.environ['X2T_SCCACHE']
+        last={}
+        try:
+            deadline=time.monotonic()+120
+            while True:
+                raw=subprocess.check_output([cache,'--show-stats','--stats-format','json'],text=True,encoding='utf-8')
+                last=json.loads(raw)
+                stats=last['stats']; levels=stats.get('multi_level') or []
+                misses=sum(stats['cache_misses']['counts'].values())
+                completed=stats.get('cache_writes',0)+stats.get('cache_write_errors',0)
+                errors=stats.get('cache_write_errors',0)+sum(level.get('write_failures',0) for level in levels)
+                backfill_done=True
+                if os.environ['X2T_DISK_PHASE']=='migration':
+                    if len(levels)!=2 or 'disk' not in levels[0]['name'].lower() or 'gha' not in levels[1]['name'].lower():
+                        raise RuntimeError('Expected explicit disk then GHA multilevel stats')
+                    backfill_done=levels[0]['backfills_to']==levels[1]['backfills_from']
+                    if levels[1]['writes'] or levels[1]['write_failures']:
+                        raise RuntimeError('Read-only GHA performed a write')
+                if errors:
+                    raise RuntimeError('Cache or per-level write error; refuse incomplete archive')
+                if completed>=misses and backfill_done:
+                    break
+                if time.monotonic()>=deadline:
+                    raise RuntimeError('Cache writes or backfills did not finish before deadline')
+                time.sleep(1)
+            Path('dist/sccache-stats-win_64.json').write_text(json.dumps(last),encoding='utf-8')
+        finally:
+            if last:
+                Path('dist/sccache-final-stats-win_64.json').write_text(json.dumps(last),encoding='utf-8')
+            subprocess.run([cache,'--stop-server'],check=True)
+        '@ | python -
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        $deadline = (Get-Date).AddSeconds(30)
+        while (Get-Process -Name sccache -ErrorAction SilentlyContinue) {
+          if ((Get-Date) -gt $deadline) { throw 'sccache daemon did not exit before archive' }
+          Start-Sleep -Milliseconds 250
+        }
+      if: always() && steps.compile.outcome != 'skipped'
+    - name: Extract safe cache-write diagnostics
+      if: always() && steps.compile.outcome != 'skipped'
+      shell: pwsh
+      run: |
+        @'
+        import json
+        import os
+        import re
+        from pathlib import Path
+
+        # Deliberately export only public source basenames and fixed enumerations.
+        # Never export raw error lines, URLs, headers, response bodies or arbitrary keys.
+        def summarize(text, allowed_objects):
+            misses = []
+            errors = []
+            for line in text.splitlines():
+                match = re.search(r"\[([^\[\]]+)\]: compile result: cache miss", line)
+                if match:
+                    name = match.group(1).replace("\\", "/").rsplit("/", 1)[-1]
+                    misses.append(name if name in allowed_objects else "[unrecognized object]")
+                if "Error executing cache write:" not in line:
+                    continue
+                # Enum values are emitted from this literal list, never copied wholesale.
+                kinds = [kind for kind in (
+                    "Unexpected", "Unsupported", "ConfigInvalid", "NotFound",
+                    "PermissionDenied", "IsADirectory", "NotADirectory", "AlreadyExists",
+                    "RateLimited", "IsSameFile", "ConditionNotMatch", "RangeNotSatisfied",
+                    "Timeout", "InvalidInput", "ContentIncomplete",
+                ) if re.search(r"\b" + kind + r"\b", line)]
+                statuses = sorted({int(value) for value in re.findall(
+                    r"(?i)\bstatus(?:_code| code)?\s*[:=]\s*(?:Some\()?([1-5][0-9]{2})\b", line
+                )})
+                operations = [op for op in ("write", "writer", "close", "upload", "reserve", "commit")
+                              if re.search(r"(?i)\b" + op + r"\b", line)]
+                categories = [name for name, pattern in (
+                    ("already_exists", r"already exists|alreadyexists"),
+                    ("permission_denied", r"permission denied|permissiondenied|forbidden"),
+                    ("timeout", r"timed out|timeout"),
+                    ("rate_limited", r"rate.?limit|too many requests"),
+                    ("read_only", r"read.only"),
+                    ("serialization", r"zip|serializ"),
+                    ("connection", r"connection|network|dns"),
+                ) if re.search(pattern, line, re.I)]
+                errors.append({"kinds": kinds, "httpStatuses": statuses,
+                               "operations": operations, "categories": categories,
+                               "backend": "ghac" if re.search(r"\bghac\b", line) else "unknown"})
+            return {"schemaVersion": 1, "cacheMissObjects": misses,
+                    "cacheWriteErrorCount": len(errors), "cacheWriteErrors": errors,
+                    "privacy": "Allowlisted fields only; raw logs and arbitrary identifiers omitted."}
+
+        raw = Path(os.environ["SCCACHE_ERROR_LOG"])
+        known = {p.stem + ".obj" for p in Path("core").rglob("*")
+                 if p.suffix.lower() in {".c", ".cc", ".cpp", ".cxx"}}
+        report = summarize(raw.read_text(encoding="utf-8", errors="replace") if raw.is_file() else "", known)
+        report["rawLogPresent"] = raw.is_file()
+        Path("dist").mkdir(exist_ok=True)
+        Path("dist/sccache-write-diagnostic.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(json.dumps(report, indent=2))
+        # Only the safe report survives. Raw logs are not an upload input even if removal fails.
+        if raw.is_file():
+            raw.unlink()
+        '@ | python -
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Check executable size
+      run: python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json
+        --max-palette-instances 1 --check-header-statics
+    - name: Record producer
+      run: python scripts/ci_core_cache.py record --platform win_64
+    - name: Verify Windows PE and runtime
+      shell: cmd
+      run: |
+        call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
+        if errorlevel 1 exit /b 1
+        dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
+        if errorlevel 1 exit /b 1
+        dumpbin /dependents core\build\bin\win_64\x2t.exe
+        if errorlevel 1 exit /b 1
+    - name: Add Qt runtime to PATH
+      shell: pwsh
+      run: |
+        $qt = Join-Path $env:GITHUB_WORKSPACE 'vendor/work/qt-win/Qt-5.15.2/msvc2019_64/bin'
+        if (!(Test-Path (Join-Path $qt 'Qt5Core.dll'))) { throw 'Missing Qt runtime' }
+        $qt | Out-File $env:GITHUB_PATH -Append -Encoding utf8
+    - name: DOCX and PPTX round-trip smoke
+      id: smoke
+      run: python scripts/smoke_x2t_runtime.py --x2t core/build/bin/win_64/x2t.exe --fixture-root tests/core-features/fixtures --work-root vendor/work/pch-benchmark-smoke
+    - name: Validate benchmark evidence
+      run: python scripts/pch_benchmark_report.py record --mode disabled --phase warm
+      env:
+        SCCACHE_GHA_VERSION: pch-bench-40988417135-1-disabled
+    - name: Require complete cache evidence and no failures
+      shell: pwsh
+      run: |
+        @'
+        import json,os
+        from pathlib import Path
+        raw=json.loads(Path('dist/sccache-stats-win_64.json').read_text(encoding='utf-8'))
+        stats=raw['stats']
+        requests=stats['compile_requests']; hits=sum(stats['cache_hits']['counts'].values()); misses=sum(stats['cache_misses']['counts'].values())
+        for key in ('cache_read_errors','cache_write_errors','cache_timeouts','compile_fails','requests_not_cacheable'):
+            if stats.get(key,0): raise RuntimeError('Cache failure: '+key)
+        if sum(stats.get('cache_errors',{}).get('counts',{}).values()): raise RuntimeError('Backend read error')
+        if any(level.get('write_failures',0) for level in (stats.get('multi_level') or [])): raise RuntimeError('Per-level write failure')
+        if requests!=4469: raise RuntimeError('Unexpected request count; not the full known source build')
+        if os.environ['X2T_DISK_PHASE']=='disk-warm':
+            if hits!=4469 or misses!=0:
+                raise RuntimeError('Restored disk-only cache did not cover all 4469 requests')
+            levels=stats.get('multi_level') or []
+            if len(levels)!=1 or 'disk' not in levels[0]['name'].lower():
+                raise RuntimeError('Final validation did not use only disk storage')
+        if os.environ['X2T_DISK_PHASE']=='migration' and hits<=0: raise RuntimeError('Migration did not reuse original cache')
+        result={'status':'passed','phase':os.environ['X2T_DISK_PHASE'],'requests':requests,'hits':hits,'misses':misses,'location':raw['cache_location']}
+        Path('dist/disk-cache-acceptance.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+        print(json.dumps(result,indent=2))
+        '@ | python -
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Record stopped disk-cache archive inventory
+      shell: pwsh
+      run: |
+        @'
+        import hashlib,json,os
+        from pathlib import Path
+        root=Path(os.environ['SCCACHE_DIR'])
+        entries=[]
+        for p in sorted(root.rglob('*')):
+            if p.is_symlink():
+                raise RuntimeError('Unexpected symlink in cache archive')
+            if p.is_file():
+                entries.append({'path':p.relative_to(root).as_posix(),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+        if not entries:
+            raise RuntimeError('Cache snapshot is empty')
+        record={'schemaVersion':1,'files':entries,'fileCount':len(entries),'totalBytes':sum(x['bytes'] for x in entries),
+                'inventorySha256':hashlib.sha256(json.dumps(entries,sort_keys=True,separators=(',',':')).encode()).hexdigest(),
+                'actualSourceSha':'a3affdf323cb4c6b1d49a65297842d9bdc930a70','cacheKey':os.environ['X2T_DISK_CACHE_KEY'],
+                'depsId':os.environ['X2T_DEPS_ID'],'compilerVersion':os.environ['X2T_COMPILER_VERSION'],'imageVersion':os.environ.get('ImageVersion',''),
+                'cpuCount':os.cpu_count(),'jobs':os.environ['X2T_BUILD_JOBS'],'sccacheVersion':'0.18.0'}
+
+        Path('dist/disk-cache-inventory.json').write_text(json.dumps(record,indent=2),encoding='utf-8')
+        print(json.dumps({k:v for k,v in record.items() if k!='files'},indent=2))
+        '@ | python -
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Save verified disk cache archive
+      id: save
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.SCCACHE_DIR }}
+        key: ${{ env.X2T_DISK_CACHE_KEY }}
+    - name: Publish archive inventory for dependent verification
+      uses: actions/upload-artifact@v4
+      with:
+        name: disk-cache-inventory-${{ github.run_attempt }}
+        path: dist/disk-cache-inventory.json
+        if-no-files-found: error
+        retention-days: 14
+    - name: Upload build and cache evidence even on failure
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: disk-cache-${{ env.X2T_DISK_PHASE }}-${{ github.run_attempt }}
+        path: |
+          dist/disk-cache-*.json
+          dist/build-metrics-win_64.json
+          dist/build-win_64.log
+          dist/sccache-stats-win_64.json
+          dist/sccache-final-stats-win_64.json
+          dist/sccache-write-diagnostic.json
+          dist/core-inputs-win_64.json
+          dist/core-producer-win_64.json
+          dist/pch-benchmark-result.json
+          dist/pch-freshness.json
+          dist/windows-size-report.json
+          vendor/work/x2t-baseline-smoke-receipt.json
+        if-no-files-found: warn
+        retention-days: 14
+    - name: Upload tested runtime
+      if: always() && steps.smoke.outcome == 'success'
+      uses: actions/upload-artifact@v4
+      with:
+        name: disk-cache-runtime-${{ env.X2T_DISK_PHASE }}-${{ github.run_attempt }}
+        path: core/build/bin/win_64/
+        if-no-files-found: error
+        retention-days: 7
+  disk-warm:
+    needs: migrate
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      X2T_CLEAN: '0'
+      X2T_PCH_MODE: disabled
+      X2T_DEPS_ID: c2d3619ecc9affe364f956f5d01e3c1bff6341992f3e35f7749d72850a2f7bba
+      X2T_BENCHMARK_PHASE: warm
+      SCCACHE_LOG: off,sccache::server=debug
+      SCCACHE_CACHE_SIZE: 8G
+      SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY: all
+      X2T_DISK_CACHE_KEY: ${{ needs.migrate.outputs.cache-key }}
+      X2T_DISK_PHASE: disk-warm
+      SCCACHE_GHA_ENABLED: 'false'
+      SCCACHE_MULTILEVEL_CHAIN: disk
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
+        ref: a3affdf323cb4c6b1d49a65297842d9bdc930a70
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Verify exact source and record cache backend provenance
+      shell: pwsh
+      run: |
+        $actual = (git rev-parse HEAD).Trim()
+        if ($LASTEXITCODE -or $actual -ne 'a3affdf323cb4c6b1d49a65297842d9bdc930a70') { throw 'Unexpected source checkout' }
+        New-Item -ItemType Directory -Force dist | Out-Null
+        @{
+          actualSourceSha = $actual
+          workflowSha = $env:GITHUB_SHA
+          runId = $env:GITHUB_RUN_ID
+          runAttempt = $env:GITHUB_RUN_ATTEMPT
+          phase = $env:X2T_DISK_PHASE
+          originalGhaNamespace = 'pch-bench-40988417135-1-disabled'
+          backendChain = $env:SCCACHE_MULTILEVEL_CHAIN
+          ghaMode = $env:SCCACHE_GHA_RW_MODE
+          strictWritePolicy = $env:SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY
+          mode = 'disabled'
+          cacheArchiveKey = $env:X2T_DISK_CACHE_KEY
+          sourceShaFieldNote = 'Original scripts record workflow GITHUB_SHA. actualSourceSha identifies the checked-out compiled source.'
+        } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 dist/disk-cache-provenance.json
+    - name: Verify and patch locked Core
+      shell: pwsh
+      run: |
+        python scripts/verify_vendor.py --platform windows
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        python scripts/verify_core_source.py
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        python scripts/apply_core_patches.py
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        python scripts/apply_core_overlays.py
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Locate VS2022 and v142
+      shell: pwsh
+      run: ./scripts/ci_vs_env.ps1
+    - name: Check dependency compiler
+      shell: pwsh
+      env:
+        EXPECTED_COMPILER: msvc-14.29.30133
+      run: |
+        if ($env:X2T_COMPILER_VERSION -ne $env:EXPECTED_COMPILER) { throw 'Dependency compiler mismatch' }
+    - name: Identify Core inputs
+      run: python scripts/ci_core_cache.py key --platform win_64
+    - name: Prepare toolchain in fresh checkout
+      shell: cmd
+      run: scripts\windows_build.cmd prepare
+    - name: Assert fresh Core object outputs before restoring dependencies
+      run: python scripts/pch_benchmark_report.py check-fresh --core-root core --report dist/pch-freshness.json
+    - uses: actions/download-artifact@v4
+      with:
+        name: pch-benchmark-deps-1
+        path: dist/incoming-deps
+        run-id: 40988417135
+        github-token: ${{ github.token }}
+    - name: Restore verified dependency handoff
+      run: python scripts/ci_handoff.py restore --archive dist/incoming-deps/deps-win_64.tar --stage deps --platform win_64 --source-sha "c2d3619ecc9affe364f956f5d01e3c1bff6341992f3e35f7749d72850a2f7bba"
+    - name: Set isolated cache paths before daemon startup
+      shell: pwsh
+      run: |
+        $cacheDir = Join-Path $env:RUNNER_TEMP 'x2t-sccache-disk'
+        $privateLog = Join-Path $env:RUNNER_TEMP 'sccache-server-private.log'
+        if (Test-Path $cacheDir) { throw 'Expected fresh disk-cache directory' }
+        New-Item -ItemType Directory -Force $cacheDir | Out-Null
+        "SCCACHE_DIR=$cacheDir" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+        "SCCACHE_ERROR_LOG=$privateLog" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+    - name: Restore exact verified disk cache
+      id: restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.SCCACHE_DIR }}
+        key: ${{ env.X2T_DISK_CACHE_KEY }}
+        fail-on-cache-miss: true
+    - name: Require exact archive key
+      shell: pwsh
+      env:
+        MATCHED: ${{ steps.restore.outputs.cache-matched-key }}
+      run: |
+        if ($env:MATCHED -ne $env:X2T_DISK_CACHE_KEY) { throw 'Unexpected cache restore key' }
+    - name: Download migration archive inventory
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ needs.migrate.outputs.inventory-name }}
+        path: dist/incoming-inventory
+    - name: Verify exact restored cache inventory before daemon startup
+      shell: pwsh
+      run: |
+        @'
+        import hashlib,json,os
+        from pathlib import Path
+        root=Path(os.environ['SCCACHE_DIR'])
+        entries=[]
+        for p in sorted(root.rglob('*')):
+            if p.is_symlink():
+                raise RuntimeError('Unexpected symlink in cache archive')
+            if p.is_file():
+                entries.append({'path':p.relative_to(root).as_posix(),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+        if not entries:
+            raise RuntimeError('Cache snapshot is empty')
+        record={'schemaVersion':1,'files':entries,'fileCount':len(entries),'totalBytes':sum(x['bytes'] for x in entries),
+                'inventorySha256':hashlib.sha256(json.dumps(entries,sort_keys=True,separators=(',',':')).encode()).hexdigest(),
+                'actualSourceSha':'a3affdf323cb4c6b1d49a65297842d9bdc930a70','cacheKey':os.environ['X2T_DISK_CACHE_KEY'],
+                'depsId':os.environ['X2T_DEPS_ID'],'compilerVersion':os.environ['X2T_COMPILER_VERSION'],'imageVersion':os.environ.get('ImageVersion',''),
+                'cpuCount':os.cpu_count(),'jobs':'4','sccacheVersion':'0.18.0'}
+
+        expected=json.loads(Path('dist/incoming-inventory/disk-cache-inventory.json').read_text(encoding='utf-8'))
+        for key in ('schemaVersion','fileCount','totalBytes','inventorySha256','actualSourceSha','cacheKey','depsId','compilerVersion','imageVersion','cpuCount','jobs','sccacheVersion'):
+            if record[key]!=expected[key]:
+                raise RuntimeError('Restored cache or runner mismatch: '+key)
+        Path('dist/disk-cache-restore.json').write_text(json.dumps({'status':'passed',**{k:v for k,v in record.items() if k!='files'}},indent=2),encoding='utf-8')
+        print('Exact archive bytes and source/compiler/image/CPU/job provenance verified')
+        '@ | python -
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c
+      with:
+        version: v0.18.0
+        disable_annotations: true
+    - name: Configure bounded compiler cache
+      run: python scripts/setup_build_acceleration.py
+    - name: Verify comparable parallelism
+      shell: pwsh
+      run: |
+        if ($env:X2T_BUILD_JOBS -ne '4') { throw 'Recovery requires the original four compile jobs' }
+    - name: Reset compiler cache counters
+      shell: pwsh
+      run: |
+        & $env:X2T_SCCACHE --zero-stats
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Build X2T
+      id: compile
+      shell: cmd
+      timeout-minutes: 75
+      run: scripts\windows_build.cmd core
+    - name: Wait for all cache writes and backfills, then stop daemon
+      shell: pwsh
+      run: |
+        @'
+        import json, os, subprocess, time
+        from pathlib import Path
+        cache=os.environ['X2T_SCCACHE']
+        last={}
+        try:
+            deadline=time.monotonic()+120
+            while True:
+                raw=subprocess.check_output([cache,'--show-stats','--stats-format','json'],text=True,encoding='utf-8')
+                last=json.loads(raw)
+                stats=last['stats']; levels=stats.get('multi_level') or []
+                misses=sum(stats['cache_misses']['counts'].values())
+                completed=stats.get('cache_writes',0)+stats.get('cache_write_errors',0)
+                errors=stats.get('cache_write_errors',0)+sum(level.get('write_failures',0) for level in levels)
+                backfill_done=True
+                if os.environ['X2T_DISK_PHASE']=='migration':
+                    if len(levels)!=2 or 'disk' not in levels[0]['name'].lower() or 'gha' not in levels[1]['name'].lower():
+                        raise RuntimeError('Expected explicit disk then GHA multilevel stats')
+                    backfill_done=levels[0]['backfills_to']==levels[1]['backfills_from']
+                    if levels[1]['writes'] or levels[1]['write_failures']:
+                        raise RuntimeError('Read-only GHA performed a write')
+                if errors:
+                    raise RuntimeError('Cache or per-level write error; refuse incomplete archive')
+                if completed>=misses and backfill_done:
+                    break
+                if time.monotonic()>=deadline:
+                    raise RuntimeError('Cache writes or backfills did not finish before deadline')
+                time.sleep(1)
+            Path('dist/sccache-stats-win_64.json').write_text(json.dumps(last),encoding='utf-8')
+        finally:
+            if last:
+                Path('dist/sccache-final-stats-win_64.json').write_text(json.dumps(last),encoding='utf-8')
+            subprocess.run([cache,'--stop-server'],check=True)
+        '@ | python -
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+        $deadline = (Get-Date).AddSeconds(30)
+        while (Get-Process -Name sccache -ErrorAction SilentlyContinue) {
+          if ((Get-Date) -gt $deadline) { throw 'sccache daemon did not exit before archive' }
+          Start-Sleep -Milliseconds 250
+        }
+      if: always() && steps.compile.outcome != 'skipped'
+    - name: Extract safe cache-write diagnostics
+      if: always() && steps.compile.outcome != 'skipped'
+      shell: pwsh
+      run: |
+        @'
+        import json
+        import os
+        import re
+        from pathlib import Path
+
+        # Deliberately export only public source basenames and fixed enumerations.
+        # Never export raw error lines, URLs, headers, response bodies or arbitrary keys.
+        def summarize(text, allowed_objects):
+            misses = []
+            errors = []
+            for line in text.splitlines():
+                match = re.search(r"\[([^\[\]]+)\]: compile result: cache miss", line)
+                if match:
+                    name = match.group(1).replace("\\", "/").rsplit("/", 1)[-1]
+                    misses.append(name if name in allowed_objects else "[unrecognized object]")
+                if "Error executing cache write:" not in line:
+                    continue
+                # Enum values are emitted from this literal list, never copied wholesale.
+                kinds = [kind for kind in (
+                    "Unexpected", "Unsupported", "ConfigInvalid", "NotFound",
+                    "PermissionDenied", "IsADirectory", "NotADirectory", "AlreadyExists",
+                    "RateLimited", "IsSameFile", "ConditionNotMatch", "RangeNotSatisfied",
+                    "Timeout", "InvalidInput", "ContentIncomplete",
+                ) if re.search(r"\b" + kind + r"\b", line)]
+                statuses = sorted({int(value) for value in re.findall(
+                    r"(?i)\bstatus(?:_code| code)?\s*[:=]\s*(?:Some\()?([1-5][0-9]{2})\b", line
+                )})
+                operations = [op for op in ("write", "writer", "close", "upload", "reserve", "commit")
+                              if re.search(r"(?i)\b" + op + r"\b", line)]
+                categories = [name for name, pattern in (
+                    ("already_exists", r"already exists|alreadyexists"),
+                    ("permission_denied", r"permission denied|permissiondenied|forbidden"),
+                    ("timeout", r"timed out|timeout"),
+                    ("rate_limited", r"rate.?limit|too many requests"),
+                    ("read_only", r"read.only"),
+                    ("serialization", r"zip|serializ"),
+                    ("connection", r"connection|network|dns"),
+                ) if re.search(pattern, line, re.I)]
+                errors.append({"kinds": kinds, "httpStatuses": statuses,
+                               "operations": operations, "categories": categories,
+                               "backend": "ghac" if re.search(r"\bghac\b", line) else "unknown"})
+            return {"schemaVersion": 1, "cacheMissObjects": misses,
+                    "cacheWriteErrorCount": len(errors), "cacheWriteErrors": errors,
+                    "privacy": "Allowlisted fields only; raw logs and arbitrary identifiers omitted."}
+
+        raw = Path(os.environ["SCCACHE_ERROR_LOG"])
+        known = {p.stem + ".obj" for p in Path("core").rglob("*")
+                 if p.suffix.lower() in {".c", ".cc", ".cpp", ".cxx"}}
+        report = summarize(raw.read_text(encoding="utf-8", errors="replace") if raw.is_file() else "", known)
+        report["rawLogPresent"] = raw.is_file()
+        Path("dist").mkdir(exist_ok=True)
+        Path("dist/sccache-write-diagnostic.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(json.dumps(report, indent=2))
+        # Only the safe report survives. Raw logs are not an upload input even if removal fails.
+        if raw.is_file():
+            raw.unlink()
+        '@ | python -
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Check executable size
+      run: python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json
+        --max-palette-instances 1 --check-header-statics
+    - name: Record producer
+      run: python scripts/ci_core_cache.py record --platform win_64
+    - name: Verify Windows PE and runtime
+      shell: cmd
+      run: |
+        call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
+        if errorlevel 1 exit /b 1
+        dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
+        if errorlevel 1 exit /b 1
+        dumpbin /dependents core\build\bin\win_64\x2t.exe
+        if errorlevel 1 exit /b 1
+    - name: Add Qt runtime to PATH
+      shell: pwsh
+      run: |
+        $qt = Join-Path $env:GITHUB_WORKSPACE 'vendor/work/qt-win/Qt-5.15.2/msvc2019_64/bin'
+        if (!(Test-Path (Join-Path $qt 'Qt5Core.dll'))) { throw 'Missing Qt runtime' }
+        $qt | Out-File $env:GITHUB_PATH -Append -Encoding utf8
+    - name: DOCX and PPTX round-trip smoke
+      id: smoke
+      run: python scripts/smoke_x2t_runtime.py --x2t core/build/bin/win_64/x2t.exe --fixture-root tests/core-features/fixtures --work-root vendor/work/pch-benchmark-smoke
+    - name: Validate benchmark evidence
+      run: python scripts/pch_benchmark_report.py record --mode disabled --phase warm
+      env:
+        SCCACHE_GHA_VERSION: disk-archive:${{ env.X2T_DISK_CACHE_KEY }}
+    - name: Require complete cache evidence and no failures
+      shell: pwsh
+      run: |
+        @'
+        import json,os
+        from pathlib import Path
+        raw=json.loads(Path('dist/sccache-stats-win_64.json').read_text(encoding='utf-8'))
+        stats=raw['stats']
+        requests=stats['compile_requests']; hits=sum(stats['cache_hits']['counts'].values()); misses=sum(stats['cache_misses']['counts'].values())
+        for key in ('cache_read_errors','cache_write_errors','cache_timeouts','compile_fails','requests_not_cacheable'):
+            if stats.get(key,0): raise RuntimeError('Cache failure: '+key)
+        if sum(stats.get('cache_errors',{}).get('counts',{}).values()): raise RuntimeError('Backend read error')
+        if any(level.get('write_failures',0) for level in (stats.get('multi_level') or [])): raise RuntimeError('Per-level write failure')
+        if requests!=4469: raise RuntimeError('Unexpected request count; not the full known source build')
+        if os.environ['X2T_DISK_PHASE']=='disk-warm':
+            if hits!=4469 or misses!=0:
+                raise RuntimeError('Restored disk-only cache did not cover all 4469 requests')
+            levels=stats.get('multi_level') or []
+            if len(levels)!=1 or 'disk' not in levels[0]['name'].lower():
+                raise RuntimeError('Final validation did not use only disk storage')
+        if os.environ['X2T_DISK_PHASE']=='migration' and hits<=0: raise RuntimeError('Migration did not reuse original cache')
+        result={'status':'passed','phase':os.environ['X2T_DISK_PHASE'],'requests':requests,'hits':hits,'misses':misses,'location':raw['cache_location']}
+        Path('dist/disk-cache-acceptance.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+        print(json.dumps(result,indent=2))
+        '@ | python -
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Upload build and cache evidence even on failure
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: disk-cache-${{ env.X2T_DISK_PHASE }}-${{ github.run_attempt }}
+        path: |
+          dist/disk-cache-*.json
+          dist/build-metrics-win_64.json
+          dist/build-win_64.log
+          dist/sccache-stats-win_64.json
+          dist/sccache-final-stats-win_64.json
+          dist/sccache-write-diagnostic.json
+          dist/core-inputs-win_64.json
+          dist/core-producer-win_64.json
+          dist/pch-benchmark-result.json
+          dist/pch-freshness.json
+          dist/windows-size-report.json
+          vendor/work/x2t-baseline-smoke-receipt.json
+        if-no-files-found: warn
+        retention-days: 14
+    - name: Upload tested runtime
+      if: always() && steps.smoke.outcome == 'success'
+      uses: actions/upload-artifact@v4
+      with:
+        name: disk-cache-runtime-${{ env.X2T_DISK_PHASE }}-${{ github.run_attempt }}
+        path: core/build/bin/win_64/
+        if-no-files-found: error
+        retention-days: 7
+'on':
+  push:
+    branches:
+    - experiment/windows-pch-cache-20261030
+    paths:
+    - .github/workflows/recover-windows-pch-warm.yml
+  workflow_dispatch: null
