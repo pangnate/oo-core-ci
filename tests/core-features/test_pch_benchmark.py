@@ -191,7 +191,8 @@ class ComparisonTests(unittest.TestCase):
     def test_workflows_are_branch_scoped_and_fresh_runner_pairs(self):
         entry = (ROOT / '.github/workflows/compare-windows-pch.yml').read_text()
         job = (ROOT / '.github/workflows/x2t-pch-benchmark-job.yml').read_text()
-        self.assertIn("branches: ['experiment/windows-pch-cache-20261030']", entry)
+        self.assertIn("workflow_dispatch:", entry)
+        self.assertNotIn("  push:", entry)
         for mode in report.MODES:
             self.assertIn('needs: [deps, '+mode+'_cold]', entry)
         self.assertIn('${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.mode }}', job)
@@ -208,3 +209,4 @@ class ComparisonTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

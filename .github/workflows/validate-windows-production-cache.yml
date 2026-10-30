@@ -1,0 +1,124 @@
+name: Validate production X2T pipelines
+on:
+  push:
+    branches: ['experiment/windows-pch-cache-20261030']
+    paths:
+      - '.github/workflows/validate-windows-production-cache.yml'
+      - '.github/workflows/x2t-windows.yml'
+      - 'scripts/ci_windows_compiler_cache.py'
+      - 'tests/core-features/test_windows_compiler_cache.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: production-cache-validation-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  seed:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    env:
+      X2T_PCH_MODE: disabled
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Locate locked compiler
+        shell: pwsh
+        run: ./scripts/ci_vs_env.ps1
+      - name: Identify dependency and Core inputs
+        shell: pwsh
+        run: |
+          python scripts/ci_deps_key.py --platform win_64
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - run: python scripts/ci_core_cache.py key --platform win_64
+      - run: python scripts/ci_windows_compiler_cache.py configure
+      - name: Check for an existing compatible production snapshot
+        id: existing
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+          restore-keys: ${{ env.X2T_COMPILER_CACHE_PREFIX }}
+      - name: Verify identified snapshot or empty destination
+        env:
+          X2T_COMPILER_CACHE_MATCHED_KEY: ${{ steps.existing.outputs.cache-matched-key }}
+        run: python scripts/ci_windows_compiler_cache.py restored
+      - name: Set one-time seed location
+        if: steps.existing.outputs.cache-matched-key == ''
+        shell: pwsh
+        run: |
+          "X2T_SEED_CACHE=$(Join-Path $env:RUNNER_TEMP 'x2t-sccache-disk')" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Restore previously verified experiment snapshot once
+        if: steps.existing.outputs.cache-matched-key == ''
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.X2T_SEED_CACHE }}
+          key: x2t-disk-v1-41009631842-1
+          fail-on-cache-miss: true
+      - name: Download verified seed inventory
+        if: steps.existing.outputs.cache-matched-key == ''
+        uses: actions/download-artifact@v4
+        with:
+          name: disk-cache-inventory-1
+          path: dist/seed-inventory
+          run-id: 41009631842
+          github-token: ${{ github.token }}
+      - name: Check immutable seed receipt and import without changing source identity
+        if: steps.existing.outputs.cache-matched-key == ''
+        shell: pwsh
+        run: |
+          $receipt = Get-Content dist/seed-inventory/disk-cache-inventory.json -Raw | ConvertFrom-Json
+          if ($receipt.inventorySha256 -ne '00dc8af041c279a11a7527635e6190c4dffcb18ad79be554a899b255c9ea8275') { throw 'Unexpected seed inventory' }
+          if ($receipt.actualSourceSha -ne 'a3affdf323cb4c6b1d49a65297842d9bdc930a70') { throw 'Unexpected seed producer source' }
+          python scripts/ci_windows_compiler_cache.py import-seed --cache-root "$env:X2T_SEED_CACHE" --inventory dist/seed-inventory/disk-cache-inventory.json
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Save imported production-format seed once
+        if: steps.existing.outputs.cache-matched-key == ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+      - name: Confirm imported seed snapshot is durably available
+        if: steps.existing.outputs.cache-matched-key == ''
+        id: saved-seed
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+          lookup-only: true
+          fail-on-cache-miss: true
+      - name: Require exact saved seed identity
+        if: steps.existing.outputs.cache-matched-key == ''
+        shell: pwsh
+        env:
+          SAVED_KEY: ${{ steps.saved-seed.outputs.cache-matched-key }}
+        run: |
+          if ($env:SAVED_KEY -ne $env:X2T_COMPILER_CACHE_KEY) { throw 'Imported seed was not durably saved under its exact key' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-cache-seed-provenance
+          path: |
+            dist/compiler-cache-restore-win_64.json
+            dist/compiler-cache-snapshot-win_64.json
+          if-no-files-found: warn
+  windows:
+    needs: seed
+    uses: ./.github/workflows/x2t-windows.yml
+    with:
+      rebuild_core: true
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    uses: ./.github/workflows/x2t-linux.yml
+    with:
+      arch: ${{ matrix.arch }}
+      rebuild_core: true
