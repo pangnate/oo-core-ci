@@ -31,3 +31,46 @@ Tests use a captured Windows disk-engine JSON with explicitly adapted Linux path
 ```sh
 python3 -m unittest discover -s tests/core-features -p 'test_linux_compiler_cache.py'
 ```
+
+## Measured validation (2026-10-30)
+
+Independent Actions runs used unchanged compilation inputs (same Core ID, dependency ID, compiler environment, source/patch/overlay and toolchain objects), four build workers, and default PCH. The runner identity recorded by all build producers was `ubuntu24 / 20261026.354.1`. The warm run forced a build, bypassing exact binary reuse, and restored the preceding cold run's verified disk snapshot.
+
+The old GHA reference reported `use_preprocessor_cache_mode=false`; both disk compilation runs reported `true`. Timings therefore compare the complete cache configuration, not isolated HTTP-versus-disk latency. Compiler flags and PCH settings were unchanged.
+
+| Phase / run | Architecture | Build script | Compile/link stage | deps start → package end | Cache hits / misses | Write errors |
+|---|---|---:|---:|---:|---:|---:|
+| [Old GHA reference](https://github.com/pangnate/oo-core-ci/actions/runs/41016385724) | amd64 | 58m53s | 58m40s | 66m36s | 18 / 4451 | 133 |
+| Old GHA reference | arm64 | 50m13s | 50m02s | 59m19s | 18 / 4451 | 149 |
+| [Disk cold](https://github.com/pangnate/oo-core-ci/actions/runs/41026250322) | amd64 | 34m09s | 34m01s | 39m47s | 0 / 4469 | 0 |
+| Disk cold | arm64 | 34m51s | 34m43s | 41m52s | 0 / 4469 | 0 |
+| [Disk forced warm](https://github.com/pangnate/oo-core-ci/actions/runs/41031410933) | amd64 | 6m27s | 6m17s | 11m51s | 4469 / 0 | 0 |
+| Disk forced warm | arm64 | 8m48s | 8m36s | 13m19s | 4469 / 0 | 0 |
+| [Exact binary reuse](https://github.com/pangnate/oo-core-ci/actions/runs/41033295925) | amd64 | Skipped | Skipped | 3m38s | Not run | Not run |
+| Exact binary reuse | arm64 | Skipped | Skipped | 3m30s | Not run | Not run |
+
+Warm build-script time was 81.1% lower on amd64 and 74.7% lower on arm64 than this disk-cold observation. These are single-run measurements, not guaranteed speedups; hosted-runner contention and artifact transfer variation affect elapsed times. The old GHA reference was near-cold, not an intentionally empty cache, and its overall workflow was red because of an unrelated Windows checker; both Linux chains succeeded.
+
+| Phase | Architecture | deps | build job | verify | package | Job sum | Scheduling gaps |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Old GHA reference | amd64 | 4m25s | 61m08s | 25s | 31s | 66m29s | 7s |
+| Old GHA reference | arm64 | 6m03s | 52m06s | 36s | 27s | 59m12s | 7s |
+| Disk cold | amd64 | 3m06s | 35m49s | 27s | 19s | 39m41s | 6s |
+| Disk cold | arm64 | 4m16s | 36m37s | 34s | 19s | 41m46s | 6s |
+| Disk forced warm | amd64 | 44s | 8m03s | 1m25s | 1m32s | 11m44s | 7s |
+| Disk forced warm | arm64 | 45s | 10m43s | 54s | 50s | 13m12s | 7s |
+| Exact binary reuse | amd64 | 43s | 58s | 1m04s | 45s | 3m30s | 8s |
+| Exact binary reuse | arm64 | 42s | 1m01s | 56s | 44s | 3m23s | 7s |
+
+Elapsed time covers each architecture's normal deps/build/verify/package chain; plan, native-g++ probe, and additional validation-receipt jobs are excluded. Build-script timing includes qmake plus the compile/link stage and small script overhead; build-job timing additionally includes setup, downloads, cache validation and uploads. The warm compile/link stage still includes preprocessing, linking and build orchestration even with 100% sccache request hits.
+
+The cold and forced-warm runs reported one `L0 (disk)` backend, sccache 0.18.0, an 8 GiB limit, zero cache read/write errors, timeouts, compile failures and non-cacheable requests. Daemon-stop receipts passed before snapshot save; exact saved-key lookup receipts passed. Each warm restore matched the cold producer's Core ID and inventory digest. Snapshots contained 4,557 files: amd64 86,177,030 bytes and arm64 83,350,092 bytes (logical inventory sizes, not compressed upload sizes); warm inventories were unchanged.
+
+The reuse run reported `reused=true` for both architectures, with the cold run as binary producer (the exact binary cache key was already populated). Actions explicitly skipped `Build X2T` and compiler-cache setup/restore/save steps. Its retained cold-producer metrics are historical metadata, **not new compilation time**. The table uses actual reuse-job timestamps.
+
+Downloaded diagnostics and package artifact SHA-256 values matched GitHub metadata. All package SHA256SUMS entries, inner binary, producer and verification checksums agreed. Binary SHA-256 remained identical across the old GHA reference, disk cold, forced warm and exact reuse:
+
+- amd64: `f9c987db72004fef02e1011fb93b99534818f140f7ccde4c1ed93dbe05c629e7`
+- arm64: `afb5f2e54c8c7fb5431c26265b69c24dc8762ee77d5de4145da313ff45676a92`
+
+This verifies build/package identity, not application-level conversion correctness: amd64 had ELF/ldd checks; arm64 was cross-compiled, not executed on ARM hardware. Snapshot availability remains subject to GitHub Actions cache expiration and quota eviction. Windows was not modified by this Linux optimization.
