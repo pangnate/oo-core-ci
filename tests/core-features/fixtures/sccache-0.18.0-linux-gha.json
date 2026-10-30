@@ -1,0 +1,61 @@
+{
+  "stats": {
+    "compile_requests": 4469,
+    "requests_unsupported_compiler": 0,
+    "requests_not_compile": 0,
+    "requests_not_cacheable": 0,
+    "requests_executed": 4469,
+    "cache_errors": {
+      "counts": {},
+      "adv_counts": {}
+    },
+    "cache_hits": {
+      "counts": {
+        "C/C++": 18
+      },
+      "adv_counts": {
+        "c++ [gcc]": 16,
+        "c [gcc]": 2
+      }
+    },
+    "cache_misses": {
+      "counts": {
+        "C/C++": 4451
+      },
+      "adv_counts": {
+        "c++ [gcc]": 4105,
+        "c [gcc]": 346
+      }
+    },
+    "cache_timeouts": 0,
+    "cache_read_errors": 0,
+    "non_cacheable_compilations": 0,
+    "forced_recaches": 0,
+    "cache_write_errors": 133,
+    "cache_writes": 4318,
+    "cache_write_duration": {
+      "secs": 1406,
+      "nanos": 183558337
+    },
+    "cache_read_hit_duration": {
+      "secs": 2,
+      "nanos": 813321648
+    },
+    "compilations": 4451,
+    "compiler_write_duration": {
+      "secs": 10327,
+      "nanos": 786725115
+    },
+    "compile_fails": 0,
+    "not_cached": {},
+    "dist_compiles": {},
+    "dist_errors": 0,
+    "multi_level": null
+  },
+  "cache_location": "ghac://redacted-baseline-namespace/",
+  "cache_size": null,
+  "max_cache_size": null,
+  "use_preprocessor_cache_mode": false,
+  "version": "0.18.0",
+  "basedirs": []
+}

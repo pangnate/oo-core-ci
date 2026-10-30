@@ -1,0 +1,87 @@
+name: Linux compiler cache validation
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/linux-cache-validation.yml]
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: 'cold: forced compile; warm: forced compile with hits; reuse: exact binary hit'
+        type: choice
+        options: [cold, warm, reuse]
+        default: cold
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      phase: ${{ steps.plan.outputs.phase }}
+    steps:
+      - id: plan
+        env:
+          REQUESTED_PHASE: ${{ inputs.phase }}
+        run: |
+          # Change only this fallback for staged cold -> warm -> reuse pushes.
+          echo "phase=${REQUESTED_PHASE:-cold}" >> "$GITHUB_OUTPUT"
+  disk-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+            config
+            .github/workflows
+            tests/core-features
+      - name: Test Linux compiler-cache contracts
+        run: python3 -m unittest discover -s tests/core-features -p test_linux_compiler_cache.py -v
+      - uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c # v0.0.11
+        with:
+          version: v0.18.0
+          disable_annotations: true
+      - name: Real native Linux cold and warm disk-cache probe
+        run: python3 scripts/ci_linux_cache_probe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-cache-live-probe
+          path: |
+            dist/linux-cache-probe*.json
+            dist/sccache-preflight-linux_64.json
+          if-no-files-found: error
+          retention-days: 30
+  linux:
+    needs: [plan, disk-probe]
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    uses: ./.github/workflows/x2t-linux.yml
+    with:
+      arch: ${{ matrix.arch }}
+      rebuild_core: ${{ needs.plan.outputs.phase != 'reuse' }}
+  receipts:
+    needs: [plan, linux]
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: x2t-linux-${{ matrix.arch }}-diagnostics
+          path: evidence
+      - name: Require requested validation mode
+        env:
+          VALIDATION_PHASE: ${{ needs.plan.outputs.phase }}
+          X2T_TARGET: ${{ matrix.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
+        run: python3 scripts/ci_linux_cache_validation.py --directory evidence --phase "$VALIDATION_PHASE" --target "$X2T_TARGET"

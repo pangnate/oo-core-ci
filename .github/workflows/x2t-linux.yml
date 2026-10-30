@@ -85,9 +85,8 @@ jobs:
     env:
       X2T_DEPS_ID: ${{ needs.deps.outputs.deps-id }}
       X2T_TARGET: ${{ inputs.arch == 'amd64' && 'linux_64' || 'linux_arm64' }}
-      SCCACHE_GHA_ENABLED: 'true'
-      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
-      SCCACHE_GHA_VERSION: x2t-${{ inputs.arch }}-v1
+      SCCACHE_MULTILEVEL_CHAIN: disk
+      SCCACHE_CACHE_SIZE: 8G
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,11 +123,28 @@ jobs:
           python3 scripts/prepare.py --platform linux --target "$X2T_TARGET"
           python3 scripts/patch_x2t_sln.py --core-root core
           python3 scripts/configure_build.py --platform linux --target "$X2T_TARGET" --clean 0
+      - name: Configure compatible Linux compiler snapshot
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python3 scripts/ci_linux_compiler_cache.py configure
+      - name: Restore compatible compiler snapshot
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        id: compiler-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+          restore-keys: ${{ env.X2T_COMPILER_CACHE_PREFIX }}
+      - name: Validate restored compiler bytes
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        env:
+          X2T_COMPILER_CACHE_MATCHED_KEY: ${{ steps.compiler-cache.outputs.cache-matched-key }}
+        run: python3 scripts/ci_linux_compiler_cache.py restored
       - name: Set up pinned compiler cache
         if: steps.core-cache.outputs.cache-hit != 'true'
         uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c # v0.0.11
         with:
           version: v0.18.0
+          disable_annotations: true
       - name: Configure bounded cached compilation
         if: steps.core-cache.outputs.cache-hit != 'true'
         run: python3 scripts/setup_build_acceleration.py
@@ -143,10 +159,45 @@ jobs:
           python3 scripts/ci_handoff.py restore \
             --archive "dist/incoming-deps/deps-$X2T_TARGET.tar" \
             --stage deps --platform "$X2T_TARGET" --source-sha "$X2T_DEPS_ID"
+      - name: Start and preflight strict disk cache
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: |
+          "$X2T_SCCACHE" --zero-stats
+          python3 scripts/ci_linux_compiler_cache.py preflight
       - name: Build X2T
+        id: compile
         if: steps.core-cache.outputs.cache-hit != 'true'
         timeout-minutes: 170
         run: python3 scripts/build_x2t.py
+      - name: Flush and validate compiler cache
+        if: ${{ always() && steps.compile.outcome != 'skipped' }}
+        run: python3 scripts/ci_linux_compiler_cache.py finish
+      - name: Stop daemon on earlier failure
+        if: ${{ always() && env.X2T_SCCACHE != '' }}
+        run: python3 scripts/ci_linux_compiler_cache.py stop_server
+      - name: Seal stopped compiler snapshot
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python3 scripts/ci_linux_compiler_cache.py pack
+      - name: Save compiler snapshot
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+      - name: Confirm exact compiler snapshot exists
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        id: compiler-saved
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+          lookup-only: true
+          fail-on-cache-miss: true
+      - name: Require exact saved compiler key
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        env:
+          X2T_COMPILER_SAVED_KEY: ${{ steps.compiler-saved.outputs.cache-matched-key }}
+        run: python3 scripts/ci_linux_compiler_cache.py saved
       - name: Record Core producer
         if: steps.core-cache.outputs.cache-hit != 'true'
         run: python3 scripts/ci_core_cache.py record --platform "$X2T_TARGET"
@@ -184,6 +235,8 @@ jobs:
             dist/build-${{ env.X2T_TARGET }}.log
             dist/source-path-audit-${{ env.X2T_TARGET }}.json
             dist/sccache-stats-${{ env.X2T_TARGET }}.json
+            dist/sccache-preflight-${{ env.X2T_TARGET }}.json
+            dist/compiler-cache-*-${{ env.X2T_TARGET }}.json
             vendor/work/x2t-core-source-verification.json
             vendor/work/x2t-core-patch-receipt.json
             vendor/work/x2t-core-overlay-receipt.json
@@ -287,3 +340,4 @@ jobs:
             dist/core10-linux-${{ inputs.arch }}-*-build-*.zip
           if-no-files-found: error
           retention-days: 30
+
