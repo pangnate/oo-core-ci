@@ -1,4 +1,4 @@
-name: Diagnose Windows compiler cache writes
+name: Probe Windows disk cache migration
 on:
   push:
     branches: ['experiment/windows-pch-cache-20261030']
@@ -17,7 +17,7 @@ jobs:
       matrix:
         mode: [disabled]
     runs-on: windows-2022
-    timeout-minutes: 180
+    timeout-minutes: 45
     env:
       X2T_CLEAN: '0'
       X2T_PCH_MODE: ${{ matrix.mode }}
@@ -106,17 +106,205 @@ jobs:
         shell: pwsh
         run: |
           if ($env:X2T_BUILD_JOBS -ne '4') { throw 'Recovery requires the original four compile jobs' }
-      - name: Reset compiler cache counters
+      - name: Write targeted cache probe
         shell: pwsh
         run: |
-          & $env:X2T_SCCACHE --zero-stats
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Build X2T
+          @'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import time
+          
+          TARGETS = [{'name': 'Vsdx.cpp', 'cwd': 'core/OOXML/Projects/Linux/DocxFormatLib', 'source': 'core/OOXML/VsdxFormat/Vsdx.cpp', 'arguments': ['cl', '-c', '-nologo', '-Zc:wchar_t', '-FS', '-Zc:rvalueCast', '-Zc:inline', '-Zc:strictStrings', '-Zc:throwingNew', '-Zc:referenceBinding', '-Zc:__cplusplus', '/Zc:strictStrings-', '/bigobj', '-O2', '-MD', '/Zc:strictStrings-', '-w', '-EHsc', '-DUNICODE', '-D_UNICODE', '-DWIN32', '-D_ENABLE_EXTENDED_ALIGNED_STORAGE', '-DWIN64', '-DINTVER=1.0.0.3', '-DWIN_INTVER=1,0,0,3', '-DCOPYRIGHT_YEAR=2026', '-DWIN32', '-D_WIN32', '-DNOMINMAX', '-DWIN64', '-D_WIN64', '-DWINDOWS_IGNORE_PACKING_MISMATCH', '-DCRYPTOPP_DISABLE_ASM', '-DUNICODE', '-D_UNICODE', '-DDONT_WRITE_EMBEDDED_FONTS', '-DCRYPTOPP_DISABLE_ASM', '-DBOOST_USE_WINDOWS_H', '-DBOOST_WINAPI_NO_REDECLARATIONS', '-DNDEBUG', '-DQT_NO_DEBUG', '-I.', '-I..\\..\\..\\..\\Common\\3dParty\\boost\\build\\win_64\\include', '-ID:\\a\\oo-core-ci\\oo-core-ci\\vendor\\work\\qt-win\\Qt-5.15.2\\msvc2019_64\\mkspecs\\win32-msvc', '-Focore_build\\win_64\\release\\obj\\a\\oo-core-ci\\oo-core-ci\\core\\OOXML\\VsdxFormat\\Vsdx.obj', '..\\..\\..\\VsdxFormat\\Vsdx.cpp']}, {'name': 'Window1.cpp', 'cwd': 'core/MsBinaryFile/Projects/XlsFormatLib/Linux', 'source': 'core/MsBinaryFile/XlsFile/Format/Logic/Biff_records/Window1.cpp', 'arguments': ['cl', '-c', '-nologo', '-Zc:wchar_t', '-FS', '-Zc:rvalueCast', '-Zc:inline', '-Zc:strictStrings', '-Zc:throwingNew', '-Zc:referenceBinding', '-Zc:__cplusplus', '/Zc:strictStrings-', '/bigobj', '-O2', '-MD', '/Zc:strictStrings-', '-w', '-EHsc', '-DUNICODE', '-D_UNICODE', '-DWIN32', '-D_ENABLE_EXTENDED_ALIGNED_STORAGE', '-DWIN64', '-DINTVER=1.0.0.3', '-DWIN_INTVER=1,0,0,3', '-DCOPYRIGHT_YEAR=2026', '-DWIN32', '-D_WIN32', '-DNOMINMAX', '-DWIN64', '-D_WIN64', '-DWINDOWS_IGNORE_PACKING_MISMATCH', '-DCRYPTOPP_DISABLE_ASM', '-DBOOST_USE_WINDOWS_H', '-DBOOST_WINAPI_NO_REDECLARATIONS', '-DUNICODE', '-D_UNICODE', '-DDONT_WRITE_EMBEDDED_FONTS', '-DNDEBUG', '-DQT_NO_DEBUG', '-I.', '-I..\\..\\..\\..\\Common\\3dParty\\boost\\build\\win_64\\include', '-I..\\..\\..\\XlsFile\\Format', '-I..\\..\\..\\Common', '-I..\\..\\..\\..\\OOXML\\XlsbFormat', '-ID:\\a\\oo-core-ci\\oo-core-ci\\vendor\\work\\qt-win\\Qt-5.15.2\\msvc2019_64\\mkspecs\\win32-msvc', '-Focore_build\\win_64\\release\\obj\\a\\oo-core-ci\\oo-core-ci\\core\\MsBinaryFile\\XlsFile\\Format\\Logic\\Biff_records\\Window1.obj', '..\\..\\..\\XlsFile\\Format\\Logic\\Biff_records\\Window1.cpp']}, {'name': 'VisioPages.cpp', 'cwd': 'core/OOXML/Projects/Linux/DocxFormatLib', 'source': 'core/OOXML/VsdxFormat/VisioPages.cpp', 'arguments': ['cl', '-c', '-nologo', '-Zc:wchar_t', '-FS', '-Zc:rvalueCast', '-Zc:inline', '-Zc:strictStrings', '-Zc:throwingNew', '-Zc:referenceBinding', '-Zc:__cplusplus', '/Zc:strictStrings-', '/bigobj', '-O2', '-MD', '/Zc:strictStrings-', '-w', '-EHsc', '-DUNICODE', '-D_UNICODE', '-DWIN32', '-D_ENABLE_EXTENDED_ALIGNED_STORAGE', '-DWIN64', '-DINTVER=1.0.0.3', '-DWIN_INTVER=1,0,0,3', '-DCOPYRIGHT_YEAR=2026', '-DWIN32', '-D_WIN32', '-DNOMINMAX', '-DWIN64', '-D_WIN64', '-DWINDOWS_IGNORE_PACKING_MISMATCH', '-DCRYPTOPP_DISABLE_ASM', '-DUNICODE', '-D_UNICODE', '-DDONT_WRITE_EMBEDDED_FONTS', '-DCRYPTOPP_DISABLE_ASM', '-DBOOST_USE_WINDOWS_H', '-DBOOST_WINAPI_NO_REDECLARATIONS', '-DNDEBUG', '-DQT_NO_DEBUG', '-I.', '-I..\\..\\..\\..\\Common\\3dParty\\boost\\build\\win_64\\include', '-ID:\\a\\oo-core-ci\\oo-core-ci\\vendor\\work\\qt-win\\Qt-5.15.2\\msvc2019_64\\mkspecs\\win32-msvc', '-Focore_build\\win_64\\release\\obj\\a\\oo-core-ci\\oo-core-ci\\core\\OOXML\\VsdxFormat\\VisioPages.obj', '..\\..\\..\\VsdxFormat\\VisioPages.cpp']}]
+          ROOT = Path.cwd().resolve()
+          SCCACHE = os.environ["X2T_SCCACHE"]
+          REPORT_PATH = ROOT / "dist/sccache-targeted-probe.json"
+          REPORT_PATH.parent.mkdir(exist_ok=True)
+          NAMESPACE = os.environ["SCCACHE_GHA_VERSION"]
+          DISK = Path(os.environ["RUNNER_TEMP"]) / "pch-targeted-disk-cache"
+          if DISK.exists():
+              raise RuntimeError("Targeted disk cache must start empty")
+          DISK.mkdir()
+          report = {"schemaVersion": 1, "scope": "Three C++ translation units only; not a full X2T build or smoke test",
+                    "namespace": os.environ["SCCACHE_GHA_VERSION"], "phases": [], "success": False}
+          
+          
+          def cache_command(*args):
+              p = subprocess.run([SCCACHE, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+              if p.returncode:
+                  raise RuntimeError("sccache control command failed: " + args[0])
+              return p.stdout
+          
+          
+          def count(value):
+              return sum(value.get("counts", {}).values()) if isinstance(value, dict) else int(value)
+          
+          
+          def statistics():
+              # Restrict export to numeric counters, not backend response text or URLs.
+              value = json.loads(cache_command("--show-stats", "--stats-format", "json"))["stats"]
+              return {key: count(value.get(key, 0)) for key in (
+                  "compile_requests", "cache_hits", "cache_misses", "cache_writes", "cache_write_errors",
+                  "cache_read_errors", "cache_errors", "cache_timeouts", "compile_fails",
+                  "requests_not_cacheable", "requests_unsupported_compiler",
+              )}
+          
+          
+          def level_statistics():
+              value = json.loads(cache_command("--show-stats", "--stats-format", "json"))["stats"]
+              return [{"level": index, **{key: int(level.get(key, 0)) for key in (
+                  "hits", "misses", "writes", "write_failures", "backfills_from", "backfills_to"
+              )}} for index,level in enumerate(value.get("multi_level") or [])]
+          
+          
+          def wait_server_exit():
+              deadline = time.monotonic() + 90
+              while True:
+                  processes = subprocess.run(["tasklist", "/FI", "IMAGENAME eq sccache.exe", "/FO", "CSV", "/NH"],
+                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                  if processes.returncode:
+                      raise RuntimeError("Could not verify sccache daemon exit")
+                  if not any(line.strip().lower().startswith('"sccache.exe",') for line in processes.stdout.splitlines()):
+                      return
+                  if time.monotonic() >= deadline:
+                      raise RuntimeError("Timed out waiting for sccache daemon exit")
+                  time.sleep(1)
+          
+          
+          def configure(phase):
+              cache_command("--stop-server")
+              wait_server_exit()
+              os.environ.pop("SCCACHE_C_CUSTOM_CACHE_BUSTER", None)
+              os.environ["SCCACHE_DIR"] = str(DISK)
+              os.environ["SCCACHE_CACHE_SIZE"] = "2G"
+              os.environ["SCCACHE_LOCAL_RW_MODE"] = "READ_WRITE"
+              os.environ.pop("SCCACHE_MULTILEVEL_CHAIN", None)
+              os.environ.pop("SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY", None)
+              if phase == "original":
+                  os.environ["SCCACHE_GHA_ENABLED"] = "true"
+                  os.environ["SCCACHE_GHA_VERSION"] = NAMESPACE
+                  os.environ["SCCACHE_GHA_RW_MODE"] = "READ_WRITE"
+              elif phase == "disk_migration":
+                  os.environ["SCCACHE_GHA_ENABLED"] = "true"
+                  os.environ["SCCACHE_GHA_VERSION"] = NAMESPACE
+                  os.environ["SCCACHE_GHA_RW_MODE"] = "READ_ONLY"
+                  os.environ["SCCACHE_MULTILEVEL_CHAIN"] = "disk,gha"
+                  os.environ["SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY"] = "all"
+              else:
+                  # VERSION itself enables GHA even if ENABLED is false; remove both selectors.
+                  os.environ.pop("SCCACHE_GHA_VERSION", None)
+                  os.environ["SCCACHE_GHA_ENABLED"] = "false"
+                  os.environ.pop("SCCACHE_GHA_RW_MODE", None)
+              cache_command("--start-server")
+              info = json.loads(cache_command("--show-stats", "--stats-format", "json"))
+              location = info.get("cache_location", "").lower()
+              if phase == "disk_warm" and "local disk" not in location:
+                  raise RuntimeError("Disk-only backend verification failed")
+              return {"ghaEnabled": os.environ["SCCACHE_GHA_ENABLED"],
+                      "chain": os.environ.get("SCCACHE_MULTILEVEL_CHAIN", "single"),
+                      "ghaMode": os.environ.get("SCCACHE_GHA_RW_MODE"),
+                      "writeErrorPolicy": os.environ.get("SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY"),
+                      "diskOnlyVerified": phase == "disk_warm" and "local disk" in location}
+          
+          
+          def flush_stats():
+              # A compiler response can precede its async cache write. Do not reset early.
+              deadline = time.monotonic() + 90
+              while True:
+                  value = statistics()
+                  if value["cache_writes"] + value["cache_write_errors"] >= value["cache_misses"]:
+                      return value
+                  if time.monotonic() >= deadline:
+                      raise RuntimeError("Timed out waiting for cache write accounting")
+                  time.sleep(1)
+          
+          
+          def save():
+              REPORT_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
+          
+          
+          try:
+              for phase in ("original", "disk_migration", "disk_warm"):
+                  backend = configure(phase)
+                  cache_command("--zero-stats")
+                  result = {"name": phase, "objects": [], "backend": backend}
+                  report["phases"].append(result)
+                  for target in TARGETS:
+                      cwd = (ROOT / target["cwd"]).resolve()
+                      source = (ROOT / target["source"]).resolve()
+                      args = target["arguments"]
+                      if (cwd / args[-1]).resolve() != source or not source.is_file():
+                          raise RuntimeError("Source path validation failed: " + target["name"])
+                      output_arg = next(arg[3:] for arg in args if arg.startswith("-Fo"))
+                      output = (cwd / output_arg).resolve()
+                      if not output.is_relative_to(cwd):
+                          raise RuntimeError("Output path escaped its project")
+                      output.parent.mkdir(parents=True, exist_ok=True)
+                      output.unlink(missing_ok=True)
+                      env = os.environ.copy()
+                      env.pop("SCCACHE_C_CUSTOM_CACHE_BUSTER", None)
+                      before = statistics()
+                      started = time.monotonic()
+                      process = subprocess.run([SCCACHE, *args], cwd=cwd, env=env)
+                      obj = {"source": target["source"], "sourceSha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                             "compileReturnCode": process.returncode, "seconds": round(time.monotonic()-started,3)}
+                      result["objects"].append(obj)
+                      if process.returncode != 0 or not output.is_file():
+                          save()
+                          raise RuntimeError("Target compile failed: " + target["name"])
+                      obj["objectSize"] = output.stat().st_size
+                      obj["objectSha256"] = hashlib.sha256(output.read_bytes()).hexdigest()
+                      after = flush_stats()
+                      obj["statsDelta"] = {key: after[key] - before[key] for key in after}
+                      save()
+                  result["stats"] = flush_stats()
+                  if phase == "disk_migration":
+                      # Healthy L1 hits backfill asynchronously; wait before shutting down.
+                      deadline = time.monotonic() + 90
+                      while True:
+                          levels = level_statistics()
+                          if (len(levels) == 2 and levels[0]["backfills_to"] >= 1
+                                  and levels[0]["backfills_to"] == levels[1]["backfills_from"]):
+                              break
+                          if time.monotonic() >= deadline:
+                              raise RuntimeError("Healthy GHA object was not backfilled to disk")
+                          time.sleep(1)
+                      if any(level["write_failures"] for level in levels) or levels[1]["writes"] != 0:
+                          raise RuntimeError("Migration backend had a write failure or wrote to read-only GHA")
+                      result["levels"] = levels
+                  save()
+              cold, warm = report["phases"][1:]
+              for result in (cold, warm):
+                  stats = result["stats"]
+                  if stats["compile_requests"] != 3 or any(stats[key] for key in (
+                      "cache_write_errors", "cache_read_errors", "cache_errors", "cache_timeouts",
+                      "compile_fails", "requests_not_cacheable", "requests_unsupported_compiler")):
+                      raise RuntimeError("Migrated probe cache quality failed: " + result["name"])
+              if cold["stats"]["cache_misses"] != 2 or cold["stats"]["cache_writes"] != 2 or cold["stats"]["cache_hits"] != 1:
+                  raise RuntimeError("Expected two disk writes and one healthy GHA hit")
+              if warm["stats"]["cache_hits"] != 3 or warm["stats"]["cache_misses"] != 0:
+                  raise RuntimeError("Expected three disk-only cache hits")
+              if any(level["write_failures"] for level in cold["levels"]) or cold["levels"][1]["writes"] != 0:
+                  raise RuntimeError("Read-only GHA migration wrote remotely or had write failures")
+              for a,b in zip(cold["objects"],warm["objects"]):
+                  if a["sourceSha256"] != b["sourceSha256"] or a["objectSha256"] != b["objectSha256"]:
+                      raise RuntimeError("Disk hit did not restore the identical object")
+              report["success"] = True
+          finally:
+              save()
+              print(json.dumps(report, indent=2))
+          '@ | Set-Content -Encoding utf8 "$env:RUNNER_TEMP/pch_target_probe.py"
+      - name: Probe original keys and disk migration
         id: compile
         shell: cmd
-        timeout-minutes: 170
-        run: scripts\windows_build.cmd core
-      - name: Flush compiler cache before dependent warm run
+        timeout-minutes: 12
+        run: |
+          call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
+          if errorlevel 1 exit /b 1
+          python "%RUNNER_TEMP%\pch_target_probe.py"
+      - name: Flush compiler cache
         if: always() && steps.compile.outcome != 'skipped'
         shell: pwsh
         run: |
@@ -185,54 +373,14 @@ jobs:
               raw.unlink()
           '@ | python -
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Check executable size
-        run: python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json --max-palette-instances 1 --check-header-statics
-      - name: Record producer
-        run: python scripts/ci_core_cache.py record --platform win_64
-      - name: Verify Windows PE and runtime
-        shell: cmd
-        run: |
-          call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
-          if errorlevel 1 exit /b 1
-          dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
-          if errorlevel 1 exit /b 1
-          dumpbin /dependents core\build\bin\win_64\x2t.exe
-          if errorlevel 1 exit /b 1
-      - name: Add Qt runtime to PATH
-        shell: pwsh
-        run: |
-          $qt = Join-Path $env:GITHUB_WORKSPACE 'vendor/work/qt-win/Qt-5.15.2/msvc2019_64/bin'
-          if (!(Test-Path (Join-Path $qt 'Qt5Core.dll'))) { throw 'Missing Qt runtime' }
-          $qt | Out-File $env:GITHUB_PATH -Append -Encoding utf8
-      - name: DOCX and PPTX round-trip smoke
-        id: smoke
-        run: python scripts/smoke_x2t_runtime.py --x2t core/build/bin/win_64/x2t.exe --fixture-root tests/core-features/fixtures --work-root vendor/work/pch-benchmark-smoke
-      - name: Validate benchmark evidence
-        run: python scripts/pch_benchmark_report.py record --mode "${{ matrix.mode }}" --phase "warm"
-      - name: Upload evidence even on failure
+      - name: Upload targeted probe evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pch-recovery-${{ matrix.mode }}-warm-${{ github.run_attempt }}
+          name: pch-targeted-cache-probe-${{ github.run_attempt }}
           path: |
-            dist/pch-recovery-provenance.json
-            dist/build-metrics-win_64.json
-            dist/build-win_64.log
-            dist/sccache-stats-win_64.json
+            dist/sccache-targeted-probe.json
             dist/sccache-write-diagnostic.json
-            dist/core-inputs-win_64.json
-            dist/core-producer-win_64.json
-            dist/pch-benchmark-result.json
-            dist/pch-freshness.json
-            dist/windows-size-report.json
-            vendor/work/x2t-baseline-smoke-receipt.json
+            dist/pch-recovery-provenance.json
           if-no-files-found: warn
           retention-days: 14
-      - name: Upload tested runtime
-        if: always() && steps.smoke.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: pch-recovery-runtime-${{ matrix.mode }}-warm-${{ github.run_attempt }}
-          path: core/build/bin/win_64/
-          if-no-files-found: error
-          retention-days: 7
