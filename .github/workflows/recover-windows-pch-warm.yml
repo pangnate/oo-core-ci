@@ -159,23 +159,28 @@ jobs:
               )}} for index,level in enumerate(value.get("multi_level") or [])]
           
           
+          def server_running():
+              processes = subprocess.run(["tasklist", "/FI", "IMAGENAME eq sccache.exe", "/FO", "CSV", "/NH"],
+                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+              if processes.returncode:
+                  raise RuntimeError("Could not inspect sccache daemon state")
+              return any(line.strip().lower().startswith('"sccache.exe",') for line in processes.stdout.splitlines())
+          
+          
           def wait_server_exit():
               deadline = time.monotonic() + 90
-              while True:
-                  processes = subprocess.run(["tasklist", "/FI", "IMAGENAME eq sccache.exe", "/FO", "CSV", "/NH"],
-                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                  if processes.returncode:
-                      raise RuntimeError("Could not verify sccache daemon exit")
-                  if not any(line.strip().lower().startswith('"sccache.exe",') for line in processes.stdout.splitlines()):
-                      return
+              while server_running():
                   if time.monotonic() >= deadline:
                       raise RuntimeError("Timed out waiting for sccache daemon exit")
                   time.sleep(1)
           
           
           def configure(phase):
-              cache_command("--stop-server")
-              wait_server_exit()
+              # Installation need not start a daemon. Only the initial absent state is valid.
+              # Later switches must stop the daemon that this probe explicitly started.
+              if phase != "original" or server_running():
+                  cache_command("--stop-server")
+                  wait_server_exit()
               os.environ.pop("SCCACHE_C_CUSTOM_CACHE_BUSTER", None)
               os.environ["SCCACHE_DIR"] = str(DISK)
               os.environ["SCCACHE_CACHE_SIZE"] = "2G"
@@ -308,8 +313,15 @@ jobs:
         if: always() && steps.compile.outcome != 'skipped'
         shell: pwsh
         run: |
+          $running = Get-Process -Name sccache -ErrorAction SilentlyContinue
+          if (!$running) { Write-Output 'No compiler cache daemon to stop'; exit 0 }
           & $env:X2T_SCCACHE --stop-server
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $deadline = (Get-Date).AddSeconds(90)
+          while (Get-Process -Name sccache -ErrorAction SilentlyContinue) {
+            if ((Get-Date) -gt $deadline) { throw 'Compiler cache daemon did not exit' }
+            Start-Sleep -Seconds 1
+          }
       - name: Extract safe cache-write diagnostics
         if: always() && steps.compile.outcome != 'skipped'
         shell: pwsh
