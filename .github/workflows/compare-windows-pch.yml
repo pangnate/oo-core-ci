@@ -2,6 +2,9 @@ name: Compare Windows PCH compiler cache
 on:
   push:
     branches: ['experiment/windows-pch-cache-20261030']
+    paths-ignore:
+      - '.github/workflows/recover-windows-pch-warm.yml'
+      - '.github/workflows/compare-windows-pch.yml'
   workflow_dispatch:
 permissions:
   contents: read

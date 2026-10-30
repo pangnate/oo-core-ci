@@ -1,0 +1,167 @@
+name: Recover Windows PCH warm observations
+on:
+  push:
+    branches: ['experiment/windows-pch-cache-20261030']
+    paths: ['.github/workflows/recover-windows-pch-warm.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: pch-warm-recovery-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [default, disabled]
+    runs-on: windows-2022
+    timeout-minutes: 180
+    env:
+      X2T_CLEAN: '0'
+      X2T_PCH_MODE: ${{ matrix.mode }}
+      X2T_DEPS_ID: c2d3619ecc9affe364f956f5d01e3c1bff6341992f3e35f7749d72850a2f7bba
+      X2T_BENCHMARK_PHASE: warm
+      SCCACHE_GHA_ENABLED: 'true'
+      # Reuse only this mode's verified original cold namespace; this is a recovery observation.
+      SCCACHE_GHA_VERSION: pch-bench-40988417135-1-${{ matrix.mode }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          ref: a3affdf323cb4c6b1d49a65297842d9bdc930a70
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify source and record recovery provenance
+        shell: pwsh
+        run: |
+          $actual = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -or $actual -ne 'a3affdf323cb4c6b1d49a65297842d9bdc930a70') { throw 'Unexpected source checkout' }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          @{
+            actualSourceSha = $actual
+            originalRunId = '40988417135'
+            originalRunAttempt = '1'
+            recoveryRunId = $env:GITHUB_RUN_ID
+            recoveryRunAttempt = $env:GITHUB_RUN_ATTEMPT
+            recoveryWorkflowSha = $env:GITHUB_SHA
+            cacheNamespace = $env:SCCACHE_GHA_VERSION
+            mode = $env:X2T_PCH_MODE
+            workspace = $env:GITHUB_WORKSPACE
+            quality = 'Original cold had one cache write error; this is recovery evidence, not a clean four-trial benchmark.'
+            sourceShaFieldNote = 'Unmodified original scripts record GITHUB_SHA in sourceSha. In this recovery that is the workflow event SHA; actualSourceSha above identifies compiled checkout.'
+          } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 dist/pch-recovery-provenance.json
+      - name: Verify and patch locked Core
+        shell: pwsh
+        run: |
+          python scripts/verify_vendor.py --platform windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/verify_core_source.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/apply_core_patches.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/apply_core_overlays.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Locate VS2022 and v142
+        shell: pwsh
+        run: ./scripts/ci_vs_env.ps1
+      - name: Check dependency compiler
+        shell: pwsh
+        env:
+          EXPECTED_COMPILER: msvc-14.29.30133
+        run: |
+          if ($env:X2T_COMPILER_VERSION -ne $env:EXPECTED_COMPILER) { throw 'Dependency compiler mismatch' }
+      - name: Identify Core inputs
+        run: python scripts/ci_core_cache.py key --platform win_64
+      - name: Prepare toolchain in fresh checkout
+        shell: cmd
+        run: scripts\windows_build.cmd prepare
+      - name: Assert fresh Core object outputs before restoring dependencies
+        run: python scripts/pch_benchmark_report.py check-fresh --core-root core --report dist/pch-freshness.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: pch-benchmark-deps-1
+          path: dist/incoming-deps
+          run-id: 40988417135
+          github-token: ${{ github.token }}
+      - name: Restore verified dependency handoff
+        run: python scripts/ci_handoff.py restore --archive dist/incoming-deps/deps-win_64.tar --stage deps --platform win_64 --source-sha "c2d3619ecc9affe364f956f5d01e3c1bff6341992f3e35f7749d72850a2f7bba"
+      - uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c
+        with:
+          version: v0.18.0
+          disable_annotations: true
+      - name: Configure bounded compiler cache
+        run: python scripts/setup_build_acceleration.py
+      - name: Verify comparable parallelism
+        shell: pwsh
+        run: |
+          if ($env:X2T_BUILD_JOBS -ne '4') { throw 'Recovery requires the original four compile jobs' }
+      - name: Reset compiler cache counters
+        shell: pwsh
+        run: |
+          & $env:X2T_SCCACHE --zero-stats
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Build X2T
+        id: compile
+        shell: cmd
+        timeout-minutes: 170
+        run: scripts\windows_build.cmd core
+      - name: Flush compiler cache before dependent warm run
+        if: always() && steps.compile.outcome != 'skipped'
+        shell: pwsh
+        run: |
+          & $env:X2T_SCCACHE --stop-server
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check executable size
+        run: python scripts/report_windows_size.py --exe core/build/bin/win_64/x2t.exe --map core/build/bin/win_64/x2t.map --receipt dist/windows-size-report.json --max-palette-instances 1 --check-header-statics
+      - name: Record producer
+        run: python scripts/ci_core_cache.py record --platform win_64
+      - name: Verify Windows PE and runtime
+        shell: cmd
+        run: |
+          call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
+          if errorlevel 1 exit /b 1
+          dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
+          if errorlevel 1 exit /b 1
+          dumpbin /dependents core\build\bin\win_64\x2t.exe
+          if errorlevel 1 exit /b 1
+      - name: Add Qt runtime to PATH
+        shell: pwsh
+        run: |
+          $qt = Join-Path $env:GITHUB_WORKSPACE 'vendor/work/qt-win/Qt-5.15.2/msvc2019_64/bin'
+          if (!(Test-Path (Join-Path $qt 'Qt5Core.dll'))) { throw 'Missing Qt runtime' }
+          $qt | Out-File $env:GITHUB_PATH -Append -Encoding utf8
+      - name: DOCX and PPTX round-trip smoke
+        id: smoke
+        run: python scripts/smoke_x2t_runtime.py --x2t core/build/bin/win_64/x2t.exe --fixture-root tests/core-features/fixtures --work-root vendor/work/pch-benchmark-smoke
+      - name: Validate benchmark evidence
+        run: python scripts/pch_benchmark_report.py record --mode "${{ matrix.mode }}" --phase "warm"
+      - name: Upload evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pch-recovery-${{ matrix.mode }}-warm-${{ github.run_attempt }}
+          path: |
+            dist/pch-recovery-provenance.json
+            dist/build-metrics-win_64.json
+            dist/build-win_64.log
+            dist/sccache-stats-win_64.json
+            dist/core-inputs-win_64.json
+            dist/core-producer-win_64.json
+            dist/pch-benchmark-result.json
+            dist/pch-freshness.json
+            dist/windows-size-report.json
+            vendor/work/x2t-baseline-smoke-receipt.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload tested runtime
+        if: always() && steps.smoke.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pch-recovery-runtime-${{ matrix.mode }}-warm-${{ github.run_attempt }}
+          path: core/build/bin/win_64/
+          if-no-files-found: error
+          retention-days: 7
