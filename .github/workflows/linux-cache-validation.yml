@@ -26,7 +26,7 @@ jobs:
           REQUESTED_PHASE: ${{ inputs.phase }}
         run: |
           # Change only this fallback for staged cold -> warm -> reuse pushes.
-          echo "phase=${REQUESTED_PHASE:-cold}" >> "$GITHUB_OUTPUT"
+          echo "phase=${REQUESTED_PHASE:-warm}" >> "$GITHUB_OUTPUT"
   disk-probe:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
