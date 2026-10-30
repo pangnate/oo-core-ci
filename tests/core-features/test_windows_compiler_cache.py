@@ -14,7 +14,8 @@ import ci_windows_compiler_cache as cache
 
 ENV = {'X2T_COMPILER_VERSION':'msvc-14.29.30133','X2T_DEPS_ID':'deps1','X2T_PCH_MODE':'disabled',
        'X2T_CORE_ID':'core1','GITHUB_RUN_ID':'100','GITHUB_RUN_ATTEMPT':'1','GITHUB_JOB':'build',
-       'GITHUB_SHA':'source1','ImageVersion':'image1'}
+       'GITHUB_SHA':'source1','ImageVersion':'image1',
+       'SCCACHE_DIR':r'D:\a\_temp\x2t-compiler-snapshot\cache'}
 
 class CacheTests(unittest.TestCase):
     def setUp(self):
@@ -29,9 +30,37 @@ class CacheTests(unittest.TestCase):
         self.obj=self.snap/'cache/abc';self.obj.write_bytes(b'compiler object')
 
     def raw(self):
-        return {'version':'0.18.0','stats':{'compile_requests':3,'cache_hits':{'counts':{'C/C++':2}},
-                'cache_misses':{'counts':{'C/C++':1}},'cache_writes':1,
-                'cache_errors':{'counts':{}},'multi_level':[{'name':'disk','write_failures':0}]}}
+        # Captured from run 41016385724, job 123934492712, artifact 12961205790.
+        raw=json.loads((ROOT/'tests/core-features/fixtures/sccache-0.18.0-windows-disk.json').read_text())
+        raw['stats'].update(compile_requests=3, cache_hits={'counts':{'C/C++':2}},
+                            cache_misses={'counts':{'C/C++':1}}, cache_writes=1)
+        return raw
+
+    def test_actual_production_stats_fixture(self):
+        raw=json.loads((ROOT/'tests/core-features/fixtures/sccache-0.18.0-windows-disk.json').read_text())
+        self.assertEqual(cache.validate_stats(raw), {'requests':4469,'hits':4469,'misses':0})
+
+    def test_preflight_zero_requests_only(self):
+        raw=self.raw()
+        raw['stats'].update(compile_requests=0, cache_hits={'counts':{}}, cache_misses={'counts':{}}, cache_writes=0)
+        self.assertEqual(cache.validate_stats(raw,preflight=True), {'requests':0,'hits':0,'misses':0})
+        with self.assertRaises(ValueError):cache.validate_stats(raw)
+        os.environ['X2T_SCCACHE']='sccache'
+        with patch.object(cache.subprocess,'check_output',return_value=json.dumps(raw)):cache.preflight()
+        self.assertTrue((self.root/'dist/sccache-preflight-win_64.json').exists())
+        with patch.object(cache.subprocess,'check_output',return_value=json.dumps(self.raw())),self.assertRaises(ValueError):cache.preflight()
+
+    def test_preflight_rejects_wrong_backend_and_errors(self):
+        for name in ('disk','L0 (ghac)','L0 (disk-like)','L1 (disk)',''):
+            raw=self.raw();raw['stats']['multi_level'][0]['name']=name
+            with self.assertRaises(ValueError):cache.validate_stats(raw,preflight=True)
+        for field,value in [('cache_location','Local disk'),('version','0.19.0')]:
+            raw=self.raw();raw[field]=value
+            with self.assertRaises(ValueError):cache.validate_stats(raw,preflight=True)
+        with patch.dict(os.environ,SCCACHE_DIR=r'D:\other'),self.assertRaisesRegex(ValueError,'location'):
+            cache.validate_stats(self.raw(),preflight=True)
+        raw=self.raw();raw['stats']['multi_level'][0]['location']='ghac://other'
+        with self.assertRaises(ValueError):cache.validate_stats(raw,preflight=True)
 
     def test_source_change_keeps_prefix_but_changes_snapshot_key(self):
         before=cache.identities()
@@ -171,6 +200,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('SCCACHE_MULTILEVEL_CHAIN: disk',text)
         self.assertIn('X2T_PCH_MODE: disabled',text)
         self.assertIn('disable_annotations: true',text)
+        self.assertLess(text.index('ci_windows_compiler_cache.py preflight'),text.index('      - name: Build X2T'))
         self.assertIn('restore-keys: ${{ env.X2T_COMPILER_CACHE_PREFIX }}',text)
         self.assertNotIn("steps.compiler-cache.outputs.cache-hit",text)
         self.assertIn('ci_core_cache.py check',text)
@@ -190,13 +220,16 @@ class WorkflowTests(unittest.TestCase):
         wrapper=(ROOT/'.github/workflows/validate-windows-production-cache.yml').read_text()
         self.assertIn('id: saved-seed',wrapper)
         self.assertIn('steps.saved-seed.outputs.cache-matched-key',wrapper)
+        self.assertIn("if: github.event_name == 'workflow_dispatch' && inputs.run_linux",wrapper)
+        self.assertIn('default: true',wrapper)
+        self.assertIn('${{ github.sha }}',wrapper)
         self.assertIn('arch: [amd64, arm64]',wrapper)
         self.assertIn('uses: ./.github/workflows/x2t-linux.yml',wrapper)
 
     def test_snapshot_steps_are_skipped_for_binary_hit(self):
         text=(ROOT/'.github/workflows/x2t-windows.yml').read_text()
         names={'Configure compatible compiler snapshot','Restore compatible compiler snapshot',
-               'Verify restored compiler snapshot','Set up pinned compiler cache','Reset compiler cache counters',
+               'Verify restored compiler snapshot','Set up pinned compiler cache','Reset compiler cache counters','Validate compiler backend before compilation',
                'Record stopped compiler snapshot','Save compiler snapshot for subsequent source builds',
                'Confirm new compiler snapshot is durably available','Require exact saved compiler snapshot identity'}
         blocks=text.split('      - name: ')[1:]

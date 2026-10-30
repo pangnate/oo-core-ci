@@ -178,6 +178,9 @@ jobs:
         run: |
           & $env:X2T_SCCACHE --zero-stats
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Validate compiler backend before compilation
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python scripts/ci_windows_compiler_cache.py preflight
       - name: Build X2T
         id: compile
         if: steps.core-cache.outputs.cache-hit != 'true'
@@ -247,6 +250,7 @@ jobs:
             dist/build-metrics-win_64.json
             dist/build-win_64.log
             dist/source-path-audit-win_64.json
+            dist/sccache-preflight-win_64.json
             dist/sccache-stats-win_64.json
             dist/compiler-cache-restore-win_64.json
             dist/compiler-cache-quality-win_64.json

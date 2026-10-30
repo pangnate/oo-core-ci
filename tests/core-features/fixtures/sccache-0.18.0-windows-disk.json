@@ -1,0 +1,75 @@
+{
+  "stats": {
+    "compile_requests": 4469,
+    "requests_unsupported_compiler": 0,
+    "requests_not_compile": 0,
+    "requests_not_cacheable": 0,
+    "requests_executed": 4469,
+    "cache_errors": {
+      "counts": {},
+      "adv_counts": {}
+    },
+    "cache_hits": {
+      "counts": {
+        "C/C++": 4469
+      },
+      "adv_counts": {
+        "c [msvc]": 348,
+        "c++ [msvc]": 4121
+      }
+    },
+    "cache_misses": {
+      "counts": {},
+      "adv_counts": {}
+    },
+    "cache_timeouts": 0,
+    "cache_read_errors": 0,
+    "non_cacheable_compilations": 0,
+    "forced_recaches": 0,
+    "cache_write_errors": 0,
+    "cache_writes": 0,
+    "cache_write_duration": {
+      "secs": 0,
+      "nanos": 0
+    },
+    "cache_read_hit_duration": {
+      "secs": 1,
+      "nanos": 455433600
+    },
+    "compilations": 0,
+    "compiler_write_duration": {
+      "secs": 0,
+      "nanos": 0
+    },
+    "compile_fails": 0,
+    "not_cached": {},
+    "dist_compiles": {},
+    "dist_errors": 0,
+    "multi_level": [
+      {
+        "name": "L0 (disk)",
+        "location": "Local disk: \"D:\\\\a\\\\_temp\\\\x2t-compiler-snapshot\\\\cache\"",
+        "hits": 4469,
+        "misses": 0,
+        "writes": 0,
+        "write_failures": 0,
+        "backfills_from": 0,
+        "backfills_to": 0,
+        "hit_duration": {
+          "secs": 1,
+          "nanos": 395274100
+        },
+        "write_duration": {
+          "secs": 0,
+          "nanos": 0
+        }
+      }
+    ]
+  },
+  "cache_location": "Multi-level (1 levels)",
+  "cache_size": 182907954,
+  "max_cache_size": 8589934592,
+  "use_preprocessor_cache_mode": true,
+  "version": "0.18.0",
+  "basedirs": []
+}

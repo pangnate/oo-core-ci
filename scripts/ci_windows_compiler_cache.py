@@ -106,27 +106,46 @@ def restored():
     print(json.dumps(receipt))
 
 
-def validate_stats(raw):
+def validate_stats(raw, *, preflight=False):
     stats = raw['stats']
     if raw.get('version') != compatibility()['sccacheVersion']:
         raise ValueError('Unexpected sccache version')
     for key in ('cache_read_errors', 'cache_write_errors', 'cache_timeouts', 'compile_fails',
-                'requests_not_cacheable', 'requests_unsupported_compiler'):
+                'requests_not_cacheable', 'requests_unsupported_compiler', 'non_cacheable_compilations'):
         if stats.get(key, 0):
             raise ValueError('Compiler cache failure: ' + key)
     if sum(stats.get('cache_errors', {}).get('counts', {}).values()):
         raise ValueError('Compiler cache backend error')
     levels = stats.get('multi_level') or []
-    if len(levels) != 1 or levels[0].get('name') != 'disk':
+    if (not isinstance(levels, list) or len(levels) != 1
+            or levels[0].get('name') != 'L0 (disk)'
+            or raw.get('cache_location') != 'Multi-level (1 levels)'
+            or not levels[0].get('location', '').startswith('Local disk: "')
+            or not levels[0]['location'].endswith('"')):
         raise ValueError('Expected exactly one disk backend')
+    location = levels[0]['location'][len('Local disk: \"'):-1]
+    normalize = lambda value: re.sub(r'[\\/]+', '/', value).rstrip('/').casefold()
+    if not os.environ.get('SCCACHE_DIR') or normalize(location) != normalize(os.environ['SCCACHE_DIR']):
+        raise ValueError('Disk backend location differs from configured snapshot')
     if levels[0].get('write_failures', 0):
         raise ValueError('Disk backend write failure')
     requests = stats['compile_requests']
     hits = sum(stats['cache_hits']['counts'].values())
     misses = sum(stats['cache_misses']['counts'].values())
-    if requests <= 0 or hits + misses != requests:
+    if requests < 0 or (requests == 0 and not preflight) or hits + misses != requests:
         raise ValueError('Expected real cacheable compilation requests')
     return {'requests': requests, 'hits': hits, 'misses': misses}
+
+
+def preflight():
+    """Validate the actual daemon backend before spending time compiling."""
+    raw = json.loads(subprocess.check_output(
+        [os.environ['X2T_SCCACHE'], '--show-stats', '--stats-format', 'json'], text=True))
+    write_json(ROOT / 'dist/sccache-preflight-win_64.json', raw)
+    counts = validate_stats(raw, preflight=True)
+    if any(counts.values()) or raw['stats'].get('cache_writes', 0):
+        raise ValueError('Expected reset compiler cache counters before compilation')
+    print(json.dumps({'status': 'passed', 'phase': 'preflight', 'backend': 'disk', **counts}))
 
 
 def finish():
@@ -206,7 +225,7 @@ def import_seed(cache_root, inventory_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
-    for name in ('configure', 'restored', 'finish', 'pack'):
+    for name in ('configure', 'restored', 'preflight', 'finish', 'pack'):
         sub.add_parser(name)
     seed = sub.add_parser('import-seed')
     seed.add_argument('--cache-root', type=Path, required=True)

@@ -8,11 +8,16 @@ on:
       - 'scripts/ci_windows_compiler_cache.py'
       - 'tests/core-features/test_windows_compiler_cache.py'
   workflow_dispatch:
+    inputs:
+      run_linux:
+        description: Also validate Linux amd64 and arm64
+        type: boolean
+        default: true
 permissions:
   contents: read
   actions: read
 concurrency:
-  group: production-cache-validation-${{ github.ref }}
+  group: production-cache-validation-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 jobs:
   seed:
@@ -114,6 +119,8 @@ jobs:
     with:
       rebuild_core: true
   linux:
+    # Push repairs validate Windows without duplicating already-running Linux builds.
+    if: github.event_name == 'workflow_dispatch' && inputs.run_linux
     strategy:
       fail-fast: false
       matrix:

@@ -20,3 +20,12 @@ Compiler snapshots are not verified runtime binaries. Existing Core producer che
 GitHub cache branch visibility still applies. A snapshot created on an experimental branch may not be visible from `main`; its first build can therefore be cold. The branch-only validation wrapper performs a one-time, content-verified import of the previously tested experiment snapshot to avoid repeating that cold build during this migration. The normal Windows workflow has no pinned old run, source or dependency ID.
 
 The original PCH comparison workflow is now manually triggered only. `validate-windows-production-cache.yml` runs the actual Windows reusable workflow plus both Linux architectures on the experiment branch; it is not an automatic `main` build trigger.
+
+Backend preflight validates the actual sccache 0.18 JSON schema (`L0 (disk)`) and
+configured disk path before compilation; zero requests are accepted only at this
+reset-counter preflight, never at the post-build acceptance gate. The captured
+production statistics fixture comes from run 41016385724 / artifact 12961205790.
+Subsequent experimental-branch pushes validate Windows only, avoiding duplicate
+Linux builds. Manual validation defaults `run_linux` to true for both Linux
+architectures. Validation concurrency is per commit so a Windows repair does not
+wait for an unrelated in-progress Linux build.
