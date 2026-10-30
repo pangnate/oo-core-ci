@@ -26,8 +26,6 @@ jobs:
       SCCACHE_GHA_ENABLED: 'true'
       # Server-only logging: do not enable global or HTTP/client trace.
       SCCACHE_LOG: 'off,sccache::server=debug'
-      # Raw diagnostics can contain service URLs. Never print or upload this file.
-      SCCACHE_ERROR_LOG: '${{ runner.temp }}/sccache-server-private.log'
       # Reuse only this mode's verified original cold namespace; this is a recovery observation.
       SCCACHE_GHA_VERSION: pch-bench-40988417135-1-${{ matrix.mode }}
     steps:
@@ -93,6 +91,11 @@ jobs:
           github-token: ${{ github.token }}
       - name: Restore verified dependency handoff
         run: python scripts/ci_handoff.py restore --archive dist/incoming-deps/deps-win_64.tar --stage deps --platform win_64 --source-sha "c2d3619ecc9affe364f956f5d01e3c1bff6341992f3e35f7749d72850a2f7bba"
+      - name: Set private compiler diagnostic path before daemon startup
+        shell: pwsh
+        run: |
+          $privateLog = Join-Path $env:RUNNER_TEMP 'sccache-server-private.log'
+          "SCCACHE_ERROR_LOG=$privateLog" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
       - uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c
         with:
           version: v0.18.0
