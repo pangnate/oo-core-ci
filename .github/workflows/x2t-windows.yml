@@ -24,6 +24,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Test compiler cache and binary reuse contracts
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests/core-features -p test_windows_compiler_cache.py -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests/core-features -p test_ci_core_cache.py -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests/core-features -p test_pch_benchmark.py -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Verify locked inputs
         shell: pwsh
         run: |
@@ -75,9 +84,12 @@ jobs:
     env:
       X2T_DEPS_ID: ${{ needs.deps.outputs.deps-id }}
       X2T_CLEAN: '0'
-      SCCACHE_GHA_ENABLED: 'true'
-      SCCACHE_IGNORE_SERVER_IO_ERROR: '1'
-      SCCACHE_GHA_VERSION: x2t-win_64-v1
+      X2T_PCH_MODE: disabled
+      SCCACHE_GHA_ENABLED: 'false'
+      SCCACHE_MULTILEVEL_CHAIN: disk
+      SCCACHE_MULTILEVEL_WRITE_ERROR_POLICY: all
+      SCCACHE_LOCAL_RW_MODE: READ_WRITE
+      SCCACHE_CACHE_SIZE: 8G
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,11 +136,28 @@ jobs:
         if: steps.core-cache.outputs.cache-hit != 'true'
         shell: cmd
         run: scripts\windows_build.cmd prepare
+      - name: Configure compatible compiler snapshot
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python scripts/ci_windows_compiler_cache.py configure
+      - name: Restore compatible compiler snapshot
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        id: compiler-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+          restore-keys: ${{ env.X2T_COMPILER_CACHE_PREFIX }}
+      - name: Verify restored compiler snapshot
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        env:
+          X2T_COMPILER_CACHE_MATCHED_KEY: ${{ steps.compiler-cache.outputs.cache-matched-key }}
+        run: python scripts/ci_windows_compiler_cache.py restored
       - name: Set up pinned compiler cache
         if: steps.core-cache.outputs.cache-hit != 'true'
         uses: mozilla-actions/sccache-action@fd02668681acd5f960e1372061bee5e3e987195c # v0.0.11
         with:
           version: v0.18.0
+          disable_annotations: true
       - name: Configure bounded cached compilation
         if: steps.core-cache.outputs.cache-hit != 'true'
         run: python scripts/setup_build_acceleration.py
@@ -143,11 +172,24 @@ jobs:
         run: |
           python scripts/ci_handoff.py restore --archive dist/incoming-deps/deps-win_64.tar --stage deps --platform win_64 --source-sha $env:X2T_DEPS_ID
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Reset compiler cache counters
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          & $env:X2T_SCCACHE --zero-stats
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Validate compiler backend before compilation
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python scripts/ci_windows_compiler_cache.py preflight
       - name: Build X2T
+        id: compile
         if: steps.core-cache.outputs.cache-hit != 'true'
         timeout-minutes: 170
         shell: cmd
         run: scripts\windows_build.cmd core
+      - name: Flush and strictly validate compiler cache
+        if: always() && (steps.compile.outcome == 'success' || steps.compile.outcome == 'failure')
+        run: python scripts/ci_windows_compiler_cache.py finish
       - name: Report executable size
         if: steps.core-cache.outputs.cache-hit != 'true'
         shell: pwsh
@@ -157,6 +199,31 @@ jobs:
       - name: Record Core producer
         if: steps.core-cache.outputs.cache-hit != 'true'
         run: python scripts/ci_core_cache.py record --platform win_64
+      - name: Record stopped compiler snapshot
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        run: python scripts/ci_windows_compiler_cache.py pack
+      - name: Save compiler snapshot for subsequent source builds
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+      - name: Confirm new compiler snapshot is durably available
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        id: saved-compiler-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.X2T_COMPILER_SNAPSHOT }}
+          key: ${{ env.X2T_COMPILER_CACHE_KEY }}
+          lookup-only: true
+          fail-on-cache-miss: true
+      - name: Require exact saved compiler snapshot identity
+        if: steps.core-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        env:
+          SAVED_KEY: ${{ steps.saved-compiler-cache.outputs.cache-matched-key }}
+        run: |
+          if ($env:SAVED_KEY -ne $env:X2T_COMPILER_CACHE_KEY) { throw 'Compiler snapshot was not durably saved under its exact key' }
       - name: Archive Core handoff
         shell: pwsh
         run: |
@@ -183,7 +250,11 @@ jobs:
             dist/build-metrics-win_64.json
             dist/build-win_64.log
             dist/source-path-audit-win_64.json
+            dist/sccache-preflight-win_64.json
             dist/sccache-stats-win_64.json
+            dist/compiler-cache-restore-win_64.json
+            dist/compiler-cache-quality-win_64.json
+            dist/compiler-cache-snapshot-win_64.json
             vendor/work/x2t-core-source-verification.json
             vendor/work/x2t-core-patch-receipt.json
             vendor/work/x2t-core-overlay-receipt.json
@@ -224,8 +295,11 @@ jobs:
         shell: cmd
         run: |
           call "%REAL_VCVARSALL%" x64 -vcvars_ver=14.29
+          if errorlevel 1 exit /b 1
           dumpbin /headers core\build\bin\win_64\x2t.exe | findstr /i "machine (x64)"
+          if errorlevel 1 exit /b 1
           dumpbin /dependents core\build\bin\win_64\x2t.exe
+          if errorlevel 1 exit /b 1
       - name: Check Core compilation identity
         run: python scripts/ci_core_cache.py check --platform win_64 --core-id "${{ needs.build.outputs.core-id }}"
       - name: Add locked Qt to runtime search path
@@ -313,3 +387,4 @@ jobs:
             dist/windows-size-report.json
           if-no-files-found: error
           retention-days: 30
+
