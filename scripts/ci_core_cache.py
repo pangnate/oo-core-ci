@@ -54,7 +54,7 @@ def identity(platform: str, deps_id: str) -> dict:
               "runner": {name: os.environ.get(name, "") for name in ("ImageOS", "ImageVersion")},
               "compilerVersion": os.environ.get("X2T_COMPILER_VERSION", "locked-linux-sysroot"),
               "compilerEnvironment": {name: os.environ.get(name, "") for name in (
-                  "CL", "_CL_", "CFLAGS", "CXXFLAGS", "CPPFLAGS", "LDFLAGS", "QMAKEFEATURES", "QT_QMAKE_ADDON")},
+                  "X2T_PCH_MODE", "CL", "_CL_", "CFLAGS", "CXXFLAGS", "CPPFLAGS", "LDFLAGS", "QMAKEFEATURES", "QT_QMAKE_ADDON")},
               "parallelism": json.loads((ROOT / "config/build-acceleration.json").read_text())["parallelism"],
               "gitObjects": objects}
     digest = hashlib.sha256(json.dumps(inputs, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
@@ -143,3 +143,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,0 +1,133 @@
+name: Compare Windows PCH compiler cache
+on:
+  push:
+    branches: ['experiment/windows-pch-cache-20261030']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pch-benchmark-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  deps:
+    runs-on: windows-2022
+    timeout-minutes: 300
+    outputs:
+      deps-id: ${{ env.X2T_DEPS_ID }}
+      compiler-version: ${{ env.X2T_COMPILER_VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test benchmark and cache contracts
+        shell: pwsh
+        run: |
+          python -m unittest discover -s tests/core-features -p test_pch_benchmark.py -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests/core-features -p test_ci_core_cache.py -v
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Verify locked inputs
+        shell: pwsh
+        run: |
+          python scripts/verify_vendor.py --platform windows
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python scripts/verify_core_source.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Locate VS2022 and v142
+        shell: pwsh
+        run: ./scripts/ci_vs_env.ps1
+      - name: Identify locked dependency inputs
+        run: python scripts/ci_deps_key.py --platform win_64
+      - uses: actions/cache@v4
+        id: deps-cache
+        with:
+          path: dist/deps-win_64.tar*
+          key: x2t-deps-windows-v1-${{ env.X2T_DEPS_ID }}
+      - name: Build Boost and ICU
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        shell: cmd
+        run: scripts\windows_build.cmd deps
+      - name: Archive dependencies
+        if: steps.deps-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py create --archive dist/deps-win_64.tar --stage deps --platform win_64 --source-sha $env:X2T_DEPS_ID --path core/Common/3dParty/boost/build/win_64 --path core/Common/3dParty/icu/win_64/build --path core/Common/3dParty/heif/libheif/libheif/api --path core/Common/3dParty/heif/libheif/build/win_64 --path core/Common/3dParty/heif/x265_git/build/win_64 --path core/Common/3dParty/heif/libde265/build/win_64
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Check cached dependency archive
+        if: steps.deps-cache.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: |
+          python scripts/ci_handoff.py restore --archive dist/deps-win_64.tar --stage deps --platform win_64 --source-sha $env:X2T_DEPS_ID
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pch-benchmark-deps-${{ github.run_attempt }}
+          path: dist/deps-win_64.tar*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+
+  default_cold:
+    needs: [deps]
+    uses: ./.github/workflows/x2t-pch-benchmark-job.yml
+    with:
+      mode: default
+      phase: cold
+      deps_id: ${{ needs.deps.outputs.deps-id }}
+      compiler_version: ${{ needs.deps.outputs.compiler-version }}
+
+  default_warm:
+    needs: [deps, default_cold]
+    uses: ./.github/workflows/x2t-pch-benchmark-job.yml
+    with:
+      mode: default
+      phase: warm
+      deps_id: ${{ needs.deps.outputs.deps-id }}
+      compiler_version: ${{ needs.deps.outputs.compiler-version }}
+
+  disabled_cold:
+    needs: [deps]
+    uses: ./.github/workflows/x2t-pch-benchmark-job.yml
+    with:
+      mode: disabled
+      phase: cold
+      deps_id: ${{ needs.deps.outputs.deps-id }}
+      compiler_version: ${{ needs.deps.outputs.compiler-version }}
+
+  disabled_warm:
+    needs: [deps, disabled_cold]
+    uses: ./.github/workflows/x2t-pch-benchmark-job.yml
+    with:
+      mode: disabled
+      phase: warm
+      deps_id: ${{ needs.deps.outputs.deps-id }}
+      compiler_version: ${{ needs.deps.outputs.compiler-version }}
+
+  report:
+    if: always()
+    needs: [default_cold, default_warm, disabled_cold, disabled_warm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pch-benchmark-*-*-${{ github.run_attempt }}
+          path: dist/benchmark-evidence
+      - name: Compare only verified matching results
+        run: python scripts/pch_benchmark_report.py compare --root dist/benchmark-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pch-benchmark-summary-${{ github.run_attempt }}
+          path: dist/pch-benchmark-summary.*
+          if-no-files-found: warn
+          retention-days: 14

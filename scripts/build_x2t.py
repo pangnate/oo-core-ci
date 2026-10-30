@@ -19,7 +19,11 @@ BT = ROOT / "build_tools"
 CORE = ROOT / "core"
 
 
-def qmake_arguments(qt: Path, project: Path, configuration: list[str], *, windows: bool, cache: bool) -> list[str]:
+def qmake_arguments(qt: Path, project: Path, configuration: list[str], *, windows: bool, cache: bool, pch_mode: str = "default") -> list[str]:
+    if pch_mode not in ("default", "disabled"):
+        raise ValueError("X2T_PCH_MODE must be default or disabled")
+    if pch_mode == "disabled" and (not windows or not cache):
+        raise ValueError("disabled PCH is an opt-in Windows compiler-cache experiment")
     params = ["-r", "-nocache", str(project), *configuration, "CONFIG+=x2t_inputs"]
     if not windows:
         qtconf = qt / "onlyoffice_qt.conf"
@@ -28,6 +32,9 @@ def qmake_arguments(qt: Path, project: Path, configuration: list[str], *, window
         params += ["-qtconf", str(qtconf)]
     if cache:
         params.append("CONFIG+=x2t_cache")
+    if pch_mode == "disabled":
+        # Set before project evaluation: base.pri otherwise re-enables PCH.
+        params += ["CONFIG+=disable_precompiled_header", "CONFIG-=precompile_header"]
     return params
 
 
@@ -67,7 +74,8 @@ def main() -> None:
     qt = Path(base.qt_setup(target))
     windows = target == "win_64"
     qmake_app = qt / "bin" / ("qmake.exe" if windows else "qmake")
-    params = qmake_arguments(qt, project, base.qt_config_as_param(base.qt_config(target)), windows=windows, cache=bool(cache))
+    pch_mode = os.environ.get("X2T_PCH_MODE", "default")
+    params = qmake_arguments(qt, project, base.qt_config_as_param(base.qt_config(target)), windows=windows, cache=bool(cache), pch_mode=pch_mode)
     if windows:
         jom = os.environ.get("X2T_JOM", "")
         if cache and not jom:
@@ -90,7 +98,7 @@ def main() -> None:
     started = time.monotonic()
     metrics = {"platform": target, "sourceSha": os.environ.get("GITHUB_SHA", ""),
                "coreId": os.environ.get("X2T_CORE_ID", ""), "cpuCount": cpu_count, "jobs": jobs,
-               "compilerCache": bool(cache), "stages": [], "exitCode": 1}
+               "compilerCache": bool(cache), "pchMode": pch_mode, "stages": [], "exitCode": 1}
     sysroot_active = False
     monitor = ResourceMonitor(ROOT)
     monitor.start()
@@ -144,3 +152,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
